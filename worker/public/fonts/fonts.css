@@ -1,0 +1,10 @@
+/* Movistar Sans — the official brand typeface (5 cuts). */
+@font-face { font-family: 'Movistar Sans'; src: url('MovistarSans-Light.otf') format('opentype'); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Movistar Sans'; src: url('MovistarSans-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Movistar Sans'; src: url('MovistarSans-Medium.otf') format('opentype'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Movistar Sans'; src: url('MovistarSans-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Movistar Sans'; src: url('MovistarSans-Extrabold.otf') format('opentype'); font-weight: 800; font-style: normal; font-display: swap; }
+
+/* Movistar (display / wordmark-style) — used for headlines only. */
+@font-face { font-family: 'Movistar'; src: url('Movistar-Medium.otf') format('opentype'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Movistar'; src: url('Movistar-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }

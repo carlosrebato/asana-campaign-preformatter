@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campaign Loader · Movistar</title>
+<link rel="stylesheet" href="app.css">
+<link rel="icon" href="movistar-m-square.png">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <img src="movistar-m-128.png" alt="Movistar">
+      <div>
+        <div class="brand-name">Campaign Loader</div>
+        <div class="brand-sub">Marketing · Planificación mensual</div>
+      </div>
+    </div>
+    <span class="chip-interno">Interno</span>
+    <nav class="stepper" id="stepper"></nav>
+  </div>
+</header>
+
+<div id="app"></div>
+
+<script src="data.js"></script>
+<script src="api.js"></script>
+<script>
+/* ============================================================
+   Campaign Loader · App
+   Estado en memoria. Sin localStorage (no soportado en artifacts
+   ni necesario aquí). Edición inline = mutación local, 0 llamadas.
+============================================================ */
+
+const D = CATALOGS;
+
+const S = {
+  screen: 'entrada',          // entrada | procesando | revision | confirmar | resultado
+  files: { excel: null, strategy: null },
+  procStep: -1,
+  procPasos: [],
+  tasks: [],
+  dragId: null,
+  dragOverSection: null,
+  loading: false,
+  loadProgress: [0, 0],
+  result: null,
+  dupes: []
+};
+
+const ICONS = {
+  file: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0066FF" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+  fileBig: '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+  check: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#38552B" stroke-width="3.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  arrow: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
+  grip: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg>',
+  trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  chevR: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>',
+  chevD: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>',
+  warn: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5E4A09" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  ok: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38552B" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  fail: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B83227" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+};
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const secName = id => (D.sections.find(s => s.id === id) || {}).name || 'Otros';
+
+/* ---------------- STEPPER ---------------- */
+const STEPS = [
+  { id: 'entrada',    label: 'Entrada' },
+  { id: 'procesando', label: 'Procesado' },
+  { id: 'revision',   label: 'Revisión' },
+  { id: 'confirmar',  label: 'Carga en Asana' }
+];
+
+function renderStepper() {
+  const cur = S.screen === 'resultado' ? 'confirmar' : S.screen;
+  const i = STEPS.findIndex(s => s.id === cur);
+  document.getElementById('stepper').innerHTML = STEPS.map((s, n) => {
+    const cls = n === i ? 'step active' : n < i ? 'step done' : 'step';
+    const num = n < i ? ICONS.check : (n + 1);
+    return `<div class="${cls}"><span class="step-num">${num}</span><span class="step-label">${s.label}</span></div>`
+      + (n < STEPS.length - 1 ? '<span class="step-sep">›</span>' : '');
+  }).join('');
+}
+
+/* ---------------- 1 · ENTRADA ---------------- */
+function viewEntrada() {
+  const f = S.files;
+  const drop = (key, titulo, hint) => {
+    const d = f[key];
+    return `
+    <div class="drop ${d ? 'loaded' : ''}" data-drop="${key}">
+      <div class="drop-icon">${ICONS.fileBig}</div>
+      ${d ? `
+        <div class="drop-title">${esc(d.name)}</div>
+        <button class="btn-ghost" data-clear="${key}" style="font-size:12px">Quitar</button>
+      ` : `
+        <div class="drop-title">${titulo}</div>
+        <div class="drop-hint">${hint}</div>
+        <span class="req">Obligatorio</span>
+      `}
+    </div>`;
+  };
+
+  const listo = f.excel && f.strategy;
+
+  return `
+  <main class="main-narrow">
+    <h1 class="page">Cargar planificación del mes</h1>
+    <p style="font-size:14px;color:#605E5C;margin-top:8px;line-height:1.55">
+      Sube los dos documentos de origen. El Excel aporta los datos operativos
+      (PAC, fechas, producto); el documento de estrategia aporta el contexto y
+      el enfoque de cada campaña. <strong style="color:#262423">Se necesitan ambos.</strong>
+    </p>
+
+    <div class="drop-grid">
+      ${drop('excel', 'Excel de campañas', 'Arrastra el .xlsx o haz clic')}
+      ${drop('strategy', 'Documento de estrategia', 'Arrastra el .pdf / .pptx / .docx')}
+    </div>
+
+    <div style="margin-top:26px;display:flex;align-items:center;gap:14px">
+      <button class="btn-primary" id="btn-procesar" ${listo ? '' : 'disabled'}>
+        Procesar ${ICONS.arrow}
+      </button>
+      ${!listo ? `<span style="font-size:12.5px;color:#9F9C99">Faltan documentos por subir</span>` : ''}
+    </div>
+  </main>`;
+}
+
+/* ---------------- 2 · PROCESANDO ---------------- */
+function viewProcesando() {
+  return `
+  <main class="main-narrow">
+    <h1 class="page">Interpretando documentos</h1>
+    <p style="font-size:14px;color:#605E5C;margin:8px 0 26px">
+      La IA está cruzando el Excel con el documento de estrategia.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      ${S.procPasos.map((p, i) => {
+        const cls = i < S.procStep ? 'proc-step done' : i === S.procStep ? 'proc-step active' : 'proc-step';
+        const dot = i < S.procStep ? ICONS.check : '';
+        return `<div class="${cls}"><span class="proc-dot">${dot}</span>${esc(p)}</div>`;
+      }).join('')}
+    </div>
+  </main>`;
+}
+
+/* ---------------- 3 · REVISIÓN ---------------- */
+function viewRevision() {
+  const total = S.tasks.length;
+  const okN = S.tasks.filter(t => t.linkConfidence === 'high').length;
+  const revN = S.tasks.filter(t => t.linkConfidence === 'low').length;
+  const appN = S.tasks.filter(t => t.approved).length;
+  const pend = total - appN;
+
+  const secciones = D.sections.map(sec => {
+    const ts = S.tasks.filter(t => t.sectionId === sec.id);
+    if (!ts.length) return '';
+    const aprob = ts.filter(t => t.approved).length;
+    const hayPend = aprob < ts.length;
+
+    // Agrupar por tipología dentro de la sección
+    const grupos = D.typologyOptions.map(tp => ({
+      label: tp,
+      tasks: ts.filter(t => (t.typology || 'Growth') === tp)
+    })).filter(g => g.tasks.length);
+
+    return `
+    <section class="section ${S.dragOverSection === sec.id ? 'dragover' : ''}" data-sec="${sec.id}">
+      <div class="section-head">
+        <h2 class="section-title">${esc(sec.name)}</h2>
+        <span class="badge count">${ts.length}</span>
+        <span class="section-approved">${aprob} de ${ts.length} aprobadas</span>
+        <button class="btn-link-section" data-approve-sec="${sec.id}">
+          ${hayPend ? 'Aprobar sección ✓' : 'Desaprobar sección'}
+        </button>
+      </div>
+      ${grupos.map(g => `
+        <div class="group-head">
+          <h3 class="group-label">${esc(g.label)}</h3>
+          <span class="group-count">${g.tasks.length}</span>
+        </div>
+        <div class="tasks">${g.tasks.map(cardHTML).join('')}</div>
+      `).join('')}
+      <button class="btn-add" data-add="${sec.id}">＋ Añadir tarea</button>
+    </section>`;
+  }).join('');
+
+  return `
+  <main class="main">
+    <div class="statsbar">
+      <div class="stats-pill">
+        <div class="stats-cell"><span class="stats-n">${total}</span><span class="stats-lbl">tareas</span></div>
+        <div class="stats-cell"><span class="dot green"></span><span class="stats-n">${okN}</span><span class="stats-lbl">vinculación clara</span></div>
+        <div class="stats-cell"><span class="dot amber"></span><span class="stats-n">${revN}</span><span class="stats-lbl">vinculación probable</span></div>
+        <div class="stats-cell"><span class="stats-n">${pend}/${total}</span><span class="stats-lbl">pendientes</span></div>
+      </div>
+      <button class="btn-primary" id="btn-confirmar" ${appN ? '' : 'disabled'}>
+        Cargar en Asana ${ICONS.arrow}
+      </button>
+    </div>
+
+    <div style="padding:20px 2px 6px">
+      <h1 class="page">Propuesta de tareas</h1>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <span class="filechip">${ICONS.file}${esc(S.files.excel.name)}<span class="ext">${S.files.excel.ext}</span></span>
+        <span style="color:#9F9C99;font-size:12px">+</span>
+        <span class="filechip">${ICONS.file}${esc(S.files.strategy.name)}<span class="ext">${S.files.strategy.ext}</span></span>
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="badge ok">Vinculación clara</span> Contexto de estrategia encontrado y vinculado sin dudas</span>
+        <span class="legend-item"><span class="badge review">Vinculación probable</span> Hay contexto pero la vinculación es dudosa — revisar</span>
+        <span class="legend-item"><span class="badge manual">Manual</span> Creada a mano</span>
+        <span class="legend-item">Sin badge — tarea limpia del Excel, sin contexto de estrategia (es lo normal)</span>
+      </div>
+    </div>
+
+    ${secciones}
+  </main>`;
+}
+
+function cardHTML(t) {
+  // El badge mide la VINCULACIÓN con el PDF, no la fiabilidad del dato
+  // (el Excel es fiable por definición). Sin badge = estado normal.
+  const badge = t.manual
+    ? `<span class="badge manual" title="Tarea creada manualmente">Manual</span>`
+    : t.linkConfidence === 'high'
+      ? `<span class="badge ok" title="${esc(t.contextSource ? 'Vinculado con: ' + t.contextSource : '')}">Vinculación clara</span>`
+      : t.linkConfidence === 'low'
+        ? `<span class="badge review" title="${esc(t.linkNote || '')}">Vinculación probable</span>`
+        : '';
+
+  const sel = (campo, opts, val) => `
+    <select data-set="${campo}" data-id="${t.id}">
+      ${opts.map(o => `<option value="${esc(o)}" ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+    </select>`;
+
+  const descPrev = (t.description || 'Sin contexto de estrategia vinculado').slice(0, 120);
+
+  return `
+  <article class="card ${t.approved ? 'approved' : ''} ${t.flash ? 'flash' : ''}" data-card="${t.id}">
+    <div class="card-row1">
+      <span class="handle" draggable="true" data-drag="${t.id}" title="Arrastrar a otra sección">${ICONS.grip}</span>
+      ${badge}
+      <input class="card-name" value="${esc(t.name)}" data-set="name" data-id="${t.id}"
+             placeholder="PAC00000_Nombre_Segmento_Mes" spellcheck="false">
+      <button class="btn-approve ${t.approved ? 'on' : ''}" data-approve="${t.id}">
+        ${t.approved ? '✓ Aprobada' : 'Aprobar'}
+      </button>
+      <button class="btn-del" data-del="${t.id}" title="Eliminar tarea">${ICONS.trash}</button>
+    </div>
+
+    <div class="card-fields">
+      <label class="field"><span class="field-label">Producto</span>${sel('product', D.productOptions, t.product)}</label>
+      <label class="field"><span class="field-label">Formato</span>${sel('format', D.formatOptions, t.format)}</label>
+      <label class="field"><span class="field-label">Entrega</span>
+        <input type="date" value="${esc(t.dueDate)}" data-set="dueDate" data-id="${t.id}">
+      </label>
+      <label class="field"><span class="field-label">Tipo de cliente</span>${sel('clientType', D.clientTypeOptions, t.clientType)}</label>
+      <label class="field"><span class="field-label">Tipología</span>${sel('typology', D.typologyOptions, t.typology || 'Growth')}</label>
+    </div>
+
+    <div class="card-desc">
+      ${t.descOpen ? `
+        <button class="desc-toggle open" data-desc="${t.id}">${ICONS.chevD} Descripción · contexto de estrategia</button>
+        <textarea class="desc-ta" rows="3" data-set="description" data-id="${t.id}">${esc(t.description)}</textarea>
+      ` : `
+        <button class="desc-toggle" data-desc="${t.id}">${ICONS.chevR}<span class="desc-preview">${esc(descPrev)}</span></button>
+      `}
+    </div>
+  </article>`;
+}
+
+/* ---------------- 4 · CONFIRMAR ---------------- */
+function viewConfirmar() {
+  const app = S.tasks.filter(t => t.approved);
+  const pend = S.tasks.length - app.length;
+
+  const porSec = D.sections.map(s => ({
+    name: s.name,
+    n: app.filter(t => t.sectionId === s.id).length
+  })).filter(x => x.n);
+
+  if (S.loading) {
+    const [i, tot] = S.loadProgress;
+    return `
+    <main class="main-narrow">
+      <h1 class="page">Creando tareas en Asana…</h1>
+      <p style="font-size:14px;color:#605E5C;margin:8px 0 26px">${i} de ${tot} creadas</p>
+      <div style="height:8px;background:#F3EEEA;border-radius:9999px;overflow:hidden">
+        <div style="height:100%;background:#0066FF;border-radius:9999px;width:${tot ? (i/tot*100) : 0}%;transition:.15s"></div>
+      </div>
+    </main>`;
+  }
+
+  return `
+  <main class="main-narrow">
+    <button class="btn-ghost" id="btn-back" style="margin:0 0 18px -12px">← Volver a la revisión</button>
+    <h1 class="page">Vas a crear ${app.length} tareas en Asana</h1>
+    <p style="font-size:14px;color:#605E5C;margin:8px 0 24px">
+      Proyecto de destino: <strong style="color:#262423">${esc(D.asanaProject)}</strong>
+    </p>
+
+    <div class="panel" style="margin-bottom:16px">
+      ${porSec.map(x => `
+        <div class="panel-row"><span>${esc(x.name)}</span><strong>${x.n} tareas</strong></div>
+      `).join('')}
+      <div class="panel-row" style="border-top:1px solid #DFDBD6">
+        <span style="font-weight:700">Estado inicial</span>
+        <span style="color:#605E5C">${esc(D.estadoInicial)}</span>
+      </div>
+    </div>
+
+    ${pend ? `<div class="warn" style="margin-bottom:16px">${ICONS.warn}
+      <span><strong>${pend} tarea${pend > 1 ? 's' : ''} sin aprobar</strong> no se cargará${pend > 1 ? 'n' : ''}.
+      Puedes volver atrás para aprobarlas o cargarlas en otro momento.</span></div>` : ''}
+
+    <button class="btn-primary" id="btn-cargar">Crear ${app.length} tareas en Asana ${ICONS.arrow}</button>
+  </main>`;
+}
+
+/* ---------------- 5 · RESULTADO ---------------- */
+function viewResultado() {
+  const r = S.result;
+  return `
+  <main class="main-narrow">
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:6px">
+      <span style="width:34px;height:34px;border-radius:50%;background:#CEF7BF;display:flex;align-items:center;justify-content:center">${ICONS.ok}</span>
+      <h1 class="page">${r.created.length} tareas creadas</h1>
+    </div>
+    <p style="font-size:14px;color:#605E5C;margin:0 0 24px">En <strong style="color:#262423">${esc(D.asanaProject)}</strong></p>
+
+    <div class="panel" style="margin-bottom:16px">
+      ${r.created.map(c => `
+        <div class="result-item">${ICONS.ok}<span>${esc(c.name)}</span>
+          <a href="${esc(c.url)}" target="_blank">Ver en Asana ↗</a></div>
+      `).join('')}
+    </div>
+
+    ${r.failed.length ? `
+      <div class="warn" style="margin-bottom:12px">${ICONS.warn}
+        <span><strong>${r.failed.length} tarea${r.failed.length > 1 ? 's' : ''} no se pudo crear.</strong>
+        Puedes reintentar solo esas sin duplicar las que ya están.</span></div>
+      <div class="panel" style="margin-bottom:16px">
+        ${r.failed.map(f => `
+          <div class="result-item">${ICONS.fail}<span>${esc(f.name)}</span>
+            <span style="margin-left:auto;font-size:11.5px;color:#B83227">${esc(f.error)}</span></div>
+        `).join('')}
+      </div>
+      <button class="btn-primary" id="btn-retry">Reintentar ${r.failed.length} fallidas</button>
+    ` : ''}
+
+    <button class="btn-ghost" id="btn-reset" style="margin-top:14px;margin-left:-12px">Cargar otro mes</button>
+  </main>`;
+}
+
+/* ---------------- RENDER ---------------- */
+function render() {
+  renderStepper();
+  const v = { entrada: viewEntrada, procesando: viewProcesando, revision: viewRevision,
+              confirmar: viewConfirmar, resultado: viewResultado }[S.screen];
+  document.getElementById('app').innerHTML = v();
+  S.tasks.forEach(t => t.flash = false);
+}
+
+/* ---------------- ACCIONES ---------------- */
+function patch(id, campos) {
+  const t = S.tasks.find(x => x.id === id);
+  if (!t) return;
+  Object.assign(t, campos);
+  // Cambiar producto recoloca la tarjeta en su sección
+  if (campos.product) {
+    const dest = D.productSectionMap[campos.product];
+    if (dest && dest !== t.sectionId) { t.sectionId = dest; t.flash = true; }
+  }
+  render();
+}
+
+async function procesar() {
+  S.screen = 'procesando';
+  S.procPasos = []; S.procStep = -1;
+  render();
+  const tasks = await API.interpretarDocumentos(S.files.excel, S.files.strategy, (i, pasos) => {
+    S.procPasos = pasos; S.procStep = i; render();
+  });
+  S.tasks = tasks.map(t => Object.assign({ approved: false, descOpen: false, flash: false, typology: 'Growth' }, t));
+  S.dupes = await API.comprobarDuplicados(S.tasks);
+  S.screen = 'revision';
+  render();
+}
+
+async function cargar() {
+  S.loading = true; render();
+  const app = S.tasks.filter(t => t.approved);
+  S.result = await API.cargarEnAsana(app, {
+    onProgress: (i, tot) => { S.loadProgress = [i, tot]; render(); }
+  });
+  S.loading = false;
+  S.screen = 'resultado';
+  render();
+}
+
+/* ---------------- EVENTOS ---------------- */
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
+  if (!el) return;
+
+  if (el.dataset.approve) {
+    const t = S.tasks.find(x => x.id === el.dataset.approve);
+    patch(t.id, { approved: !t.approved });
+  }
+  else if (el.dataset.del) {
+    S.tasks = S.tasks.filter(x => x.id !== el.dataset.del); render();
+  }
+  else if (el.dataset.desc) {
+    const t = S.tasks.find(x => x.id === el.dataset.desc);
+    patch(t.id, { descOpen: !t.descOpen });
+  }
+  else if (el.dataset.add) {
+    const sec = el.dataset.add;
+    const prod = Object.keys(D.productSectionMap).find(p => D.productSectionMap[p] === sec) || 'Otros';
+    S.tasks.push({
+      id: 'm' + Date.now(), sectionId: sec, name: '', product: prod,
+      format: D.formatOptions[0], dueDate: '', clientType: D.clientTypeOptions[0],
+      typology: 'Growth', manual: true, description: '',
+      approved: false, descOpen: false, flash: true
+    });
+    render();
+    document.querySelector(`[data-card="m${''}"]`);
+    const inp = document.querySelector('.card.flash .card-name');
+    if (inp) inp.focus();
+  }
+  else if (el.dataset.approveSec) {
+    const ts = S.tasks.filter(t => t.sectionId === el.dataset.approveSec);
+    const hayPend = ts.some(t => !t.approved);
+    ts.forEach(t => t.approved = hayPend);
+    render();
+  }
+  else if (el.dataset.clear) {
+    S.files[el.dataset.clear] = null; render();
+  }
+  else if (el.dataset.drop) {
+    // Simular selección de fichero (no hay backend en el proto)
+    const key = el.dataset.drop;
+    if (S.files[key]) return;
+    S.files[key] = await API.inspeccionarFichero(null, key);
+    render();
+  }
+  else if (el.id === 'btn-procesar') procesar();
+  else if (el.id === 'btn-confirmar') { S.screen = 'confirmar'; render(); }
+  else if (el.id === 'btn-back') { S.screen = 'revision'; render(); }
+  else if (el.id === 'btn-cargar') { el.disabled = true; cargar(); }
+  else if (el.id === 'btn-retry') {
+    const ids = S.result.failed.map(f => f.id);
+    S.tasks.forEach(t => t.approved = ids.includes(t.id));
+    S.screen = 'confirmar'; render();
+  }
+  else if (el.id === 'btn-reset') {
+    Object.assign(S, { screen: 'entrada', files: { excel: null, strategy: null }, tasks: [], result: null });
+    render();
+  }
+});
+
+document.addEventListener('change', e => {
+  const el = e.target.closest('[data-set]');
+  if (!el) return;
+  patch(el.dataset.id, { [el.dataset.set]: el.value });
+});
+
+// Drag & drop entre secciones
+document.addEventListener('dragstart', e => {
+  const h = e.target.closest('[data-drag]');
+  if (!h) return;
+  S.dragId = h.dataset.drag;
+  h.closest('.card').classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+});
+document.addEventListener('dragend', () => {
+  S.dragId = null; S.dragOverSection = null; render();
+});
+document.addEventListener('dragover', e => {
+  const sec = e.target.closest('[data-sec]');
+  if (!sec || !S.dragId) return;
+  e.preventDefault();
+  if (S.dragOverSection !== sec.dataset.sec) {
+    S.dragOverSection = sec.dataset.sec;
+    document.querySelectorAll('.section').forEach(s =>
+      s.classList.toggle('dragover', s.dataset.sec === S.dragOverSection));
+  }
+});
+document.addEventListener('drop', e => {
+  const sec = e.target.closest('[data-sec]');
+  if (!sec || !S.dragId) return;
+  e.preventDefault();
+  const t = S.tasks.find(x => x.id === S.dragId);
+  if (t && t.sectionId !== sec.dataset.sec) { t.sectionId = sec.dataset.sec; t.flash = true; }
+  S.dragId = null; S.dragOverSection = null;
+  render();
+});
+
+// Drop de ficheros reales sobre las zonas de carga
+document.addEventListener('dragover', e => {
+  const d = e.target.closest('[data-drop]');
+  if (d && !S.dragId) { e.preventDefault(); d.classList.add('over'); }
+});
+document.addEventListener('dragleave', e => {
+  const d = e.target.closest('[data-drop]');
+  if (d) d.classList.remove('over');
+});
+document.addEventListener('drop', async e => {
+  const d = e.target.closest('[data-drop]');
+  if (!d || S.dragId) return;
+  e.preventDefault();
+  const key = d.dataset.drop;
+  if (S.files[key]) return;
+  S.files[key] = await API.inspeccionarFichero(e.dataTransfer.files[0], key);
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

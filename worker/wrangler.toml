@@ -1,0 +1,19 @@
+name = "campaign-loader"
+compatibility_date = "2026-07-01"
+
+# Sirve /public como estático. Sin build step, sin dependencias.
+[assets]
+directory = "./public"
+
+# ── CABLEADO FUTURO ──────────────────────────────────────────
+# Cuando toque conectar la IA y Asana, descomentar y añadir el
+# handler en src/index.js con las rutas /api/*.
+#
+# main = "src/index.js"
+#
+# [vars]
+# ASANA_PROJECT_GID = "..."
+#
+# Secretos (nunca en este fichero):
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put ASANA_TOKEN
