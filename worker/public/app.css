@@ -77,6 +77,10 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
   color: #B83227; background: #FBE6E3; border-radius: 9999px; padding: 2px 8px;
 }
 .req.ok { color: #38552B; background: #CEF7BF; }
+.drop-democopy {
+  font-size: 11px; font-weight: 500; color: #0066FF;
+  text-align: center; margin-top: 6px;
+}
 
 /* ============ BOTONES ============ */
 .btn-primary {

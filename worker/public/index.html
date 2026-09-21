@@ -89,19 +89,22 @@ function renderStepper() {
 /* ---------------- 1 · ENTRADA ---------------- */
 function viewEntrada() {
   const f = S.files;
-  const drop = (key, titulo, hint) => {
+  const drop = (key, titulo, hint, demoCopy) => {
     const d = f[key];
     return `
-    <div class="drop ${d ? 'loaded' : ''}" data-drop="${key}">
-      <div class="drop-icon">${ICONS.fileBig}</div>
-      ${d ? `
-        <div class="drop-title">${esc(d.name)}</div>
-        <button class="btn-ghost" data-clear="${key}" style="font-size:12px">Quitar</button>
-      ` : `
-        <div class="drop-title">${titulo}</div>
-        <div class="drop-hint">${hint}</div>
-        <span class="req">Obligatorio</span>
-      `}
+    <div class="drop-cell">
+      <div class="drop ${d ? 'loaded' : ''}" data-drop="${key}">
+        <div class="drop-icon">${ICONS.fileBig}</div>
+        ${d ? `
+          <div class="drop-title">${esc(d.name)}</div>
+          <button class="btn-ghost" data-clear="${key}" style="font-size:12px">Quitar</button>
+        ` : `
+          <div class="drop-title">${titulo}</div>
+          <div class="drop-hint">${hint}</div>
+          <span class="req">Obligatorio</span>
+        `}
+      </div>
+      ${!d ? `<p class="drop-democopy">${demoCopy}</p>` : ''}
     </div>`;
   };
 
@@ -117,8 +120,10 @@ function viewEntrada() {
     </p>
 
     <div class="drop-grid">
-      ${drop('excel', 'Excel de campañas', 'Arrastra el .xlsx o haz clic')}
-      ${drop('strategy', 'Documento de estrategia', 'Arrastra el .pdf / .pptx / .docx')}
+      ${drop('excel', 'Excel de campañas', 'Arrastra el .xlsx o haz clic',
+        'Demo · clic en la caja para simular la carga')}
+      ${drop('strategy', 'Documento de estrategia', 'Arrastra el .pdf / .pptx / .docx',
+        'Demo · clic en la caja para simular la carga')}
     </div>
 
     <div style="margin-top:26px;display:flex;align-items:center;gap:14px">
@@ -214,7 +219,6 @@ function viewRevision() {
         <span class="legend-item"><span class="badge ok">Vinculación clara</span> Contexto de estrategia encontrado y vinculado sin dudas</span>
         <span class="legend-item"><span class="badge review">Vinculación probable</span> Hay contexto pero la vinculación es dudosa — revisar</span>
         <span class="legend-item"><span class="badge manual">Manual</span> Creada a mano</span>
-        <span class="legend-item">Sin badge — tarea limpia del Excel, sin contexto de estrategia (es lo normal)</span>
       </div>
     </div>
 
