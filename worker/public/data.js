@@ -45,7 +45,7 @@ const CATALOGS = {
 
   clientTypeOptions: ['Convergente', 'Solo Móvil', 'Solo BAF', 'No Cliente'],
 
-  typologyOptions: ['Growth', 'Value'],
+  typologyOptions: ['Growth', 'Value', 'Servicing'],
 
   // Estado inicial de las tareas al crearse en Asana.
   // Configurable: cuando se acuerde el set de estados con Comercialización,
@@ -53,6 +53,100 @@ const CATALOGS = {
   estadoInicial: 'Pdte Comercialización',
 
   asanaProject: 'BTL · Planificación Julio 2026 (TEST)'
+};
+
+/* ------------------------------------------------------------
+   EXCEL DE COMERCIALIZACIÓN → ASANA
+   Sacado del primer fichero real (ASANA FICHERO CARGA.xlsx,
+   sep-oct 2026, guardado en ../fixtures/). Ver DECISIONES.md
+   → "Lo que sabemos del Excel real".
+
+   1 fila = 1 tarea. Los valores son los que aparecen en el
+   fichero; si un mes sale uno nuevo, se añade aquí.
+------------------------------------------------------------ */
+const EXCEL = {
+  // Hoja y cabeceras (fila 1). Solo se usan A–P; Q–AF vienen vacías.
+  sheet: 'ASANA',
+  columns: {
+    fechaGrabacion: 'FECHA GRABACION EN FICHERO ASANA',   // A · texto '21/9/26'
+    pac:            'CÓDIGO \nCAMPAÑA',                    // B · fórmula =MID(E;1;8). Validar contra E.
+    tsk:            'CÓDIGO \nTAREA',                      // C · 'TSKnnnnn' o 'TSKPDTE' (pendiente)
+    medio:          'MEDIO',                                // D
+    nombre:         'NOMBRE DESCRIPTIVO DE LA  CAMPAÑA ',   // E · nombre de la tarea (ya lleva el PAC delante)
+    mes:            'MES',                                  // F · entero
+    semana:         'SEMANA ENVIO',                         // G · entero
+    fechaInicio:    'FECHA INICIO SOLICITADA ',             // H · texto '21-sep.-2026'
+    viabilidad:     'VIABILIDAD',                           // I · Aprobada | Planificada
+    nombreTarea:    '\u00a0NOMBRE DE LA TAREA Ó DESCRIPCIÓN DE LA TAREA\u00a0', // J · a veces 0 o vacío
+    po:             'PO ESTIMADO',                          // K · unidad sin confirmar. Llevar como texto.
+    palanca:        'PALANCA',                              // L
+    subpalanca:     'SUBPALANCA',                           // M
+    producto:       'PRODUCTO / KPI',                       // N
+    objetivo:       'OBJETIVO / DESCRIPCIÓN CAMPAÑA',       // O
+    responsable:    'RESPONSABLE.'                          // P
+  },
+
+  // Regex del PAC. Se aplica sobre E (nombre), no sobre B.
+  pacPattern: /^PAC\d{5}/,
+
+  // Palancas que NO se importan por ahora. Legal es Servicing y va por
+  // otro circuito. Se cuentan y se avisa, pero no generan tarea.
+  palancasOmitidas: ['Legal'],
+
+  // PALANCA → Tipología. Regla acordada internamente, pendiente de
+  // confirmar con Comercialización.
+  palancaTypology: {
+    'Desarrollo':                'Growth',
+    'Captación No Cliente':      'Growth',
+    'Fidelización/Dinamización': 'Value',
+    'Legal':                     'Servicing'
+  },
+
+  // VIABILIDAD → estado de la tarea. Pendiente de acordar el set.
+  viabilidadEstado: {
+    'Aprobada':    'Aprobada',
+    'Planificada': 'Pdte Comercialización'
+  },
+
+  // MEDIO (Excel) → Formato (Asana). Normalizar espacios antes de buscar.
+  // 'Enews contenidos' no se detecta por MEDIO sino por PRODUCTO (ver abajo).
+  medioFormat: {
+    'E-Mailing':       'Email y/o SMS',
+    'SMS':             'Email y/o SMS',
+    'RCS':             'RCS',
+    'Carta Oficial':   'Mailing/offline',
+    'CARTA SAT':       'Mailing/offline',
+    'App Mi Movistar': 'Customer Journey'   // sin opción propia en Asana; provisional
+  },
+
+  // PRODUCTO / KPI (Excel) → Producto (Asana). La sección sale luego
+  // de productSectionMap. 'Legal', 'Marca', 'Info' y 'Horecas /LLPP'
+  // no son productos: van a Otros.
+  productoProduct: {
+    'Fibra Adicional':           'Fibra Adicional',
+    'FTTR':                      'Fibra Adicional',
+    'Alta BAF':                  'Fibra Adicional',
+    'R2R':                       'Dispositivos',
+    'Fútbol+':                   'M+ Fútbol',
+    'Deportes Total':            'Movistar Plus+',
+    'Ficción Total':             'M+ Ficción',
+    'Movistar Plus+ (Paquete)':  'Movistar Plus+',
+    'Atresplayer':               'Movistar Plus+',
+    'Enews contenidos':          'Movistar Plus+',
+    'Helios':                    'Nuevos Negocios',
+    'Renting coche eléctrico':   'Nuevos Negocios',
+    'eSIMFlag':                  'Nuevos Negocios',
+    'Movistar Prosegur Alarmas': 'Nuevos Negocios',
+    'Legal':                     'Otros',
+    'Marca':                     'Otros',
+    'Info':                      'Otros',
+    'Horecas /LLPP':             'Otros'
+  },
+
+  // Productos que fuerzan el formato aunque MEDIO diga E-Mailing.
+  productoFormatOverride: {
+    'Enews contenidos': 'Enews contenidos TV'
+  }
 };
 
 /* ------------------------------------------------------------

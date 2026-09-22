@@ -8,8 +8,9 @@ y Asana, con el contexto de mensaje pegado a cada tarea.
 
 ## Estado actual
 
-UI completa y navegable. **Los datos son de ejemplo** — no hay llamadas a IA ni
-a Asana todavía. Sirve para validar el flujo antes de cablear.
+UI completa y navegable. **El Excel se lee de verdad** (en el navegador, sin
+IA): las tareas de la revisión salen del fichero de Comercialización. El
+documento de estrategia todavía no se procesa y no hay carga en Asana.
 
 **Antes de una demo:** poner `simulateFailures` a `0` en `public/api.js`.
 
@@ -36,8 +37,12 @@ DECISIONES.md              ← El porqué. Empieza aquí.
 PROMPT_CLAUDE_CODE.md      ← Prompt listo para cablear lo real o desplegar la demo.
 prompts/
   interpretacion.md        ← El prompt maestro del LLM. Se edita aquí, no en código.
+fixtures/
+  ASANA_FICHERO_CARGA_*.xlsx  Excel real de Comercialización, para probar el parser
 public/
   index.html               App completa (vistas + eventos + estado)
+  excel.js                 Lector del Excel de Comercialización → Tarea[] + avisos
+  vendor/xlsx.full.min.js  SheetJS (lectura de .xlsx en el navegador)
   app.css                  Estilos sobre el design system Movistar
   colors_and_type.css      Design system oficial (no tocar)
   fonts/                   Movistar Sans + Movistar (no tocar)
@@ -52,8 +57,8 @@ La UI no sabe qué hay detrás.
 
 | Función | Qué debe hacer la versión real |
 |---|---|
-| `interpretarDocumentos()` | POST al Worker → LLM con `prompts/interpretacion.md` → `Tarea[]` |
-| `inspeccionarFichero()` | Leer cabeceras del Excel (nº filas, PACs) |
+| `interpretarDocumentos()` | POST al Worker → LLM con `prompts/interpretacion.md` → añade contexto a las tareas del Excel |
+| `inspeccionarFichero()` | **Hecho** para el Excel (`excel.js`). Falta el documento de estrategia |
 | `comprobarDuplicados()` | Buscar PACs existentes en Asana (búsqueda dirigida) |
 | `cargarEnAsana()` | Crear tareas vía MCP Asana / API REST |
 
@@ -95,13 +100,16 @@ Cloudflare.**
 En `data.js` → `CATALOGS`: secciones, catálogos de campos, `productSectionMap`
 (producto → sección, determinista), `estadoInicial`, `asanaProject`.
 
+En `data.js` → `EXCEL`: columnas del fichero de Comercialización y tablas de
+mapeo a Asana (medio → formato, producto → producto, palanca → tipología).
+
 **Los valores actuales son de referencia.** Al cablear hay que leer el proyecto
 real de Asana e importar los GIDs. Los enum de Asana se escriben **por GID de
 opción, no por texto**.
 
 ## Pendiente antes de cablear
 
-- **Qué es una tarea de Asana** (1 PAC vs 1 fila vs 1 TSK) — bloquea la carga.
-  Ver `DECISIONES.md`.
-- Crear el campo Tipología (Growth/Value) en el proyecto nuevo.
+- Confirmar con Comercialización que **1 fila = 1 PAC** siempre (así viene en
+  el primer fichero real; ver `DECISIONES.md`).
+- Crear el campo Tipología (Growth/Value/Servicing) en el proyecto nuevo.
 - Acordar el set de estados con Comercialización.

@@ -48,6 +48,10 @@ const API = {
     onProgress?.(pasos.length, pasos);
     await new Promise(r => setTimeout(r, 300));
 
+    // Excel real ya leído en inspeccionarFichero → tareas reales, sin
+    // contexto de estrategia (el PDF aún no se procesa: sale sin badge,
+    // que es un estado normal). Sin Excel real → datos de ejemplo.
+    if (excelFile?.parsed) return JSON.parse(JSON.stringify(excelFile.parsed.tasks));
     return JSON.parse(JSON.stringify(MOCK_TASKS));
   },
 
@@ -59,6 +63,19 @@ const API = {
      al soltar el archivo, ANTES de gastar una llamada al LLM.
   ---------------------------------------------------------- */
   async inspeccionarFichero(file, tipo) {
+    // Excel real: se lee entero en el navegador (excel.js, determinista).
+    // El resultado viaja con el fichero y lo usa interpretarDocumentos.
+    if (file && tipo === 'excel') {
+      const buf = await file.arrayBuffer();
+      const parsed = EXCEL_PARSER.parse(buf);
+      return { name: file.name, ext: 'XLSX', parsed };
+    }
+    // Estrategia: todavía no se procesa. Solo se registra el nombre.
+    if (file) {
+      const ext = (file.name.split('.').pop() || '').toUpperCase();
+      return { name: file.name, ext };
+    }
+    // Sin fichero (clic en la caja): datos de ejemplo.
     await new Promise(r => setTimeout(r, 420));
     return MOCK_FILES[tipo];
   },

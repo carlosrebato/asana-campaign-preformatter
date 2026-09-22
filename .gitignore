@@ -1,3 +1,5 @@
 .wrangler/
 .claude/settings.local.json
 .DS_Store
+# Excels reales de Comercialización: PACs y campañas internas. NUNCA a git.
+worker/fixtures/

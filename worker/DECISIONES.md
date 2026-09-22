@@ -146,34 +146,77 @@ brief se pierde entre decenas de páginas que producción no lee.
 
 ---
 
-## PENDIENTE · Bloquea la carga real
+## Lo que sabemos del Excel real
 
-### ¿Qué es una tarea de Asana?
+Primer fichero real: `fixtures/ASANA_FICHERO_CARGA_2026-09-21.xlsx`
+(90 filas, 21-sep → 31-oct 2026). Todo lo de abajo sale de ahí.
+Mapeo de columnas y valores en `data.js → EXCEL`.
 
-**Sin resolver esto no se puede cablear la carga.** No es un detalle de pulido.
+### 1 fila = 1 tarea
 
-En el Excel, **una campaña son varias filas**. Cada fila es un envío/pieza:
-mismo PAC, distinto medio (Email / SMS / Banners M+) o distinto segmento con
-distinto volumen. Un PAC puede tener 3 filas o 12.
+90 filas, 90 PACs distintos. **El PAC ya es la pieza** (el SMS, el email,
+la carta), no la campaña multi-medio. Las opciones A/B/C que se barajaban
+se resuelven solas: **1 fila = 1 tarea, sin subtareas.**
 
-Hay además una columna `TAREA CAMPAÑA (TSK)` con el identificador de pieza de
-Ártica — pero no todas las filas lo tienen (los banners traen `NA`).
+Pendiente de confirmar con Comercialización que siempre es así. Si un mes
+un PAC se repite en varias filas, se agrupa y las filas pasan a subtareas
+(opción A). No hace falta decidirlo ahora.
 
-Opciones:
+El TSK no vale como clave: más de la mitad vienen como `TSKPDTE`
+(pendiente de asignar).
 
-- **A · 1 PAC = 1 tarea.** Las filas se agrupan; los medios podrían ser
-  subtareas. Encaja con la convención de nombres actual
-  (`PAC34890_eSimFLAG_Resto clientes_Jul y Ago`). Pierde granular por pieza.
-- **B · 1 fila = 1 tarea.** Máximo granular. Pero 12 tareas casi idénticas para
-  un mismo PAC es ruido.
-- **C · 1 TSK = 1 tarea.** El TSK es el identificador de pieza real, pero no
-  todas las filas lo tienen.
+### No es "el mes": es un volcado que se repite
 
-**Decisión de equipo, no unilateral.** Se valida con la demo.
+El fichero cubre seis semanas y tiene una columna `FECHA GRABACION EN
+FICHERO ASANA` con la misma fecha en todas las filas. La próxima entrega
+traerá PACs que ya cargamos, algunos con `VIABILIDAD` cambiada de
+`Planificada` a `Aprobada`.
 
-Nota: si se va a A, el Excel ya da gratis las subtareas — si un PAC tiene 3
-filas (Email, SMS, Banners), esas son sus 3 subtareas. No hace falta inventar
-plantillas fijas: el propio Excel dice qué piezas lleva cada campaña.
+Consecuencia: la herramienta **sincroniza**, no carga. Por cada PAC:
+
+- No existe en Asana → crear.
+- Existe → por ahora, no tocar. Actualizar estado es fase 2.
+
+La idempotencia por PAC deja de ser un aviso y pasa a ser el núcleo.
+
+### Growth / Value / Servicing sale de PALANCA
+
+El Excel no trae tipología. Se deduce de `PALANCA`:
+
+| PALANCA | Tipología |
+|---|---|
+| Desarrollo | Growth |
+| Captación No Cliente | Growth |
+| Fidelización/Dinamización | Value |
+| Legal | Servicing |
+
+Regla interna, pendiente de que Comercialización la bendiga. Está en un
+solo sitio (`EXCEL.palancaTypology`).
+
+### Catálogos: usamos los valores que aparecen
+
+Los desplegables del Excel apuntan a una hoja de listas que no viene en la
+copia. En vez de esperarla, los mapeos de `data.js` se han hecho con los
+valores que salen en el fichero (7 medios, 18 productos, 4 palancas). Si un
+mes aparece uno nuevo, el parser lo tiene que avisar y se añade a mano.
+
+### Suciedad conocida del fichero
+
+El parser tiene que aguantar esto sin romperse:
+
+- **El PAC (col. B) es una fórmula** `=MID(E;1;8)`: se saca del nombre.
+  Validar con `EXCEL.pacPattern` sobre el nombre, no fiarse de B.
+- **Fechas como texto**: `'21-sep.-2026'` (mes español abreviado con punto)
+  y `'21/9/26'`. Hay que parsearlas.
+- **PO ESTIMADO no se puede leer**: mezcla `50`, `2.2`, `'3.380.000'`,
+  `'PTE'` y `0`. Probablemente en miles, sin confirmar. Se lleva como texto
+  y no se usa para nada.
+- Espacios sobrantes en valores (`'SMS '`, `'TSK32255 '`). Normalizar.
+- `NOMBRE DE LA TAREA` (col. J) a veces es `0` o vacío. El nombre de la
+  tarea de Asana es la col. E, que siempre viene y ya lleva el PAC delante.
+- **La mitad derecha (Q–AF) viene vacía.** Parecen columnas del formulario
+  antiguo de Asana. Se ignoran. Pendiente de preguntar si sobran.
+- **Tipo de cliente no viene.** Por la regla 1, se queda vacío.
 
 ---
 
@@ -182,8 +225,8 @@ plantillas fijas: el propio Excel dice qué piezas lleva cada campaña.
 - **Estado inicial de las tareas.** Hoy es un placeholder (`CATALOGS.estadoInicial`).
   El set definitivo se acuerda con Comercialización cuando el proyecto se amplíe
   a ambos equipos. Configurable en un solo sitio, precisamente porque va a cambiar.
-- **Tipología (Growth/Value).** El campo no existe en el Asana actual. Hay que
-  crearlo en el proyecto nuevo.
+- **Tipología (Growth/Value/Servicing).** El campo no existe en el Asana
+  actual. Hay que crearlo en el proyecto nuevo.
 - **Catálogos reales.** Los valores de `data.js` son de referencia. Al cablear,
   hay que leer el proyecto de Asana e importar los GIDs reales — los enum de
   Asana se escriben **por GID de opción, no por texto**.
