@@ -112,12 +112,25 @@ const ESTRATEGIA = (() => {
 
     return tasks.map(t => {
       const clave = EXCEL.productoBrief[t.excel?.producto];
-      const b = clave && porTitulo[clave.slice(0, 22).toLowerCase()];
-      if (!b) return t;
+      if (!clave) return t;
+      // Una entrada puede declarar varios briefs candidatos. Si el
+      // documento trae más de uno, la vinculación es dudosa: se pega el
+      // primero y la tarea sale en amarillo para que alguien la mire.
+      const candidatos = [].concat(clave)
+        .map(c => porTitulo[c.slice(0, 22).toLowerCase()])
+        .filter(Boolean);
+      if (!candidatos.length) return t;
+      const b = candidatos[0];
+      const dudoso = candidatos.length > 1;
       return Object.assign({}, t, {
         description: b.texto,
         contextSource: `${b.titulo} (pág. ${b.pagina})`,
-        linkConfidence: 'high'
+        linkConfidence: dudoso ? 'low' : 'high',
+        linkNote: dudoso
+          ? `El documento trae ${candidatos.length} briefs que encajan con este producto `
+            + `(${candidatos.map(c => c.titulo).join(' · ')}) y el Excel no dice cuál. `
+            + 'Se ha pegado el primero.'
+          : undefined
       });
     });
   }

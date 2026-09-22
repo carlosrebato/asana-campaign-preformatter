@@ -163,7 +163,10 @@ const EXCEL = {
     'Ficción Total':             'Estrategia desarrollo Ficción',
     'Fibra Adicional':           'Estrategia Fibra Adicional',
     'FTTR':                      'Estrategia FTTR',
-    'Alta BAF':                  'Estrategia GN BAF SA',
+    // Dos briefs hablan de captación BAF y el Excel no desambigua:
+    // se vincula al primero pero la tarea sale en amarillo.
+    'Alta BAF':                  ['Estrategia GN BAF SA',
+                                  'Captación nuevos clientes BAF con fútbol'],
     'eSIMFlag':                  'eSimFLAG',
     'Renting coche eléctrico':   'Movistar Renting Coches',
     'Helios':                    'Helios',
