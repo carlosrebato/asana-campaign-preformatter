@@ -184,70 +184,70 @@ const MOCK_FILES = {
    nunca datos que ya vengan del Excel (fecha, canal, segmento...).
 ------------------------------------------------------------ */
 const MOCK_TASKS = [
-  { id:'t1', sectionId:'conectividad', name:'PAC34890_eSimFLAG_Resto clientes_Julio',
+  { id:'t1', sectionId:'conectividad', name:'PAC00010_eSimFLAG_Resto clientes_Julio',
     product:'Prepago', format:'Email y/o SMS', dueDate:'2026-07-08', clientType:'Solo Móvil',
     typology:'Growth', linkConfidence:'high', contextSource:'Estrategia eSIM Flag — Activación',
     description:'Claim: "actívala en 2 minutos, sin líos". Tono práctico y directo; evitar cualquier mención a permanencia.' },
 
-  { id:'t2', sectionId:'conectividad', name:'PAC34912_Fibra1Gb_Upselling BAF_Julio',
+  { id:'t2', sectionId:'conectividad', name:'PAC00107_Fibra1Gb_Upselling BAF_Julio',
     product:'Fibra Adicional', format:'Email y/o SMS', dueDate:'2026-07-15', clientType:'Solo BAF',
     typology:'Growth', linkConfidence:'high', contextSource:'Estrategia Fibra Adicional — Primera quincena (slide 33)',
     description:'"Por ser cliente miMovistar, tienes fibra en tu segunda residencia por 15€/mes." La mejor conectividad al mejor precio: somos los más competitivos del mercado en segunda fibra.' },
 
-  { id:'t2b', sectionId:'conectividad', name:'PAC34913_Fibra1Gb_Upselling Hijos Estudiantes_Julio',
+  { id:'t2b', sectionId:'conectividad', name:'PAC00108_Fibra1Gb_Upselling Hijos Estudiantes_Julio',
     product:'Fibra Adicional', format:'Email y/o SMS', dueDate:'2026-07-25', clientType:'Convergente',
     typology:'Growth', linkConfidence:'high', contextSource:'Estrategia Fibra Adicional — Segunda quincena (slide 34)',
     description:'"Vuelven a la Uni." Por ser cliente miMovistar, tienes una fibra para quien más quieres por 15€/mes. Mismo producto que la primera quincena, pero el foco pasa de segunda residencia a hijos estudiantes.' },
 
-  { id:'t3', sectionId:'conectividad', name:'PAC34901_Cobertura5G_NoClientes_Julio',
+  { id:'t3', sectionId:'conectividad', name:'PAC00105_Cobertura5G_NoClientes_Julio',
     product:'Prepago', format:'RCS', dueDate:'2026-07-22', clientType:'No Cliente',
     typology:'Growth', linkConfidence:'low', contextSource:'Estrategia Ampliación Cobertura 5G',
     linkNote:'El documento habla de "cobertura que llega donde antes no llegaba" en dos bloques distintos (zona rural / zona urbana) sin fecha que distinga cuál aplica aquí.',
     description:'Posible vinculación con el bloque de cobertura 5G, pero no queda claro si el enfoque es rural o urbano.' },
 
-  { id:'t4', sectionId:'convergente', name:'PAC34877_MiMovistarMax_Migración legacy_Julio',
+  { id:'t4', sectionId:'convergente', name:'PAC00101_MiMovistarMax_Migración legacy_Julio',
     product:'MiMovistar', format:'Customer Journey', dueDate:'2026-07-10', clientType:'Convergente',
     typology:'Value', linkConfidence:'high', contextSource:'Estrategia Migración Legacy → MiMovistar Max',
     description:'"El mismo precio, ahora con más." La estrategia insiste en dejar claro que no cambia el precio durante el primer año.' },
 
-  { id:'t5', sectionId:'convergente', name:'PAC34921_ConvergenteTV_CrossSell_Julio',
+  { id:'t5', sectionId:'convergente', name:'PAC00110_ConvergenteTV_CrossSell_Julio',
     product:'MiMovistar', format:'Email y/o SMS', dueDate:'2026-07-17', clientType:'Convergente',
     typology:'Growth', description:'' },
 
-  { id:'t6', sectionId:'dispositivos', name:'PAC34895_SamsungS26_Renove_Julio',
+  { id:'t6', sectionId:'dispositivos', name:'PAC00104_SamsungS26_Renove_Julio',
     product:'Dispositivos', format:'Email y/o SMS', dueDate:'2026-07-11', clientType:'Convergente',
     typology:'Growth', linkConfidence:'high', contextSource:'Estrategia Renove Dispositivos — Verano',
     description:'Claim: "cámbialo sin pagarlo todo de golpe". Foco en la financiación a plazos sin intereses.' },
 
-  { id:'t7', sectionId:'dispositivos', name:'PAC34930_TabletVerano_Stock_Julio',
+  { id:'t7', sectionId:'dispositivos', name:'PAC00112_TabletVerano_Stock_Julio',
     product:'Dispositivos', format:'Mailing/offline', dueDate:'2026-07-24', clientType:'Convergente',
     typology:'Growth', description:'' },
 
-  { id:'t8', sectionId:'plus', name:'PAC34902_MPlus_EstrenosJulio_Base TV_Julio',
+  { id:'t8', sectionId:'plus', name:'PAC00106_MPlus_EstrenosJulio_Base TV_Julio',
     product:'Movistar Plus+', format:'Enews contenidos TV', dueDate:'2026-07-03', clientType:'Convergente',
     typology:'Value', linkConfidence:'high', contextSource:'Estrategia Contenidos Movistar Plus+ — Julio',
     description:'"Este mes no te pierdas nada": nueva temporada de La Mesías y los estrenos de cine destacados.' },
 
-  { id:'t9', sectionId:'plus', name:'PAC34915_FicciónVerano_WinBack_Julio',
+  { id:'t9', sectionId:'plus', name:'PAC00109_FicciónVerano_WinBack_Julio',
     product:'M+ Ficción', format:'Email y/o SMS', dueDate:'2026-07-18', clientType:'Solo Móvil',
     typology:'Value', linkConfidence:'low', contextSource:'Estrategia Recuperación de Bajas — Ficción',
     linkNote:'El documento menciona un win-back de M+ Ficción, pero no queda claro si corresponde a este envío o a una acción de retención más amplia sin fecha concreta.',
     description:'"Vuelve a M+ Ficción por 3,90€/mes los tres primeros meses" — oferta de retorno para bajas recientes.' },
 
-  { id:'t10', sectionId:'futbol', name:'PAC34884_MFutbol_Pretemporada_Base móvil_Julio',
+  { id:'t10', sectionId:'futbol', name:'PAC00102_MFutbol_Pretemporada_Base móvil_Julio',
     product:'Fútbol', format:'Email y/o SMS', dueDate:'2026-07-20', clientType:'Solo Móvil',
     typology:'Growth', linkConfidence:'high', contextSource:'Estrategia Desarrollo y Winback Fútbol (Residencial)',
     description:'Campaña bajo el paraguas "Vuelve a soñar", que conecta con la ilusión del arranque de temporada. Argumento central: "contrata hoy y empieza a pagar cuando empieza el fútbol".' },
 
-  { id:'t11', sectionId:'futbol', name:'PAC34886_MFutbol_Renovación LaLiga_Julio',
+  { id:'t11', sectionId:'futbol', name:'PAC00103_MFutbol_Renovación LaLiga_Julio',
     product:'Fútbol', format:'Banners TV', dueDate:'2026-07-28', clientType:'Convergente',
     typology:'Value', description:'' },
 
-  { id:'t12', sectionId:'nuevos', name:'PAC34925_GamingPass_Lanzamiento_Julio',
+  { id:'t12', sectionId:'nuevos', name:'PAC00111_GamingPass_Lanzamiento_Julio',
     product:'Gaming', format:'Customer Journey', dueDate:'2026-07-14', clientType:'Solo Móvil',
     typology:'Growth', description:'' },
 
-  { id:'t13', sectionId:'otros', name:'PAC34940_EncuestaNPS_PostCampaña_Julio',
+  { id:'t13', sectionId:'otros', name:'PAC00113_EncuestaNPS_PostCampaña_Julio',
     product:'Otros', format:'Email y/o SMS', dueDate:'2026-07-30', clientType:'Convergente',
     typology:'Value', description:'' }
 ];
