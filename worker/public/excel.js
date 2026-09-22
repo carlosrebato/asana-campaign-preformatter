@@ -89,7 +89,10 @@ const EXCEL_PARSER = (() => {
       const viabilidad = clean(col(r, 'viabilidad'));
       const tsk = clean(col(r, 'tsk'));
 
-      const product = EXCEL.productoProduct[producto];
+      const subpalanca = clean(col(r, 'subpalanca'));
+      const product = EXCEL.productoSubpalancaOverride[producto]?.[subpalanca]
+        || (producto === 'Info' && EXCEL.productoPorNombre.find(r => r.pattern.test(nombre))?.product)
+        || EXCEL.productoProduct[producto];
       if (!product) warn('producto', fila, `Producto sin mapear: "${producto}"`);
 
       let format = EXCEL.medioFormat[medio];
@@ -120,7 +123,7 @@ const EXCEL_PARSER = (() => {
         // Datos del Excel que no tienen campo en la UI todavía
         excel: {
           fila, medio, palanca, producto, viabilidad,
-          subpalanca: clean(col(r, 'subpalanca')),
+          subpalanca,
           objetivo: clean(col(r, 'objetivo')),
           responsable: clean(col(r, 'responsable')),
           po: clean(col(r, 'po')),            // unidad sin confirmar; solo texto

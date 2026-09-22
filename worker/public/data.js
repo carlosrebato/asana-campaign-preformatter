@@ -21,7 +21,7 @@ const CATALOGS = {
 
   productOptions: [
     'MiMovistar', 'Fibra Adicional', 'Dispositivos', 'Movistar Plus+',
-    'M+ Fútbol', 'M+ Ficción', 'Prepago', 'Gaming', 'Nuevos Negocios', 'Otros'
+    'Fútbol', 'M+ Ficción', 'Prepago', 'Gaming', 'Nuevos Negocios', 'Marca', 'Otros'
   ],
 
   // Producto → Sección. Determinista. Punto único de configuración.
@@ -32,9 +32,10 @@ const CATALOGS = {
     'Dispositivos': 'dispositivos',
     'Movistar Plus+': 'plus',
     'M+ Ficción': 'plus',
-    'M+ Fútbol': 'futbol',
+    'Fútbol': 'futbol',
     'Gaming': 'nuevos',
     'Nuevos Negocios': 'nuevos',
+    'Marca': 'marca',
     'Otros': 'otros'
   },
 
@@ -127,7 +128,7 @@ const EXCEL = {
     'FTTR':                      'Fibra Adicional',
     'Alta BAF':                  'Fibra Adicional',
     'R2R':                       'Dispositivos',
-    'Fútbol+':                   'M+ Fútbol',
+    'Fútbol+':                   'Fútbol',
     'Deportes Total':            'Movistar Plus+',
     'Ficción Total':             'M+ Ficción',
     'Movistar Plus+ (Paquete)':  'Movistar Plus+',
@@ -137,10 +138,23 @@ const EXCEL = {
     'Renting coche eléctrico':   'Nuevos Negocios',
     'eSIMFlag':                  'Nuevos Negocios',
     'Movistar Prosegur Alarmas': 'Nuevos Negocios',
-    'Legal':                     'Otros',
-    'Marca':                     'Otros',
-    'Info':                      'Otros',
-    'Horecas /LLPP':             'Otros'
+    'Legal':                     'Otros',        // no se importa (palancasOmitidas)
+    'Marca':                     'Marca',        // ENEWS semanal, sección propia
+    'Info':                      'Otros',        // se afina con productoPorNombre
+    'Horecas /LLPP':             'Movistar Plus+' // es segmento, no producto; ver productoSubpalancaOverride
+  },
+
+  // "Info" es cajón de sastre: el producto se reconoce por el nombre.
+  // Primer patrón que casa, gana. Si ninguno casa, queda en Otros.
+  productoPorNombre: [
+    { pattern: /RED_SEGURA|RED SEGURA/i,        product: 'MiMovistar' },
+    { pattern: /SORTEO|CAMISETA|MUNDIAL/i,      product: 'Fútbol' },
+    { pattern: /APP_MIMOVISTAR.*CONTENIDOS/i,   product: 'Movistar Plus+' }
+  ],
+
+  // Horecas es a quién, no qué. Por SUBPALANCA se sabe el producto real.
+  productoSubpalancaOverride: {
+    'Horecas /LLPP': { 'Plataforma TV': 'Fútbol', 'Dinamización de TV': 'Movistar Plus+' }
   },
 
   // Productos que fuerzan el formato aunque MEDIO diga E-Mailing.
@@ -221,12 +235,12 @@ const MOCK_TASKS = [
     description:'"Vuelve a M+ Ficción por 3,90€/mes los tres primeros meses" — oferta de retorno para bajas recientes.' },
 
   { id:'t10', sectionId:'futbol', name:'PAC34884_MFutbol_Pretemporada_Base móvil_Julio',
-    product:'M+ Fútbol', format:'Email y/o SMS', dueDate:'2026-07-20', clientType:'Solo Móvil',
+    product:'Fútbol', format:'Email y/o SMS', dueDate:'2026-07-20', clientType:'Solo Móvil',
     typology:'Growth', linkConfidence:'high', contextSource:'Estrategia Desarrollo y Winback Fútbol (Residencial)',
     description:'Campaña bajo el paraguas "Vuelve a soñar", que conecta con la ilusión del arranque de temporada. Argumento central: "contrata hoy y empieza a pagar cuando empieza el fútbol".' },
 
   { id:'t11', sectionId:'futbol', name:'PAC34886_MFutbol_Renovación LaLiga_Julio',
-    product:'M+ Fútbol', format:'Banners TV', dueDate:'2026-07-28', clientType:'Convergente',
+    product:'Fútbol', format:'Banners TV', dueDate:'2026-07-28', clientType:'Convergente',
     typology:'Value', description:'' },
 
   { id:'t12', sectionId:'nuevos', name:'PAC34925_GamingPass_Lanzamiento_Julio',
