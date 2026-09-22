@@ -297,6 +297,23 @@ supuesto mal:
 - **Growth/Value/Servicing sigue sin existir.** Se calcula y se enseña en
   la revisión, pero al crear la tarea no se escribe en ningún sitio.
 
+### Duplicar el proyecto NO conserva todos los GIDs
+
+Al duplicar `BTL - Run ✉️` para hacer el sandbox, Asana se comportó de dos
+maneras distintas con los campos:
+
+| Campo | En el duplicado |
+|---|---|
+| Producto, Estado | **mismo GID** — son campos del espacio de trabajo |
+| Tipo de cliente, Formatos de comunicación, Peticionario | **GID nuevo** — copia local del proyecto |
+
+Los nombres y las opciones son idénticos; los identificadores, no. Un
+código con los GIDs escritos a mano habría intentado escribir en campos
+que no existen en ese proyecto.
+
+Es la prueba de por qué los catálogos se leen en caliente y se buscan
+**por nombre de campo** (`CATALOGS.fieldNames`), no por GID.
+
 ## El Worker es la única parte que necesita servidor
 
 El token de Asana no puede estar en el navegador, y Asana no acepta

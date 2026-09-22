@@ -2,9 +2,10 @@ name = "campaign-loader"
 compatibility_date = "2026-07-01"
 main = "src/index.js"
 
-# Proyecto destino. FALSO PUBLI es el sandbox; el real es BTL - Run ✉️.
+# Proyecto destino. El de producción (BTL - Run ✉️, 1204870393367337)
+# está en la lista SOLO_LECTURA de src/index.js: ahí no se escribe.
 [vars]
-ASANA_PROJECT_GID = "1216262563939486"
+ASANA_PROJECT_GID = "1218744348845656"   # SANDBOX Campaign Loader (borrar)
 ASANA_WORKSPACE_GID = "8485243267402"
 
 # El Worker sirve /public y además responde a /api/*.
