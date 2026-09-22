@@ -15,8 +15,10 @@ const API = {
   /* ----------------------------------------------------------
      1 · INTERPRETAR DOCUMENTOS
      ----------------------------------------------------------
-     REAL: POST /api/interpretar con los dos ficheros (multipart
-     o base64). El Worker llama al LLM y devuelve Tarea[].
+     REAL: POST /api/interpretar con el Excel y los documentos de
+     estrategia (multipart o base64). El Worker llama al LLM y devuelve
+     Tarea[]. La estrategia puede venir repartida en varios documentos,
+     uno por equipo: los briefs de todos se juntan.
 
      El prompt es ../prompts/interpretacion.md — cárgalo como fichero,
      no lo copies aquí. Reglas completas en ../DECISIONES.md.
@@ -34,7 +36,7 @@ const API = {
      Aislar aquí la llamada al LLM permite migrar a Azure OpenAI
      o Copilot tocando solo esta función.
   ---------------------------------------------------------- */
-  async interpretarDocumentos(excelFile, strategyFile, onProgress) {
+  async interpretarDocumentos(excelFile, strategyFiles, onProgress) {
     const pasos = [
       'Leyendo Excel de campañas',
       'Extrayendo códigos PAC y fechas',
@@ -48,10 +50,15 @@ const API = {
     onProgress?.(pasos.length, pasos);
     await new Promise(r => setTimeout(r, 300));
 
-    // Excel real ya leído en inspeccionarFichero → tareas reales, sin
-    // contexto de estrategia (el PDF aún no se procesa: sale sin badge,
-    // que es un estado normal). Sin Excel real → datos de ejemplo.
-    if (excelFile?.parsed) return JSON.parse(JSON.stringify(excelFile.parsed.tasks));
+    // Los dos ficheros ya se han leído en inspeccionarFichero. Aquí solo
+    // se cruzan: el Excel pone los campos, el documento pone el contexto.
+    // Sin Excel real → datos de ejemplo.
+    if (excelFile?.parsed) {
+      const tasks = JSON.parse(JSON.stringify(excelFile.parsed.tasks));
+      const briefs = [].concat(strategyFiles || [])
+        .flatMap(d => d?.parsed?.briefs || []);
+      return ESTRATEGIA.vincular(tasks, briefs);
+    }
     return JSON.parse(JSON.stringify(MOCK_TASKS));
   },
 
@@ -70,7 +77,14 @@ const API = {
       const parsed = EXCEL_PARSER.parse(buf);
       return { name: file.name, ext: 'XLSX', parsed };
     }
-    // Estrategia: todavía no se procesa. Solo se registra el nombre.
+    // Estrategia: se extraen los briefs de mensaje (estrategia.js).
+    // Si viene ilegible, se devuelve sin briefs y no se avisa de nada:
+    // las tareas saldrán sin contexto, que es un estado normal.
+    if (file && tipo === 'strategy') {
+      const parsed = await ESTRATEGIA.parse(file);
+      const ext = (file.name.split('.').pop() || '').toUpperCase();
+      return { name: file.name, ext, parsed };
+    }
     if (file) {
       const ext = (file.name.split('.').pop() || '').toUpperCase();
       return { name: file.name, ext };

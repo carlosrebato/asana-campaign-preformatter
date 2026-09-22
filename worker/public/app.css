@@ -77,6 +77,22 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
   color: #B83227; background: #FBE6E3; border-radius: 9999px; padding: 2px 8px;
 }
 .req.ok { color: #38552B; background: #CEF7BF; }
+.doclist {
+  list-style: none; margin: 0; padding: 0; width: 100%;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.doclist li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 4px 5px 10px; border-radius: 8px; background: #fff;
+  border: 1px solid #EFEAE5;
+}
+.doc-nombre {
+  flex: 1; min-width: 0; text-align: left;
+  font-size: 12.5px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.doc-briefs { font-size: 11px; color: #807D7B; white-space: nowrap; }
+
 .drop-avisos {
   list-style: none; margin: 0; padding: 0;
   font-size: 11px; color: #B83227; text-align: left; line-height: 1.5;
@@ -191,7 +207,7 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 
 /* ============ FILA DE TAREA (modo lectura) ============ */
 .row {
-  display: grid; grid-template-columns: 1fr auto auto;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center; gap: 10px;
   padding: 0 6px; min-height: 46px;
   border-bottom: 1px solid #EFEAE5; transition: background .12s;
@@ -202,11 +218,18 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .row .btn-approve { min-width: 100px; text-align: center; }
 .row.flash { animation: flash .9s ease-out; }
 .row-body {
-  display: grid; grid-template-columns: 22px minmax(0, 1fr) 128px 140px 82px 112px;
-  align-items: center; gap: 12px; min-width: 0;
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) 112px 124px 78px 94px;
+  align-items: center; gap: 12px; min-width: 0; overflow: hidden;
   border: none; background: transparent; text-align: left;
   padding: 8px 4px; border-radius: 8px; cursor: pointer; font: inherit;
 }
+.bola {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+  background: transparent; box-shadow: inset 0 0 0 1px #EFEAE5;
+}
+.bola.ok { background: #A9DD92; box-shadow: none; cursor: help; }
+.bola.review { background: #FFD84D; box-shadow: none; cursor: help; }
+.bola.manual { background: #9F9C99; box-shadow: none; }
 .chev { display: flex; color: #0066FF; transition: transform .15s; flex-shrink: 0; }
 .chev.open { transform: rotate(90deg); }
 .row.dragging, .card.dragging { opacity: .4; }
@@ -214,14 +237,16 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .card-row1 { cursor: pointer; }
 .row-name {
   display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding-right: 10px;
   font-size: 13.5px; font-weight: 700; color: #262423;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .row-val { font-size: 12.5px; color: #403F3D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-val.muted, .muted { color: #9F9C99; }
 .row-desc {
-  grid-column: 1 / -1; padding: 0 4px 10px 34px;
-  font-size: 12px; color: #605E5C; line-height: 1.45;
+  grid-column: 1 / -1; padding: 0 4px 9px 34px; margin-top: -4px;
+  font-size: 12px; color: #807D7B; line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* ============ TARJETA DE TAREA ============ */
@@ -291,6 +316,23 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .desc-toggle:hover { background: #F8F4F0; color: #605E5C; }
 .desc-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .desc-toggle.open { font-size: 11px; font-weight: 500; color: #605E5C; width: auto; }
+.desc-head { display: flex; align-items: center; gap: 8px; }
+.desc-fuente {
+  flex: 1; min-width: 0; font-size: 11px; color: #9F9C99;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.brief {
+  margin-top: 4px; padding: 12px 14px;
+  background: #F8F4F0; border-radius: 10px;
+}
+.brief-l { margin: 0 0 7px; font-size: 12.5px; line-height: 1.5; color: #403F3D; }
+.brief-l:last-child { margin-bottom: 0; }
+.brief-l b {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase; color: #605E5C;
+}
+.brief-vacio { margin: 6px 0 0; font-size: 12.5px; color: #9F9C99; font-style: italic; }
+
 .desc-ta {
   width: 100%; margin-top: 4px;
   border: 1px solid #DFDBD6; border-radius: 10px; padding: 10px 12px;

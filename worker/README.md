@@ -8,9 +8,10 @@ y Asana, con el contexto de mensaje pegado a cada tarea.
 
 ## Estado actual
 
-UI completa y navegable. **El Excel se lee de verdad** (en el navegador, sin
-IA): las tareas de la revisión salen del fichero de Comercialización. El
-documento de estrategia todavía no se procesa y no hay carga en Asana.
+UI completa y navegable. **Los documentos se leen de verdad**, en el navegador
+y sin IA: el Excel pone los campos de cada tarea y los documentos de estrategia
+—los que hagan falta, uno por equipo— pegan el brief de mensaje que escribió
+Comercialización. Lo único que falta es la carga en Asana.
 
 **Antes de una demo:** poner `simulateFailures` a `0` en `public/api.js`.
 
@@ -42,7 +43,8 @@ fixtures/
 public/
   index.html               App completa (vistas + eventos + estado)
   excel.js                 Lector del Excel de Comercialización → Tarea[] + avisos
-  vendor/xlsx.full.min.js  SheetJS (lectura de .xlsx en el navegador)
+  estrategia.js            Lector de los documentos de estrategia → briefs de mensaje
+  vendor/                  SheetJS (.xlsx) y pdf.js (.pdf)
   app.css                  Estilos sobre el design system Movistar
   colors_and_type.css      Design system oficial (no tocar)
   fonts/                   Movistar Sans + Movistar (no tocar)
@@ -57,8 +59,8 @@ La UI no sabe qué hay detrás.
 
 | Función | Qué debe hacer la versión real |
 |---|---|
-| `interpretarDocumentos()` | POST al Worker → LLM con `prompts/interpretacion.md` → añade contexto a las tareas del Excel |
-| `inspeccionarFichero()` | **Hecho** para el Excel (`excel.js`). Falta el documento de estrategia |
+| `interpretarDocumentos()` | **Hecho** sin IA: cruza Excel y briefs. El LLM solo hará falta si un producto tiene varios briefs y hay que elegir |
+| `inspeccionarFichero()` | **Hecho** para los dos ficheros (`excel.js`, `estrategia.js`) |
 | `comprobarDuplicados()` | Buscar PACs existentes en Asana (búsqueda dirigida) |
 | `cargarEnAsana()` | Crear tareas vía MCP Asana / API REST |
 

@@ -193,6 +193,51 @@ El Excel no trae tipología. Se deduce de `PALANCA`:
 Regla interna, pendiente de que Comercialización la bendiga. Está en un
 solo sitio (`EXCEL.palancaTypology`).
 
+### El brief se reconoce por etiquetas, no por maquetación
+
+El documento de octubre trae los 12 briefs de Comercialización en **tres
+formatos distintos dentro del mismo PDF**: unos numerados (5.1, 5.2…), otros
+con viñetas bajo "5. Elevator Pitch", otros en prosa. Confirma lo que ya
+suponíamos: cualquier regla basada en layout se rompe a la siguiente entrega.
+
+`estrategia.js` busca **etiquetas** — idea fuerza, elevator pitch, mensaje,
+jerarquía, tono, reason why — y corta en target, objetivo de negocio,
+contexto, hitos y planificación. Los tres formatos caen igual.
+
+**El texto se copia literal.** Nadie lo resume ni lo reescribe: el objetivo
+es recuperar el brief que Comercialización ya escribió, no producir uno
+nuevo. Esto además quita a la IA del camino crítico.
+
+Con el fichero de octubre: 44 de 73 tareas reciben contexto (60%). Las 29
+restantes son R2R, enews, Marca e Info — envíos recurrentes sin campaña
+detrás, que **deben** salir sin bola.
+
+### La estrategia llega en varios documentos, no en uno
+
+Octubre llegó repartido: `Planes Comerciales Growth y Value` (Comercialización)
+y `Estrategia de Comunicación` (Dispositivos). La herramienta acepta los que
+hagan falta y junta los briefs de todos. Ninguno es obligatorio por separado.
+
+Y el de Dispositivos enseña el caso que había que probar: **no usa la
+plantilla de Comercialización**. Son cuotas de mercado, fases de calendario y
+prioridades por categoría — registro de colega, no de cliente. El lector
+encuentra cero briefs, no pega nada y no avisa. Las diez tareas de R2R salen
+sin bola, que es lo correcto.
+
+El arreglo no es técnico: es que Dispositivos rellene la plantilla. Mientras
+no lo haga, ningún parche de código puede inventar un mensaje que nadie ha
+escrito.
+
+### La vinculación es una tabla, no una inferencia
+
+`EXCEL.productoBrief` mapea producto → título del brief. Explícita a
+propósito: vincular por parecido es justo lo que prohíbe la regla 3. Un
+producto sin entrada sale sin contexto, que es el caso normal.
+
+Aquí es donde entraría un modelo el día que un producto tenga varios briefs
+y haya que elegir por fecha o colectivo. Hoy no pasa. Mientras no pase, no
+hace falta IA en ningún punto del flujo.
+
 ### Catálogos: usamos los valores que aparecen
 
 Los desplegables del Excel apuntan a una hoja de listas que no viene en la
