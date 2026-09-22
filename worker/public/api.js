@@ -48,10 +48,13 @@ const API = {
     onProgress?.(pasos.length, pasos);
     await new Promise(r => setTimeout(r, 300));
 
-    // Excel real ya leído en inspeccionarFichero → tareas reales, sin
-    // contexto de estrategia (el PDF aún no se procesa: sale sin badge,
-    // que es un estado normal). Sin Excel real → datos de ejemplo.
-    if (excelFile?.parsed) return JSON.parse(JSON.stringify(excelFile.parsed.tasks));
+    // Los dos ficheros ya se han leído en inspeccionarFichero. Aquí solo
+    // se cruzan: el Excel pone los campos, el documento pone el contexto.
+    // Sin Excel real → datos de ejemplo.
+    if (excelFile?.parsed) {
+      const tasks = JSON.parse(JSON.stringify(excelFile.parsed.tasks));
+      return ESTRATEGIA.vincular(tasks, strategyFile?.parsed?.briefs || []);
+    }
     return JSON.parse(JSON.stringify(MOCK_TASKS));
   },
 
@@ -70,7 +73,14 @@ const API = {
       const parsed = EXCEL_PARSER.parse(buf);
       return { name: file.name, ext: 'XLSX', parsed };
     }
-    // Estrategia: todavía no se procesa. Solo se registra el nombre.
+    // Estrategia: se extraen los briefs de mensaje (estrategia.js).
+    // Si viene ilegible, se devuelve sin briefs y no se avisa de nada:
+    // las tareas saldrán sin contexto, que es un estado normal.
+    if (file && tipo === 'strategy') {
+      const parsed = await ESTRATEGIA.parse(file);
+      const ext = (file.name.split('.').pop() || '').toUpperCase();
+      return { name: file.name, ext, parsed };
+    }
     if (file) {
       const ext = (file.name.split('.').pop() || '').toUpperCase();
       return { name: file.name, ext };

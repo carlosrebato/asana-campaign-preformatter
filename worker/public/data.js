@@ -152,6 +152,24 @@ const EXCEL = {
     { pattern: /APP_MIMOVISTAR.*CONTENIDOS/i,   product: 'Movistar Plus+' }
   ],
 
+  // PRODUCTO del Excel → título del brief en el documento de estrategia.
+  // Tabla explícita a propósito: vincular por parecido es justo lo que
+  // DECISIONES.md prohíbe (umbral alto, mejor no encontrar que encontrar
+  // mal). Un producto sin entrada aquí sale sin contexto, que es normal.
+  productoBrief: {
+    'Fútbol+':                   'Desarrollo y winback clientes sin Futbol',
+    'Horecas /LLPP':             'Captación y desarrollo fútbol (Horecas)',
+    'Deportes Total':            'Estrategia desarrollo Deportes, Motor y Baloncesto',
+    'Ficción Total':             'Estrategia desarrollo Ficción',
+    'Fibra Adicional':           'Estrategia Fibra Adicional',
+    'FTTR':                      'Estrategia FTTR',
+    'Alta BAF':                  'Estrategia GN BAF SA',
+    'eSIMFlag':                  'eSimFLAG',
+    'Renting coche eléctrico':   'Movistar Renting Coches',
+    'Helios':                    'Helios',
+    'Movistar Prosegur Alarmas': 'MPA'
+  },
+
   // Horecas es a quién, no qué. Por SUBPALANCA se sabe el producto real.
   productoSubpalancaOverride: {
     'Horecas /LLPP': { 'Plataforma TV': 'Fútbol', 'Dinamización de TV': 'Movistar Plus+' }

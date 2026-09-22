@@ -202,11 +202,18 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .row .btn-approve { min-width: 100px; text-align: center; }
 .row.flash { animation: flash .9s ease-out; }
 .row-body {
-  display: grid; grid-template-columns: 22px minmax(0, 1fr) 128px 140px 82px 112px;
+  display: grid; grid-template-columns: 20px minmax(300px, 1fr) 118px 130px 80px 100px;
   align-items: center; gap: 12px; min-width: 0;
   border: none; background: transparent; text-align: left;
   padding: 8px 4px; border-radius: 8px; cursor: pointer; font: inherit;
 }
+.bola {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+  background: transparent; box-shadow: inset 0 0 0 1px #EFEAE5;
+}
+.bola.ok { background: #38552B; box-shadow: none; cursor: help; }
+.bola.review { background: #E8B21E; box-shadow: none; cursor: help; }
+.bola.manual { background: #9F9C99; box-shadow: none; }
 .chev { display: flex; color: #0066FF; transition: transform .15s; flex-shrink: 0; }
 .chev.open { transform: rotate(90deg); }
 .row.dragging, .card.dragging { opacity: .4; }
@@ -214,14 +221,16 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .card-row1 { cursor: pointer; }
 .row-name {
   display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding-right: 10px;
   font-size: 13.5px; font-weight: 700; color: #262423;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .row-val { font-size: 12.5px; color: #403F3D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-val.muted, .muted { color: #9F9C99; }
 .row-desc {
-  grid-column: 1 / -1; padding: 0 4px 10px 34px;
-  font-size: 12px; color: #605E5C; line-height: 1.45;
+  grid-column: 1 / -1; padding: 0 4px 9px 34px; margin-top: -4px;
+  font-size: 12px; color: #807D7B; line-height: 1.4;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* ============ TARJETA DE TAREA ============ */
