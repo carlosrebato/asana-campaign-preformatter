@@ -332,6 +332,23 @@ function badgeHTML(t) {
         : '';
 }
 
+// El brief viene con las etiquetas de la plantilla de Comercialización
+// ("Idea fuerza:", "Reason why:"…). Se resaltan para que se lea como el
+// brief que es y no como un párrafo corrido. El texto no se toca: la
+// etiqueta sale del propio contenido.
+const ETIQUETAS = /^(?:\d+(?:\.\d+)*\.?\s*)?(idea\s*fuerza(?:\s+por\s+colectivo)?|elevator\s*pitch(?:\s+de\s+comunicaci[óo]n)?|mensaje\s*principal|mensaje\s*secundario|jerarqu[ií]a|tono|reason\s*why|palancas|prioritario|secundario|restricciones)\s*:?\s*/i;
+
+function briefHTML(texto) {
+  if (!texto) return '<p class="brief-vacio">Sin contexto de estrategia vinculado</p>';
+  const bloques = texto.split('\n').map(l => l.trim()).filter(Boolean).map(linea => {
+    const m = linea.match(ETIQUETAS);
+    if (!m) return `<p class="brief-l">${esc(linea)}</p>`;
+    const resto = linea.slice(m[0].length).trim();
+    return `<p class="brief-l"><b>${esc(m[1])}</b>${resto ? ' · ' + esc(resto) : ''}</p>`;
+  });
+  return `<div class="brief">${bloques.join('')}</div>`;
+}
+
 function cardHTML(t) {
   const badge = badgeHTML(t);
 
@@ -369,8 +386,16 @@ function cardHTML(t) {
 
     <div class="card-desc">
       ${t.descOpen ? `
-        <button class="desc-toggle open" data-desc="${t.id}">${ICONS.chevD} Descripción · contexto de estrategia</button>
-        <textarea class="desc-ta" rows="10" data-set="description" data-id="${t.id}">${esc(t.description)}</textarea>
+        <div class="desc-head">
+          <button class="desc-toggle open" data-desc="${t.id}">${ICONS.chevD} Contexto de estrategia</button>
+          ${t.contextSource ? `<span class="desc-fuente">${esc(t.contextSource)}</span>` : ''}
+          <button class="btn-ghost" data-descedit="${t.id}" style="font-size:12px">
+            ${t.descEdit ? 'Ver' : 'Editar'}
+          </button>
+        </div>
+        ${t.descEdit
+          ? `<textarea class="desc-ta" rows="10" data-set="description" data-id="${t.id}">${esc(t.description)}</textarea>`
+          : briefHTML(t.description)}
       ` : `
         <button class="desc-toggle" data-desc="${t.id}">${ICONS.chevR}<span class="desc-preview">${esc(descPrev)}</span></button>
       `}
@@ -509,7 +534,7 @@ async function cargar() {
 
 /* ---------------- EVENTOS ---------------- */
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-quitar-doc],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
+  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-quitar-doc],[data-descedit],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
   if (!el) return;
 
   if (el.dataset.approve) {
@@ -526,6 +551,10 @@ document.addEventListener('click', async e => {
     if (e.target.closest('input,select,textarea,[data-approve],[data-del]')) return;
     const t = S.tasks.find(x => x.id === el.dataset.toggle);
     patch(t.id, { editing: !t.editing });
+  }
+  else if (el.dataset.descedit) {
+    const t = S.tasks.find(x => x.id === el.dataset.descedit);
+    patch(t.id, { descEdit: !t.descEdit });
   }
   else if (el.dataset.desc) {
     const t = S.tasks.find(x => x.id === el.dataset.desc);

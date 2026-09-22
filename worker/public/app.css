@@ -316,6 +316,23 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .desc-toggle:hover { background: #F8F4F0; color: #605E5C; }
 .desc-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .desc-toggle.open { font-size: 11px; font-weight: 500; color: #605E5C; width: auto; }
+.desc-head { display: flex; align-items: center; gap: 8px; }
+.desc-fuente {
+  flex: 1; min-width: 0; font-size: 11px; color: #9F9C99;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.brief {
+  margin-top: 4px; padding: 12px 14px;
+  background: #F8F4F0; border-radius: 10px;
+}
+.brief-l { margin: 0 0 7px; font-size: 12.5px; line-height: 1.5; color: #403F3D; }
+.brief-l:last-child { margin-bottom: 0; }
+.brief-l b {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase; color: #605E5C;
+}
+.brief-vacio { margin: 6px 0 0; font-size: 12.5px; color: #9F9C99; font-style: italic; }
+
 .desc-ta {
   width: 100%; margin-top: 4px;
   border: 1px solid #DFDBD6; border-radius: 10px; padding: 10px 12px;

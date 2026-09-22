@@ -48,6 +48,19 @@ const ESTRATEGIA = (() => {
     return out;
   }
 
+  // El PDF parte los párrafos por el ancho de la diapositiva, y a veces el
+  // corte cae entre dos páginas. Una línea que empieza en minúscula detrás
+  // de otra que no ha terminado la frase es la misma frase.
+  function unirPartidas(lineas) {
+    return lineas.reduce((acc, t) => {
+      const anterior = acc[acc.length - 1];
+      if (anterior && !/[.:;]$/.test(anterior) && /^[a-záéíóúñ(]/.test(t)) {
+        acc[acc.length - 1] = `${anterior} ${t}`;
+      } else acc.push(t);
+      return acc;
+    }, []);
+  }
+
   function titulo(pagina) {
     for (const l of pagina.split('\n')) {
       const t = l.trim();
@@ -63,7 +76,8 @@ const ESTRATEGIA = (() => {
       if (!/reason\s*why/i.test(p)) return;
       const t = titulo(p);
       const juntar = i > 0 && titulo(paginas[i - 1]).slice(0, 18).toLowerCase() === t.slice(0, 18).toLowerCase();
-      const lineas = juntar ? registro(paginas[i - 1]).concat(registro(p)) : registro(p);
+      const crudas = juntar ? registro(paginas[i - 1]).concat(registro(p)) : registro(p);
+      const lineas = unirPartidas(crudas);
       if (lineas.length) out.push({ pagina: i + 1, titulo: t, texto: lineas.join('\n') });
     });
     return out;
@@ -82,11 +96,24 @@ const ESTRATEGIA = (() => {
         if (!it.str) continue;
         const y = Math.round(it.transform[5]);
         if (!filas.has(y)) filas.set(y, []);
-        filas.get(y).push([it.transform[4], it.str]);
+        filas.get(y).push({
+          x: it.transform[4], w: it.width || 0, s: it.str,
+          cuerpo: Math.abs(it.transform[3]) || 10
+        });
       }
+      // Dos cajas de texto distintas a la misma altura son dos palabras
+      // distintas: si hay hueco entre ellas, va un espacio.
       const lineas = [...filas.entries()]
         .sort((a, b) => b[0] - a[0])
-        .map(([, frags]) => frags.sort((a, b) => a[0] - b[0]).map(f => f[1]).join('').trim())
+        .map(([, frags]) => frags.sort((a, b) => a.x - b.x).reduce((acc, f, i, arr) => {
+          if (i === 0) return f.s;
+          const prev = arr[i - 1];
+          // Un hueco solo es un espacio si mide como un espacio. Con un
+          // umbral fijo se partían palabras que el PDF trae en dos trozos.
+          const hueco = f.x - (prev.x + prev.w) > f.cuerpo * 0.28;
+          const pegado = /\s$/.test(acc) || /^\s/.test(f.s);
+          return acc + (hueco && !pegado ? ' ' : '') + f.s;
+        }, '').trim())
         .filter(Boolean);
       paginas.push(lineas.join('\n'));
     }
