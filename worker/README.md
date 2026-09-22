@@ -8,10 +8,10 @@ y Asana, con el contexto de mensaje pegado a cada tarea.
 
 ## Estado actual
 
-UI completa y navegable. **Los dos documentos se leen de verdad**, en el
-navegador y sin IA: el Excel pone los campos de cada tarea y el documento de
-estrategia pega el brief de mensaje que escribió Comercialización. Lo único
-que falta es la carga en Asana.
+UI completa y navegable. **Los documentos se leen de verdad**, en el navegador
+y sin IA: el Excel pone los campos de cada tarea y los documentos de estrategia
+—los que hagan falta, uno por equipo— pegan el brief de mensaje que escribió
+Comercialización. Lo único que falta es la carga en Asana.
 
 **Antes de una demo:** poner `simulateFailures` a `0` en `public/api.js`.
 
@@ -43,7 +43,7 @@ fixtures/
 public/
   index.html               App completa (vistas + eventos + estado)
   excel.js                 Lector del Excel de Comercialización → Tarea[] + avisos
-  estrategia.js            Lector del documento de estrategia → briefs de mensaje
+  estrategia.js            Lector de los documentos de estrategia → briefs de mensaje
   vendor/                  SheetJS (.xlsx) y pdf.js (.pdf)
   app.css                  Estilos sobre el design system Movistar
   colors_and_type.css      Design system oficial (no tocar)

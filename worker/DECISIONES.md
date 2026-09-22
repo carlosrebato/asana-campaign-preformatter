@@ -212,6 +212,22 @@ Con el fichero de octubre: 44 de 73 tareas reciben contexto (60%). Las 29
 restantes son R2R, enews, Marca e Info — envíos recurrentes sin campaña
 detrás, que **deben** salir sin bola.
 
+### La estrategia llega en varios documentos, no en uno
+
+Octubre llegó repartido: `Planes Comerciales Growth y Value` (Comercialización)
+y `Estrategia de Comunicación` (Dispositivos). La herramienta acepta los que
+hagan falta y junta los briefs de todos. Ninguno es obligatorio por separado.
+
+Y el de Dispositivos enseña el caso que había que probar: **no usa la
+plantilla de Comercialización**. Son cuotas de mercado, fases de calendario y
+prioridades por categoría — registro de colega, no de cliente. El lector
+encuentra cero briefs, no pega nada y no avisa. Las diez tareas de R2R salen
+sin bola, que es lo correcto.
+
+El arreglo no es técnico: es que Dispositivos rellene la plantilla. Mientras
+no lo haga, ningún parche de código puede inventar un mensaje que nadie ha
+escrito.
+
 ### La vinculación es una tabla, no una inferencia
 
 `EXCEL.productoBrief` mapea producto → título del brief. Explícita a

@@ -77,6 +77,22 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
   color: #B83227; background: #FBE6E3; border-radius: 9999px; padding: 2px 8px;
 }
 .req.ok { color: #38552B; background: #CEF7BF; }
+.doclist {
+  list-style: none; margin: 0; padding: 0; width: 100%;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.doclist li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 4px 5px 10px; border-radius: 8px; background: #fff;
+  border: 1px solid #EFEAE5;
+}
+.doc-nombre {
+  flex: 1; min-width: 0; text-align: left;
+  font-size: 12.5px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.doc-briefs { font-size: 11px; color: #807D7B; white-space: nowrap; }
+
 .drop-avisos {
   list-style: none; margin: 0; padding: 0;
   font-size: 11px; color: #B83227; text-align: left; line-height: 1.5;
@@ -191,7 +207,7 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 
 /* ============ FILA DE TAREA (modo lectura) ============ */
 .row {
-  display: grid; grid-template-columns: 1fr auto auto;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center; gap: 10px;
   padding: 0 6px; min-height: 46px;
   border-bottom: 1px solid #EFEAE5; transition: background .12s;
@@ -202,8 +218,8 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .row .btn-approve { min-width: 100px; text-align: center; }
 .row.flash { animation: flash .9s ease-out; }
 .row-body {
-  display: grid; grid-template-columns: 20px minmax(300px, 1fr) 118px 130px 80px 100px;
-  align-items: center; gap: 12px; min-width: 0;
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) 112px 124px 78px 94px;
+  align-items: center; gap: 12px; min-width: 0; overflow: hidden;
   border: none; background: transparent; text-align: left;
   padding: 8px 4px; border-radius: 8px; cursor: pointer; font: inherit;
 }

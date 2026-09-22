@@ -41,7 +41,7 @@ const D = CATALOGS;
 
 const S = {
   screen: 'entrada',          // entrada | procesando | revision | confirmar | resultado
-  files: { excel: null, strategy: null },
+  files: { excel: null, strategy: [] },   // varios documentos de estrategia
   procStep: -1,
   procPasos: [],
   tasks: [],
@@ -113,42 +113,71 @@ function resumenEstrategia(p) {
 
 function viewEntrada() {
   const f = S.files;
-  const drop = (key, titulo, hint, demoCopy) => {
-    const d = f[key];
+
+  const cajaExcel = () => {
+    const d = f.excel;
     return `
     <div class="drop-cell">
-      <div class="drop ${d ? 'loaded' : ''}" data-drop="${key}">
+      <div class="drop ${d ? 'loaded' : ''}" data-drop="excel">
         <div class="drop-icon">${ICONS.fileBig}</div>
         ${d ? `
           <div class="drop-title">${esc(d.name)}</div>
-          ${d.parsed ? (key === 'excel' ? resumenExcel(d.parsed) : resumenEstrategia(d.parsed)) : ''}
-          <button class="btn-ghost" data-clear="${key}" style="font-size:12px">Quitar</button>
+          ${d.parsed ? resumenExcel(d.parsed) : ''}
+          <button class="btn-ghost" data-clear="excel" style="font-size:12px">Quitar</button>
         ` : `
-          <div class="drop-title">${titulo}</div>
-          <div class="drop-hint">${hint}</div>
+          <div class="drop-title">Excel de campañas</div>
+          <div class="drop-hint">Arrastra el .xlsx o haz clic</div>
           <span class="req">Obligatorio</span>
         `}
       </div>
-      ${!d ? `<p class="drop-democopy">${demoCopy}</p>` : ''}
+      ${!d ? `<p class="drop-democopy">Se lee en el navegador · nada sale de aquí</p>` : ''}
     </div>`;
   };
 
-  const listo = f.excel && f.strategy;
+  // La estrategia puede venir repartida en varios documentos: uno por
+  // equipo (Comercialización, Dispositivos…). Se leen todos y los briefs
+  // se juntan. Ninguno es obligatorio.
+  const cajaEstrategia = () => {
+    const docs = f.strategy;
+    return `
+    <div class="drop-cell">
+      <div class="drop ${docs.length ? 'loaded' : ''}" data-drop="strategy">
+        ${docs.length ? `
+          <ul class="doclist">
+            ${docs.map((d, i) => `
+              <li>
+                <span class="doc-nombre">${esc(d.name)}</span>
+                <span class="doc-briefs">${d.parsed?.briefs.length
+                  ? `${d.parsed.briefs.length} briefs` : 'sin briefs'}</span>
+                <button class="btn-del" data-quitar-doc="${i}" title="Quitar">${ICONS.trash}</button>
+              </li>`).join('')}
+          </ul>
+          <button class="btn-ghost" data-drop="strategy" style="font-size:12px">＋ Añadir otro documento</button>
+        ` : `
+          <div class="drop-icon">${ICONS.fileBig}</div>
+          <div class="drop-title">Documentos de estrategia</div>
+          <div class="drop-hint">Arrastra los .pdf o haz clic · puedes subir varios</div>
+          <span class="req">Obligatorio</span>
+        `}
+      </div>
+      ${!docs.length ? `<p class="drop-democopy">Se leen en el navegador · nada sale de aquí</p>` : ''}
+    </div>`;
+  };
+
+  const listo = f.excel && f.strategy.length;
 
   return `
   <main class="main-narrow">
     <h1 class="page">Cargar planificación del mes</h1>
     <p style="font-size:14px;color:#605E5C;margin-top:8px;line-height:1.55">
-      Sube los dos documentos de origen. El Excel aporta los datos operativos
-      (PAC, fechas, producto); el documento de estrategia aporta el contexto y
-      el enfoque de cada campaña. <strong style="color:#262423">Se necesitan ambos.</strong>
+      Sube el Excel y los documentos de estrategia del mes. El Excel aporta los
+      datos operativos (PAC, fechas, producto); los documentos aportan el
+      contexto de mensaje. <strong style="color:#262423">Se necesita al menos uno de cada.</strong>
     </p>
 
     <div class="drop-grid">
-      ${drop('excel', 'Excel de campañas', 'Arrastra el .xlsx o haz clic',
-        'Se lee en el navegador · nada sale de aquí')}
-      ${drop('strategy', 'Documento de estrategia', 'Arrastra el .pdf o haz clic',
-        'Se lee en el navegador · nada sale de aquí')}
+      ${cajaExcel()}
+      ${cajaEstrategia()}
     </div>
 
     <div style="margin-top:26px;display:flex;align-items:center;gap:14px">
@@ -237,8 +266,8 @@ function viewRevision() {
       <h1 class="page">Propuesta de tareas</h1>
       <div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap">
         <span class="filechip">${ICONS.file}${esc(S.files.excel.name)}<span class="ext">${S.files.excel.ext}</span></span>
-        <span style="color:#9F9C99;font-size:12px">+</span>
-        <span class="filechip">${ICONS.file}${esc(S.files.strategy.name)}<span class="ext">${S.files.strategy.ext}</span></span>
+        ${S.files.strategy.map(d => `<span style="color:#9F9C99;font-size:12px">+</span>
+        <span class="filechip">${ICONS.file}${esc(d.name)}<span class="ext">${d.ext}</span></span>`).join('')}
       </div>
       <div class="legend">
         <span class="legend-item"><span class="bola ok"></span> Vinculación clara — contexto encontrado y vinculado sin dudas</span>
@@ -480,7 +509,7 @@ async function cargar() {
 
 /* ---------------- EVENTOS ---------------- */
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
+  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-quitar-doc],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
   if (!el) return;
 
   if (el.dataset.approve) {
@@ -525,9 +554,12 @@ document.addEventListener('click', async e => {
   else if (el.dataset.clear) {
     S.files[el.dataset.clear] = null; render();
   }
+  else if (el.dataset.quitarDoc) {
+    S.files.strategy.splice(+el.dataset.quitarDoc, 1); render();
+  }
   else if (el.dataset.drop) {
     const key = el.dataset.drop;
-    if (S.files[key]) return;
+    if (key === 'excel' && S.files.excel) return;
     abrirSelector(key);
   }
   else if (el.id === 'btn-procesar') procesar();
@@ -596,12 +628,24 @@ function abrirSelector(key) {
   const inp = document.createElement('input');
   inp.type = 'file';
   inp.accept = key === 'excel' ? '.xlsx' : '.pdf';
+  inp.multiple = key === 'strategy';
   inp.onchange = async () => {
-    if (!inp.files[0]) return;
-    S.files[key] = await API.inspeccionarFichero(inp.files[0], key);
-    render();
+    if (!inp.files.length) return;
+    await añadirFicheros([...inp.files], key);
   };
   inp.click();
+}
+
+// El Excel es uno; los documentos de estrategia, los que hagan falta.
+async function añadirFicheros(files, key) {
+  if (key === 'excel') {
+    S.files.excel = await API.inspeccionarFichero(files[0], 'excel');
+  } else {
+    for (const file of files) {
+      S.files.strategy.push(await API.inspeccionarFichero(file, 'strategy'));
+    }
+  }
+  render();
 }
 
 document.addEventListener('drop', async e => {
@@ -609,9 +653,8 @@ document.addEventListener('drop', async e => {
   if (!d || S.dragId) return;
   e.preventDefault();
   const key = d.dataset.drop;
-  if (S.files[key]) return;
-  S.files[key] = await API.inspeccionarFichero(e.dataTransfer.files[0], key);
-  render();
+  if (key === 'excel' && S.files.excel) return;
+  await añadirFicheros([...e.dataTransfer.files], key);
 });
 
 render();

@@ -15,8 +15,10 @@ const API = {
   /* ----------------------------------------------------------
      1 · INTERPRETAR DOCUMENTOS
      ----------------------------------------------------------
-     REAL: POST /api/interpretar con los dos ficheros (multipart
-     o base64). El Worker llama al LLM y devuelve Tarea[].
+     REAL: POST /api/interpretar con el Excel y los documentos de
+     estrategia (multipart o base64). El Worker llama al LLM y devuelve
+     Tarea[]. La estrategia puede venir repartida en varios documentos,
+     uno por equipo: los briefs de todos se juntan.
 
      El prompt es ../prompts/interpretacion.md — cárgalo como fichero,
      no lo copies aquí. Reglas completas en ../DECISIONES.md.
@@ -34,7 +36,7 @@ const API = {
      Aislar aquí la llamada al LLM permite migrar a Azure OpenAI
      o Copilot tocando solo esta función.
   ---------------------------------------------------------- */
-  async interpretarDocumentos(excelFile, strategyFile, onProgress) {
+  async interpretarDocumentos(excelFile, strategyFiles, onProgress) {
     const pasos = [
       'Leyendo Excel de campañas',
       'Extrayendo códigos PAC y fechas',
@@ -53,7 +55,9 @@ const API = {
     // Sin Excel real → datos de ejemplo.
     if (excelFile?.parsed) {
       const tasks = JSON.parse(JSON.stringify(excelFile.parsed.tasks));
-      return ESTRATEGIA.vincular(tasks, strategyFile?.parsed?.briefs || []);
+      const briefs = [].concat(strategyFiles || [])
+        .flatMap(d => d?.parsed?.briefs || []);
+      return ESTRATEGIA.vincular(tasks, briefs);
     }
     return JSON.parse(JSON.stringify(MOCK_TASKS));
   },
