@@ -17,6 +17,33 @@
 
 const ASANA = 'https://app.asana.com/api/1.0';
 
+/* ------------------------------------------------------------
+   GUARDARRAÍL · PROYECTOS DONDE NO SE ESCRIBE NUNCA
+   ------------------------------------------------------------
+   BTL - Run ✉️ es el proyecto de producción: lo ven muchas
+   personas y tiene miles de tareas. Una carga mal hecha ahí
+   ensucia el sistema de todo el equipo y cuesta más limpiarlo
+   que rehacerlo.
+
+   Esta lista no es documentación: el Worker comprueba contra
+   ella ANTES de cada escritura y devuelve 403. Leer sí, escribir
+   no. Para levantar el bloqueo hay que editar este fichero a
+   propósito, que es exactamente la fricción que queremos.
+------------------------------------------------------------ */
+const SOLO_LECTURA = {
+  '1204870393367337': 'BTL - Run ✉️ (producción)'
+};
+
+function exigirEscribible(projectGid) {
+  const motivo = SOLO_LECTURA[projectGid];
+  if (motivo) {
+    throw Object.assign(
+      new Error(`Bloqueado: ${motivo} es de solo lectura. No se escribe ahí.`),
+      { status: 403 }
+    );
+  }
+}
+
 async function asana(env, ruta, opciones = {}) {
   const r = await fetch(ASANA + ruta, {
     ...opciones,
@@ -89,6 +116,7 @@ async function duplicados(env, workspaceGid, projectGid, pacs) {
    reintentar solo las que fallaron.
 ------------------------------------------------------------ */
 async function crear(env, projectGid, tareas) {
+  exigirEscribible(projectGid);
   const created = [], failed = [];
   for (const t of tareas) {
     try {
@@ -132,7 +160,9 @@ export default {
     try {
       const projectGid = env.ASANA_PROJECT_GID;
       if (url.pathname === '/api/catalogos') {
-        return json(await catalogos(env, projectGid));
+        const c = await catalogos(env, projectGid);
+        // La UI enseña si el destino admite escritura o no.
+        return json({ ...c, soloLectura: !!SOLO_LECTURA[projectGid] });
       }
       if (url.pathname === '/api/duplicados' && request.method === 'POST') {
         const { pacs } = await request.json();
@@ -144,7 +174,7 @@ export default {
       }
       return json({ error: 'Ruta desconocida' }, 404);
     } catch (e) {
-      return json({ error: e.message }, 502);
+      return json({ error: e.message }, e.status || 502);
     }
   }
 };
