@@ -77,6 +77,14 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
   color: #B83227; background: #FBE6E3; border-radius: 9999px; padding: 2px 8px;
 }
 .req.ok { color: #38552B; background: #CEF7BF; }
+.drop-avisos {
+  list-style: none; margin: 0; padding: 0;
+  font-size: 11px; color: #B83227; text-align: left; line-height: 1.5;
+}
+.drop-democopy {
+  font-size: 11px; font-weight: 500; color: #0066FF;
+  text-align: center; margin-top: 6px;
+}
 
 /* ============ BOTONES ============ */
 .btn-primary {
@@ -166,24 +174,61 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .section.dragover { background: #F5FAFF; outline: 2px dashed #0066FF; outline-offset: -2px; }
 .section-head {
   display: flex; align-items: center; gap: 10px;
-  padding: 6px 2px 10px; border-bottom: 1px solid #DFDBD6; margin-bottom: 12px;
+  padding: 10px 2px 10px; border-bottom: 1px solid #DFDBD6; margin-bottom: 4px;
+  position: sticky; top: 126px; z-index: 20; background: #FFFDFA;
 }
 .section-approved { font-size: 12px; color: #9F9C99; }
 .group-head { display: flex; align-items: center; gap: 8px; padding: 10px 2px 8px; }
 .group-label {
-  font-size: 11px; font-weight: 800; letter-spacing: .09em;
-  text-transform: uppercase; color: #807D7B;
+  font-size: 12px; font-weight: 800; letter-spacing: .09em;
+  text-transform: uppercase; color: #605E5C;
 }
 .group-count {
   font-size: 10px; font-weight: 700; color: #9F9C99;
   background: #F3EEEA; border-radius: 9999px; padding: 1px 7px;
 }
-.tasks { display: flex; flex-direction: column; gap: 8px; }
+.tasks { display: flex; flex-direction: column; gap: 0; }
+
+/* ============ FILA DE TAREA (modo lectura) ============ */
+.row {
+  display: grid; grid-template-columns: 1fr auto auto;
+  align-items: center; gap: 10px;
+  padding: 0 6px; min-height: 46px;
+  border-bottom: 1px solid #EFEAE5; transition: background .12s;
+}
+.row:hover { background: #F8F4F0; }
+.row.approved { background: #F4FBF0; }
+.row.approved .row-name { color: #605E5C; }
+.row .btn-approve { min-width: 100px; text-align: center; }
+.row.flash { animation: flash .9s ease-out; }
+.row-body {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) 128px 140px 82px 112px;
+  align-items: center; gap: 12px; min-width: 0;
+  border: none; background: transparent; text-align: left;
+  padding: 8px 4px; border-radius: 8px; cursor: pointer; font: inherit;
+}
+.chev { display: flex; color: #0066FF; transition: transform .15s; flex-shrink: 0; }
+.chev.open { transform: rotate(90deg); }
+.row.dragging, .card.dragging { opacity: .4; }
+.row-desc { grid-column: 1 / -1; }
+.card-row1 { cursor: pointer; }
+.row-name {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  font-size: 13.5px; font-weight: 700; color: #262423;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.row-val { font-size: 12.5px; color: #403F3D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-val.muted, .muted { color: #9F9C99; }
+.row-desc {
+  grid-column: 1 / -1; padding: 0 4px 10px 34px;
+  font-size: 12px; color: #605E5C; line-height: 1.45;
+}
 
 /* ============ TARJETA DE TAREA ============ */
 .card {
-  background: #fff; border: 1px solid #F3EEEA;
-  border-radius: 14px; padding: 12px 14px; transition: .15s;
+  background: #fff; border: 1px solid #DFDBD6;
+  border-radius: 14px; padding: 12px 14px; margin: 6px 0; transition: .15s;
+  box-shadow: 0 2px 8px rgba(38,36,35,.06);
 }
 .card:hover { border-color: #DFDBD6; }
 .card.approved { border-color: #A9DD92; background: #FCFFFA; }
@@ -221,12 +266,12 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 
 .card-fields {
   display: grid; grid-template-columns: 1.15fr 1.25fr .9fr 1fr .85fr;
-  gap: 10px; margin-top: 10px; padding-left: 31px;
+  gap: 10px; margin-top: 10px; padding-left: 26px;
 }
 .field { display: flex; flex-direction: column; gap: 3px; }
 .field-label {
-  font-size: 10px; font-weight: 500; letter-spacing: .05em;
-  text-transform: uppercase; color: #9F9C99;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .05em;
+  text-transform: uppercase; color: #605E5C;
 }
 .field select, .field input {
   width: 100%; border: 1px solid #DFDBD6; border-radius: 8px;
@@ -236,7 +281,7 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .field select { cursor: pointer; }
 .field select:focus, .field input:focus { outline: none; border-color: #0066FF; }
 
-.card-desc { margin-top: 8px; padding-left: 31px; }
+.card-desc { margin-top: 8px; padding-left: 26px; }
 .desc-toggle {
   display: flex; align-items: center; gap: 6px; width: 100%;
   text-align: left; border: none; background: transparent;

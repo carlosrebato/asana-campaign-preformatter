@@ -123,8 +123,8 @@ Devuelve SOLO un array JSON. Sin preámbulo, sin markdown, sin explicaciones.
 
 ```json
 [{
-  "pac": "PAC34492",
-  "name": "PAC34492_ONE CLICK_FIBRA ON-OFF_VERANO 26_V2",
+  "pac": "PAC00012",
+  "name": "PAC00012_ONE CLICK_FIBRA ON-OFF_VERANO 26_V2",
   "product": "Fibra adicional",
   "dueDate": "2026-07-01",
   "medium": "Email",
@@ -155,7 +155,7 @@ Devuelve SOLO un array JSON. Sin preámbulo, sin markdown, sin explicaciones.
 
 ## EJEMPLO
 
-**Excel:** `PAC33708_OCLICK UP FUTOTAL MUNDIAL 9JUN` · M+ Fútbol · 09/07/2026
+**Excel:** `PAC00034_OCLICK UP FUTOTAL MUNDIAL 9JUN` · Fútbol · 09/07/2026
 
 **PDF, slide "Estrategia Desarrollo y Winback fútbol (Residencial)":**
 > "Toda la comunicación del período se despliega bajo la campaña 'Vuelve a
