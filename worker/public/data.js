@@ -124,8 +124,14 @@ const CATALOGS = {
   // en ningún sitio. Hay que crear el campo en el proyecto.
   typologyOptions: ['Growth', 'Value', 'Servicing'],
 
-  // Estado con el que nacen las tareas. Se cambia AQUÍ y solo aquí.
-  estadoInicial: 'Pdte Comercialización'
+  // Estado con el que nacen las tareas. PLACEHOLDER: está pendiente de
+  // acordarlo entre los tres equipos (ver DECISIONES.md). Se cambia AQUÍ
+  // y en ningún otro sitio.
+  //
+  // Ojo: el catálogo lista 26 estados pero los Tipos de tarea del
+  // proyecto solo dejan escribir 12. El valor de aquí tiene que ser uno
+  // de los que Asana acepta de verdad, y eso solo se sabe escribiendo.
+  estadoInicial: 'Pdte Maquetación y envío - Movistar'
 };
 
 /* ------------------------------------------------------------

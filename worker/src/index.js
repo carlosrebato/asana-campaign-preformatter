@@ -119,24 +119,43 @@ async function crear(env, projectGid, tareas) {
   exigirEscribible(projectGid);
   const created = [], failed = [];
   for (const t of tareas) {
+    let aviso = '';
     try {
-      const data = {
+      const base = {
         name: t.name,
         projects: [projectGid],
         notes: t.notes || '',
-        ...(t.dueDate ? { due_on: t.dueDate } : {}),
-        ...(Object.keys(t.custom_fields || {}).length ? { custom_fields: t.custom_fields } : {})
+        ...(t.dueDate ? { due_on: t.dueDate } : {})
       };
-      const tarea = await asana(env, '/tasks', {
-        method: 'POST', body: JSON.stringify({ data })
-      });
+      const cf = t.custom_fields || {};
+
+      // Un campo no puede tumbar la carga. Asana rechaza valores que el
+      // catálogo sí lista (los tipos de tarea restringen qué opciones
+      // valen), y eso no se ve hasta que se intenta escribir. Si pasa,
+      // la tarea se crea igual sin campos y se avisa de cuál se perdió.
+      let tarea;
+      try {
+        tarea = await asana(env, '/tasks', {
+          method: 'POST',
+          body: JSON.stringify({ data: Object.keys(cf).length ? { ...base, custom_fields: cf } : base })
+        });
+      } catch (e) {
+        if (!Object.keys(cf).length) throw e;
+        // Un campo no puede tumbar la carga: se reintenta sin ellos.
+        // No se puede saber cuál sobra: Asana devuelve las opciones
+        // válidas pero no dice de qué campo, y los valores de los demás
+        // campos tampoco están en esa lista. Se avisa y se sigue.
+        tarea = await asana(env, '/tasks', { method: 'POST', body: JSON.stringify({ data: base }) });
+        aviso = `Creada sin campos personalizados. Asana: ${e.message.slice(0, 140)}`;
+      }
+
       // La sección se asigna después: /tasks no acepta sección al crear.
       if (t.sectionGid) {
         await asana(env, `/sections/${t.sectionGid}/addTask`, {
           method: 'POST', body: JSON.stringify({ data: { task: tarea.gid } })
         });
       }
-      created.push({ id: t.id, name: t.name, gid: tarea.gid, url: tarea.permalink_url });
+      created.push({ id: t.id, name: t.name, gid: tarea.gid, url: tarea.permalink_url, ...(aviso ? { aviso } : {}) });
     } catch (e) {
       failed.push({ id: t.id, name: t.name, error: e.message });
     }

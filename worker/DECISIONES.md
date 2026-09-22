@@ -265,6 +265,22 @@ El parser tiene que aguantar esto sin romperse:
 
 ---
 
+## Un campo rechazado no tumba la tarea
+
+Asana puede rechazar un valor que su propio catálogo lista: los Tipos de
+tarea restringen qué opciones valen, y eso no se ve hasta que se escribe.
+Pasó con `Pdte Comercialización` en la primera carga real, y tiró las tres
+tareas.
+
+La carga reintenta sin campos personalizados y avisa en el reporte. Mismo
+principio que con el documento de estrategia: **lo accesorio no puede
+romper lo principal**. Vale más una tarea con un campo vacío que una
+campaña que no llega a producción.
+
+No se puede quitar solo el campo culpable: Asana devuelve las opciones que
+acepta, pero no dice de qué campo habla, y los valores de los demás campos
+tampoco están en esa lista. Se intentó y se descartó.
+
 ## Los catálogos se leen de Asana, no se copian
 
 Los enum de Asana se escriben por GID de opción. La tentación es copiar
@@ -326,9 +342,19 @@ ocurriendo en el navegador, sin que nada salga del ordenador.
 
 ## Otros pendientes
 
-- **Estado inicial de las tareas.** Hoy es un placeholder (`CATALOGS.estadoInicial`).
-  El set definitivo se acuerda con Comercialización cuando el proyecto se amplíe
-  a ambos equipos. Configurable en un solo sitio, precisamente porque va a cambiar.
+- **Definir los estados. Conversación de los TRES equipos.** No es un detalle
+  de configuración: es el estado con el que producción va a ver entrar ~73
+  campañas cada mes, y lo tienen que acordar Comercialización, Producción y
+  Marketing juntos. Hoy `CATALOGS.estadoInicial` lleva un placeholder
+  (`Pdte Maquetación y envío - Movistar`), elegido solo porque Asana lo acepta.
+
+  Dos cosas que hay que llevar a esa conversación:
+  - El campo `Estado` tiene 26 opciones, pero los **Tipos de tarea** del
+    proyecto solo dejan escribir 12. `Pdte Comercialización`, que era el
+    candidato natural, **no** está entre ellas. La restricción no se ve
+    leyendo el campo: solo aparece al intentar escribir.
+  - El Excel trae `VIABILIDAD` (Aprobada / Planificada) y no hay ningún
+    estado que le corresponda. Ese dato se pierde hoy.
 - **Tipología (Growth/Value/Servicing).** El campo no existe en el Asana
   actual. Hay que crearlo en el proyecto nuevo.
 - **Columna puente.** El arreglo de fondo al problema de vinculación no es
