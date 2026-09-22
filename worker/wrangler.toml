@@ -1,19 +1,16 @@
 name = "campaign-loader"
 compatibility_date = "2026-07-01"
+main = "src/index.js"
 
-# Sirve /public como estático. Sin build step, sin dependencias.
+# Proyecto destino. FALSO PUBLI es el sandbox; el real es BTL - Run ✉️.
+[vars]
+ASANA_PROJECT_GID = "1216262563939486"
+ASANA_WORKSPACE_GID = "8485243267402"
+
+# El Worker sirve /public y además responde a /api/*.
 [assets]
 directory = "./public"
+binding = "ASSETS"
 
-# ── CABLEADO FUTURO ──────────────────────────────────────────
-# Cuando toque conectar la IA y Asana, descomentar y añadir el
-# handler en src/index.js con las rutas /api/*.
-#
-# main = "src/index.js"
-#
-# [vars]
-# ASANA_PROJECT_GID = "..."
-#
 # Secretos (nunca en este fichero):
-#   npx wrangler secret put ANTHROPIC_API_KEY
 #   npx wrangler secret put ASANA_TOKEN

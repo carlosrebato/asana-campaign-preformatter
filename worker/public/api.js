@@ -13,6 +13,39 @@
 const API = {
 
   /* ----------------------------------------------------------
+     0 · CATÁLOGOS
+     ----------------------------------------------------------
+     Secciones, campos y opciones del proyecto, con sus GIDs.
+     Se leen de Asana al arrancar y sustituyen a la copia de
+     data.js. Así, cuando alguien añade una opción en Asana,
+     aparece sola y nadie tiene que tocar código.
+
+     Si el Worker no responde (no hay backend, no hay token),
+     se sigue con la copia: la app funciona igual para revisar,
+     solo que no se puede cargar.
+  ---------------------------------------------------------- */
+  async cargarCatalogos() {
+    try {
+      const r = await fetch('/api/catalogos');
+      if (!r.ok) throw new Error('sin catálogos');
+      const c = await r.json();
+
+      CATALOGS.sections = c.sections.map(s => ({
+        id: CATALOGS.sections.find(x => x.gid === s.gid)?.id || s.gid,
+        gid: s.gid, name: s.name
+      }));
+      for (const [clave, nombre] of Object.entries(CATALOGS.fieldNames)) {
+        if (c.fields[nombre]) CATALOGS.fields[clave] = c.fields[nombre];
+      }
+      CATALOGS.asanaProject = c.project;
+      CATALOGS.esCopia = false;
+      return { ok: true, project: c.project.name };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  },
+
+  /* ----------------------------------------------------------
      1 · INTERPRETAR DOCUMENTOS
      ----------------------------------------------------------
      REAL: POST /api/interpretar con el Excel y los documentos de
@@ -105,8 +138,19 @@ const API = {
      Esta es la idempotencia real: la clave de negocio es el PAC.
   ---------------------------------------------------------- */
   async comprobarDuplicados(tasks) {
-    await new Promise(r => setTimeout(r, 300));
-    return []; // ningún duplicado en el mock
+    const pacs = [...new Set(tasks.map(t => t.pac).filter(Boolean))];
+    if (!pacs.length) return [];
+    try {
+      const r = await fetch('/api/duplicados', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pacs })
+      });
+      if (!r.ok) return [];
+      return (await r.json()).duplicados || [];
+    } catch {
+      return [];   // sin backend, no se puede comprobar: no se bloquea
+    }
   },
 
   /* ----------------------------------------------------------
@@ -123,29 +167,54 @@ const API = {
        poder reintentar solo esas.
   ---------------------------------------------------------- */
   async cargarEnAsana(tasks, opts = {}) {
-    const total = tasks.length;
-    for (let i = 0; i <= total; i++) {
-      opts.onProgress?.(i, total);
-      await new Promise(r => setTimeout(r, 130));
+    opts.onProgress?.(0, tasks.length);
+    const r = await fetch('/api/cargar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tareas: tasks.map(aPayloadAsana) })
+    });
+    opts.onProgress?.(tasks.length, tasks.length);
+    if (!r.ok) {
+      const { error } = await r.json().catch(() => ({}));
+      return {
+        created: [],
+        failed: tasks.map(t => ({ id: t.id, name: t.name, error: error || 'El Worker no respondió' }))
+      };
     }
-
-    // El mock simula fallos para poder enseñar el reporte de carga
-    // parcial. En 0 para la demo: carga "todo verde".
-    const nFail = Math.min(opts.simulateFailures ?? 0, Math.max(0, total - 1));
-    const ok = tasks.slice(0, total - nFail);
-    const failed = tasks.slice(total - nFail);
-
-    return {
-      created: ok.map(t => ({
-        id: t.id,
-        name: t.name,
-        url: 'https://app.asana.com/0/0/' + t.id
-      })),
-      failed: failed.map(t => ({
-        id: t.id,
-        name: t.name,
-        error: 'Timeout al crear la tarea en Asana'
-      }))
-    };
+    return r.json();
   }
 };
+
+
+/* ------------------------------------------------------------
+   TAREA → PAYLOAD DE ASANA
+   Los enum se escriben por GID de opción, nunca por texto. Un
+   valor que no esté en el catálogo simplemente no se manda: es
+   preferible una tarea con un campo vacío a una carga que falla.
+------------------------------------------------------------ */
+function aPayloadAsana(t) {
+  const cf = {};
+  const poner = (clave, valor) => {
+    const campo = CATALOGS.fields[clave];
+    if (!campo || !valor) return;
+    if (campo.tipo === 'text') { cf[campo.gid] = valor; return; }
+    const gid = campo.options[valor];
+    if (!gid) return;
+    cf[campo.gid] = campo.tipo === 'multi_enum' ? [gid] : gid;
+  };
+
+  poner('producto', t.product);
+  poner('formato', t.format);
+  poner('tipoCliente', t.clientType);
+  poner('estado', t.estado || CATALOGS.estadoInicial);
+  poner('peticionario', t.excel?.responsable);
+
+  return {
+    id: t.id,
+    name: t.name,
+    notes: t.description || '',
+    dueDate: t.dueDate || '',
+    sectionGid: CATALOGS.sections.find(s => s.id === t.sectionId)?.gid || '',
+    custom_fields: cf
+  };
+}

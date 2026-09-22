@@ -50,7 +50,8 @@ const S = {
   loading: false,
   loadProgress: [0, 0],
   result: null,
-  dupes: []
+  dupes: [],
+  catalogos: null      // resultado de leer los catálogos de Asana
 };
 
 const ICONS = {
@@ -179,6 +180,15 @@ function viewEntrada() {
       ${cajaExcel()}
       ${cajaEstrategia()}
     </div>
+
+    ${CATALOGS.esCopia ? `
+      <p class="aviso-catalogos">
+        Sin conexión con Asana: se usan los catálogos guardados.
+        Se puede revisar la propuesta, pero no cargarla.
+      </p>` : `
+      <p class="drop-democopy" style="text-align:left">
+        Catálogos leídos de <strong>${esc(CATALOGS.asanaProject?.name || '')}</strong>
+      </p>`}
 
     <div style="margin-top:26px;display:flex;align-items:center;gap:14px">
       <button class="btn-primary" id="btn-procesar" ${listo ? '' : 'disabled'}>
@@ -686,7 +696,10 @@ document.addEventListener('drop', async e => {
   await añadirFicheros([...e.dataTransfer.files], key);
 });
 
+// Los catálogos se piden a Asana antes de nada. Si no hay backend,
+// se sigue con la copia de data.js y se avisa en la entrada.
 render();
+API.cargarCatalogos().then(r => { S.catalogos = r; render(); });
 </script>
 </body>
 </html>

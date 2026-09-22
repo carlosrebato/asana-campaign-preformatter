@@ -265,6 +265,48 @@ El parser tiene que aguantar esto sin romperse:
 
 ---
 
+## Los catálogos se leen de Asana, no se copian
+
+Los enum de Asana se escriben por GID de opción. La tentación es copiar
+esos GIDs al código; es un error: en cuanto alguien añade una opción en
+Asana, la copia miente y nadie se entera.
+
+`/api/catalogos` lee el proyecto al arrancar y trae secciones, campos y
+opciones con sus GIDs. Lo que hay en `data.js` es **una copia de
+seguridad** para que la app arranque sin backend, marcada con `esCopia`.
+Cuando está activa, la entrada avisa: se puede revisar, no cargar.
+
+Lo que **no** puede venir de Asana es el mapeo del Excel: que `Fútbol+`
+sea `M+ Futbol`, o que `Helios` no tenga producto propio y vaya a `Otros`.
+Eso es una decisión de negocio y vive en `EXCEL`. **Está sin validar con
+Comercialización**, y es lo primero que hay que enseñarles.
+
+## Lo que el proyecto real enseñó
+
+Leyendo `BTL - Run ✉️` (2.594 tareas) aparecieron cosas que habíamos
+supuesto mal:
+
+- **Horecas tiene sección propia** (`🏨🍽️🍀HORECAS/LLPP`), y también
+  `💙ENEWS MARCA` y `📽️⚾ Enews Entretenimiento M+`. Se había decidido que
+  Horecas no era sección; el proyecto dice que sí.
+- **`Notificación Push` existe como formato**, así que `App Mi Movistar`
+  ya no necesita el apaño de mandarlo a Customer Journey.
+- **`VIABILIDAD` no tiene equivalente.** El campo Estado tiene 26 opciones
+  de producción (Pdte creatividad, Pdte Estudio…) y ninguna es
+  Aprobada/Planificada. Todas las tareas nacen en `estadoInicial`.
+- **Growth/Value/Servicing sigue sin existir.** Se calcula y se enseña en
+  la revisión, pero al crear la tarea no se escribe en ningún sitio.
+
+## El Worker es la única parte que necesita servidor
+
+El token de Asana no puede estar en el navegador, y Asana no acepta
+llamadas cross-origin desde una página. Por eso `src/index.js` existe:
+tres rutas (`/api/catalogos`, `/api/duplicados`, `/api/cargar`) y el token
+como secreto.
+
+Todo lo demás —leer el Excel, leer los PDF, vincular, revisar— sigue
+ocurriendo en el navegador, sin que nada salga del ordenador.
+
 ## Otros pendientes
 
 - **Estado inicial de las tareas.** Hoy es un placeholder (`CATALOGS.estadoInicial`).
@@ -272,9 +314,6 @@ El parser tiene que aguantar esto sin romperse:
   a ambos equipos. Configurable en un solo sitio, precisamente porque va a cambiar.
 - **Tipología (Growth/Value/Servicing).** El campo no existe en el Asana
   actual. Hay que crearlo en el proyecto nuevo.
-- **Catálogos reales.** Los valores de `data.js` son de referencia. Al cablear,
-  hay que leer el proyecto de Asana e importar los GIDs reales — los enum de
-  Asana se escriben **por GID de opción, no por texto**.
 - **Columna puente.** El arreglo de fondo al problema de vinculación no es
   técnico: sería que el Excel llevara una columna con el territorio de la
   estrategia, o que la estrategia llevara el PAC. Cuesta cero técnicamente y

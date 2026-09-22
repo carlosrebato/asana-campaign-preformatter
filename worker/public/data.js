@@ -8,52 +8,124 @@
    El resto de la app NO debe importar nada más de este fichero.
 ============================================================ */
 
+/* ------------------------------------------------------------
+   CATÁLOGOS DEL PROYECTO DE ASANA
+   Secciones, campos y opciones con sus GIDs. NO se escriben a
+   mano: los trae `API.cargarCatalogos()` leyendo el proyecto.
+   Lo de aquí es solo una copia de seguridad, tomada de
+   "BTL - Run ✉️" el 22-sep-2026, para que la app arranque sin
+   backend. Si Asana responde, esto se sustituye entero.
+
+   Lo que NO puede venir de Asana es el mapeo del Excel (abajo):
+   que "Fútbol+" sea "M+ Futbol" es una decisión de negocio.
+------------------------------------------------------------ */
 const CATALOGS = {
+  esCopia: true,   // pasa a false cuando los catálogos vienen de Asana
+
   sections: [
-    { id: 'conectividad', name: 'Conectividad' },
-    { id: 'convergente',  name: 'MiMovistar Convergente' },
-    { id: 'dispositivos', name: 'Dispositivos' },
-    { id: 'plus',         name: 'Movistar Plus+' },
-    { id: 'futbol',       name: 'Fútbol' },
-    { id: 'nuevos',       name: 'Nuevos Negocios' },
-    { id: 'otros',        name: 'Otros' }
+    { id: 'entradas',     gid: '1204962417752693', name: '➡️ENTRADAS' },
+    { id: 'priorizadas',  gid: '1209498548935703', name: '🔴 Campañas priorizadas y Creatividades' },
+    { id: 'conectividad', gid: '1204996811344449', name: '⚙️ Conectividad: FTTR, BAF, LME, Prepago' },
+    { id: 'convergente',  gid: '1205311722361417', name: '📺📡📱 MIMOVISTAR (Convergente)' },
+    { id: 'plus',         gid: '1204915090620356', name: '📺 Movistar Plus+' },
+    { id: 'ficcion',      gid: '1204925632923532', name: '🎬 Ficción' },
+    { id: 'marca',        gid: '1206534264732304', name: '💙ENEWS MARCA' },
+    { id: 'dispositivos', gid: '1204934978113192', name: '📱 Dispositivos y Equipamiento' },
+    { id: 'nuevos',       gid: '1205178855136200', name: '☀️ Nuevos Negocios' },
+    { id: 'futbol',       gid: '1204998325343896', name: '⚽ Fútbol' },
+    { id: 'deportes',     gid: '1204913685667285', name: '🏀🎾⛳  Deportes y Motor' },
+    { id: 'enewsM',       gid: '1206938629839267', name: '📽️⚾  Enews Entretenimiento M+' },
+    { id: 'beneficios',   gid: '1205016668838674', name: '💎BENEFICIOS Por ser MiMovistar' },
+    { id: 'gaming',       gid: '1204913685667284', name: '🎮 Gaming' },
+    { id: 'horecas',      gid: '1209325962167690', name: '🏨🍽️🍀HORECAS/LLPP' },
+    { id: 'otros',        gid: '1206577638671869', name: '🤷‍♀️OTROS' }
   ],
 
-  productOptions: [
-    'MiMovistar', 'Fibra Adicional', 'Dispositivos', 'Movistar Plus+',
-    'Fútbol', 'M+ Ficción', 'Prepago', 'Gaming', 'Nuevos Negocios', 'Marca', 'Otros'
-  ],
+  // Nombre del campo en Asana → cómo lo llama la app. El Worker
+  // devuelve los campos por su nombre; aquí se traducen a las
+  // claves que usa el código, para no repartir nombres por todo.
+  fieldNames: {
+    producto:     'Producto',
+    formato:      'Formatos de comunicación',
+    tipoCliente:  'Tipo de cliente',
+    estado:       'Estado',
+    peticionario: 'Peticionario'
+  },
+
+  fields: {
+    producto: {
+      gid: '1204870126999103', tipo: 'multi_enum',
+      options: {
+        'MiMovistar': '1204870126999104', 'Fibra Adicional': '1204870126999145',
+        'Segunda Fibra ON': '1207075465845739', 'FTTR': '1209013973166418',
+        'Dispositivos': '1204870126999105', 'Movistar Plus+': '1204870126999107',
+        'M+ Deporte': '1204870126999108', 'M+ Futbol': '1204870126999109',
+        'M+ Ficción': '1204870126999110', 'M+ Originales': '1204870126999111',
+        'Prepago': '1204870126999112', 'Líneas Móviles Extra': '1204870126999113',
+        'Solar360': '1204870126999114', 'Movistar Prosegur Alarmas': '1204870126999115',
+        'Gaming': '1204870126999118', 'Conexión Segura': '1204878941839146',
+        'Otros': '1204878941839148'
+      }
+    },
+    formato: {
+      gid: '1213308530190497', tipo: 'enum',
+      options: {
+        'Email y/o SMS': '1213308530190498', 'Banners TV': '1213308530190499',
+        'Enews de contenidos TV': '1213308530190500',
+        'Mailing y formatos offline': '1213308530190501',
+        'Customer Journey': '1213785945935365', 'RCS': '1214631909658715',
+        'Notificación Push': '1216508408439829'
+      }
+    },
+    tipoCliente: {
+      gid: '1204870126999123', tipo: 'multi_enum',
+      options: {
+        'Convergente': '1204870126999124', 'Solo Móvil': '1204870126999125',
+        'Solo BAF': '1204870126999126', 'No Cliente': '1204870126999127',
+        'HORECAS': '1209316062819362', 'Prepago Móvil': '1205121434259170',
+        'Empleados': '1205169291951564'
+      }
+    },
+    estado: {
+      gid: '1204870126999131', tipo: 'enum',
+      options: {
+        'Pdte Comercialización': '1204870126999132',
+        'Pdte creatividad': '1204870126999134',
+        'En desarrollo': '1204934955525910',
+        'Finalizado': '1204942258367960',
+        'En Suspenso': '1204969494118743'
+      }
+    },
+    peticionario: { gid: '1204870123950404', tipo: 'text' }
+  },
+
+  // Lo que se puede elegir en la revisión sale de los catálogos:
+  // si no está en Asana, no se puede escribir.
+  get productOptions()    { return Object.keys(this.fields.producto?.options || {}); },
+  get formatOptions()     { return Object.keys(this.fields.formato?.options || {}); },
+  get clientTypeOptions() { return Object.keys(this.fields.tipoCliente?.options || {}); },
 
   // Producto → Sección. Determinista. Punto único de configuración.
   productSectionMap: {
-    'MiMovistar': 'convergente',
-    'Fibra Adicional': 'conectividad',
-    'Prepago': 'conectividad',
+    'MiMovistar': 'convergente', 'Conexión Segura': 'convergente',
+    'Fibra Adicional': 'conectividad', 'Segunda Fibra ON': 'conectividad',
+    'FTTR': 'conectividad', 'Prepago': 'conectividad',
+    'Líneas Móviles Extra': 'conectividad',
     'Dispositivos': 'dispositivos',
-    'Movistar Plus+': 'plus',
-    'M+ Ficción': 'plus',
-    'Fútbol': 'futbol',
-    'Gaming': 'nuevos',
-    'Nuevos Negocios': 'nuevos',
-    'Marca': 'marca',
+    'Movistar Plus+': 'plus', 'M+ Originales': 'plus',
+    'M+ Ficción': 'ficcion', 'M+ Futbol': 'futbol', 'M+ Deporte': 'deportes',
+    'Gaming': 'gaming',
+    'Solar360': 'nuevos', 'Movistar Prosegur Alarmas': 'nuevos',
     'Otros': 'otros'
   },
 
-  formatOptions: [
-    'Email y/o SMS', 'RCS', 'Banners TV',
-    'Enews contenidos TV', 'Mailing/offline', 'Customer Journey'
-  ],
-
-  clientTypeOptions: ['Convergente', 'Solo Móvil', 'Solo BAF', 'No Cliente'],
-
+  // Growth/Value/Servicing NO existe como campo en Asana. Se calcula
+  // y se enseña en la revisión, pero al crear la tarea no se escribe
+  // en ningún sitio. Hay que crear el campo en el proyecto.
   typologyOptions: ['Growth', 'Value', 'Servicing'],
 
-  // Estado inicial de las tareas al crearse en Asana.
-  // Configurable: cuando se acuerde el set de estados con Comercialización,
-  // se cambia AQUÍ y en ningún otro sitio.
-  estadoInicial: 'Pdte Comercialización',
-
-  asanaProject: 'BTL · Planificación Julio 2026 (TEST)'
+  // Estado con el que nacen las tareas. Se cambia AQUÍ y solo aquí.
+  estadoInicial: 'Pdte Comercialización'
 };
 
 /* ------------------------------------------------------------
@@ -115,41 +187,53 @@ const EXCEL = {
     'E-Mailing':       'Email y/o SMS',
     'SMS':             'Email y/o SMS',
     'RCS':             'RCS',
-    'Carta Oficial':   'Mailing/offline',
-    'CARTA SAT':       'Mailing/offline',
-    'App Mi Movistar': 'Customer Journey'   // sin opción propia en Asana; provisional
+    'Carta Oficial':   'Mailing y formatos offline',
+    'CARTA SAT':       'Mailing y formatos offline',
+    'App Mi Movistar': 'Notificación Push'
   },
 
-  // PRODUCTO / KPI (Excel) → Producto (Asana). La sección sale luego
-  // de productSectionMap. 'Legal', 'Marca', 'Info' y 'Horecas /LLPP'
-  // no son productos: van a Otros.
+  // PRODUCTO / KPI (Excel) → Producto (Asana). Los nombres de la derecha
+  // son opciones reales del campo: lo que no esté ahí no se puede escribir.
   productoProduct: {
     'Fibra Adicional':           'Fibra Adicional',
-    'FTTR':                      'Fibra Adicional',
+    'FTTR':                      'FTTR',
     'Alta BAF':                  'Fibra Adicional',
     'R2R':                       'Dispositivos',
-    'Fútbol+':                   'Fútbol',
-    'Deportes Total':            'Movistar Plus+',
+    'Fútbol+':                   'M+ Futbol',
+    'Deportes Total':            'M+ Deporte',
     'Ficción Total':             'M+ Ficción',
     'Movistar Plus+ (Paquete)':  'Movistar Plus+',
     'Atresplayer':               'Movistar Plus+',
     'Enews contenidos':          'Movistar Plus+',
-    'Helios':                    'Nuevos Negocios',
-    'Renting coche eléctrico':   'Nuevos Negocios',
-    'eSIMFlag':                  'Nuevos Negocios',
-    'Movistar Prosegur Alarmas': 'Nuevos Negocios',
-    'Legal':                     'Otros',        // no se importa (palancasOmitidas)
-    'Marca':                     'Marca',        // ENEWS semanal, sección propia
-    'Info':                      'Otros',        // se afina con productoPorNombre
-    'Horecas /LLPP':             'Movistar Plus+' // es segmento, no producto; ver productoSubpalancaOverride
+    'Horecas /LLPP':             'Movistar Plus+',
+    'Helios':                    'Otros',
+    'Renting coche eléctrico':   'Otros',
+    'eSIMFlag':                  'Otros',
+    'Movistar Prosegur Alarmas': 'Movistar Prosegur Alarmas',
+    'Legal':                     'Otros',   // no se importa (palancasOmitidas)
+    'Marca':                     'Otros',
+    'Info':                      'Otros'    // se afina con productoPorNombre
   },
 
-  // "Info" es cajón de sastre: el producto se reconoce por el nombre.
-  // Primer patrón que casa, gana. Si ninguno casa, queda en Otros.
+  // PRODUCTO del Excel → Sección, cuando el producto de Asana no basta
+  // para decidirla. El proyecto real tiene sección propia para Horecas,
+  // Enews Marca y Enews Entretenimiento, que no son productos.
+  productoSection: {
+    'Horecas /LLPP':           'horecas',
+    'Marca':                   'marca',
+    'Enews contenidos':        'enewsM',
+    'Helios':                  'nuevos',
+    'Renting coche eléctrico': 'nuevos',
+    'eSIMFlag':                'nuevos',
+    'Atresplayer':             'plus'
+  },
+
+  // "Info" es cajón de sastre: producto y sección se reconocen por el
+  // nombre. Primer patrón que casa, gana.
   productoPorNombre: [
-    { pattern: /RED_SEGURA|RED SEGURA/i,        product: 'MiMovistar' },
-    { pattern: /SORTEO|CAMISETA|MUNDIAL/i,      product: 'Fútbol' },
-    { pattern: /APP_MIMOVISTAR.*CONTENIDOS/i,   product: 'Movistar Plus+' }
+    { pattern: /RED_SEGURA|RED SEGURA/i,      product: 'Conexión Segura', section: 'convergente' },
+    { pattern: /SORTEO|CAMISETA|MUNDIAL/i,    product: 'M+ Futbol',       section: 'futbol' },
+    { pattern: /APP_MIMOVISTAR.*CONTENIDOS/i, product: 'Movistar Plus+',  section: 'plus' }
   ],
 
   // PRODUCTO del Excel → título del brief en el documento de estrategia.
@@ -173,14 +257,9 @@ const EXCEL = {
     'Movistar Prosegur Alarmas': 'MPA'
   },
 
-  // Horecas es a quién, no qué. Por SUBPALANCA se sabe el producto real.
-  productoSubpalancaOverride: {
-    'Horecas /LLPP': { 'Plataforma TV': 'Fútbol', 'Dinamización de TV': 'Movistar Plus+' }
-  },
-
   // Productos que fuerzan el formato aunque MEDIO diga E-Mailing.
   productoFormatOverride: {
-    'Enews contenidos': 'Enews contenidos TV'
+    'Enews contenidos': 'Enews de contenidos TV'
   }
 };
 
