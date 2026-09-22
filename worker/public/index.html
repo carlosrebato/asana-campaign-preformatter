@@ -59,6 +59,7 @@ const ICONS = {
   arrow: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
   grip: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg>',
   trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  chev: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
   chevR: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>',
   chevD: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>',
   warn: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5E4A09" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
@@ -247,10 +248,11 @@ function viewRevision() {
 function rowHTML(t) {
   const badge = badgeHTML(t);
   return `
-  <article class="row ${t.approved ? 'approved' : ''} ${t.flash ? 'flash' : ''}" data-card="${t.id}">
-    <span class="handle" draggable="true" data-drag="${t.id}" title="Arrastrar a otra sección">${ICONS.grip}</span>
+  <article class="row ${t.approved ? 'approved' : ''} ${t.flash ? 'flash' : ''}" data-card="${t.id}"
+           draggable="true" data-drag="${t.id}">
     <button class="row-body" data-toggle="${t.id}" title="Abrir">
-      <span class="row-name">${ICONS.chevR}${badge}${esc(t.name) || '<em>Sin nombre</em>'}</span>
+      <span class="chev">${ICONS.chev}</span>
+      <span class="row-name">${badge}${esc(t.name) || '<em>Sin nombre</em>'}</span>
       <span class="row-val">${esc(t.product)}</span>
       <span class="row-val">${esc(t.format)}</span>
       <span class="row-val">${fechaCorta(t.dueDate)}</span>
@@ -294,10 +296,10 @@ function cardHTML(t) {
   const descPrev = t.description ? t.description.slice(0, 120) : 'Añadir contexto de estrategia';
 
   return `
-  <article class="card ${t.approved ? 'approved' : ''} ${t.flash ? 'flash' : ''}" data-card="${t.id}">
+  <article class="card ${t.approved ? 'approved' : ''} ${t.flash ? 'flash' : ''}" data-card="${t.id}"
+           draggable="true" data-drag="${t.id}">
     <div class="card-row1" data-toggle="${t.id}" title="Cerrar">
-      <span class="handle" draggable="true" data-drag="${t.id}" title="Arrastrar a otra sección">${ICONS.grip}</span>
-      <span class="chev open">${ICONS.chevR}</span>
+      <span class="chev open">${ICONS.chev}</span>
       ${badge}
       <input class="card-name" value="${esc(t.name)}" data-set="name" data-id="${t.id}"
              placeholder="PAC00000_Nombre_Segmento_Mes" spellcheck="false">
@@ -464,7 +466,8 @@ document.addEventListener('click', async e => {
 
   if (el.dataset.approve) {
     const t = S.tasks.find(x => x.id === el.dataset.approve);
-    patch(t.id, { approved: !t.approved });
+    // Aprobar da la revisión por terminada: la tarjeta se cierra.
+    patch(t.id, { approved: !t.approved, editing: false });
   }
   else if (el.dataset.del) {
     S.tasks = S.tasks.filter(x => x.id !== el.dataset.del); render();
@@ -472,7 +475,7 @@ document.addEventListener('click', async e => {
   else if (el.dataset.toggle) {
     // Acordeón: la fila abre, la cabecera de la tarjeta cierra. Los
     // controles de dentro (nombre, aprobar, borrar) no cuentan como clic.
-    if (e.target.closest('input,select,textarea,[data-approve],[data-del],[data-drag]')) return;
+    if (e.target.closest('input,select,textarea,[data-approve],[data-del]')) return;
     const t = S.tasks.find(x => x.id === el.dataset.toggle);
     patch(t.id, { editing: !t.editing });
   }
@@ -537,7 +540,7 @@ document.addEventListener('dragstart', e => {
   const h = e.target.closest('[data-drag]');
   if (!h) return;
   S.dragId = h.dataset.drag;
-  h.closest('.card').classList.add('dragging');
+  h.classList.add('dragging');
   e.dataTransfer.effectAllowed = 'move';
 });
 document.addEventListener('dragend', () => {
