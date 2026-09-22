@@ -207,6 +207,11 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
   border: none; background: transparent; text-align: left;
   padding: 8px 4px; border-radius: 8px; cursor: pointer; font: inherit;
 }
+.row-name svg { color: #9F9C99; flex-shrink: 0; }
+.row:hover .row-name svg { color: #0066FF; }
+.chev { display: flex; color: #0066FF; transition: transform .15s; }
+.chev.open { transform: rotate(90deg); }
+.card-row1 { cursor: pointer; }
 .row-name {
   display: flex; align-items: center; gap: 8px; min-width: 0;
   font-size: 13.5px; font-weight: 700; color: #262423;

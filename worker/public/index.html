@@ -249,8 +249,8 @@ function rowHTML(t) {
   return `
   <article class="row ${t.approved ? 'approved' : ''} ${t.flash ? 'flash' : ''}" data-card="${t.id}">
     <span class="handle" draggable="true" data-drag="${t.id}" title="Arrastrar a otra sección">${ICONS.grip}</span>
-    <button class="row-body" data-edit="${t.id}" title="Editar">
-      <span class="row-name">${badge}${esc(t.name) || '<em>Sin nombre</em>'}</span>
+    <button class="row-body" data-toggle="${t.id}" title="Abrir">
+      <span class="row-name">${ICONS.chevR}${badge}${esc(t.name) || '<em>Sin nombre</em>'}</span>
       <span class="row-val">${esc(t.product)}</span>
       <span class="row-val">${esc(t.format)}</span>
       <span class="row-val">${fechaCorta(t.dueDate)}</span>
@@ -295,15 +295,15 @@ function cardHTML(t) {
 
   return `
   <article class="card ${t.approved ? 'approved' : ''} ${t.flash ? 'flash' : ''}" data-card="${t.id}">
-    <div class="card-row1">
+    <div class="card-row1" data-toggle="${t.id}" title="Cerrar">
       <span class="handle" draggable="true" data-drag="${t.id}" title="Arrastrar a otra sección">${ICONS.grip}</span>
+      <span class="chev open">${ICONS.chevR}</span>
       ${badge}
       <input class="card-name" value="${esc(t.name)}" data-set="name" data-id="${t.id}"
              placeholder="PAC00000_Nombre_Segmento_Mes" spellcheck="false">
       <button class="btn-approve ${t.approved ? 'on' : ''}" data-approve="${t.id}">
         ${t.approved ? '✓ Aprobada' : 'Aprobar'}
       </button>
-      <button class="btn-ghost" data-done="${t.id}" style="font-size:12px">Listo</button>
       <button class="btn-del" data-del="${t.id}" title="Eliminar tarea">${ICONS.trash}</button>
     </div>
 
@@ -459,7 +459,7 @@ async function cargar() {
 
 /* ---------------- EVENTOS ---------------- */
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-edit],[data-done],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
+  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
   if (!el) return;
 
   if (el.dataset.approve) {
@@ -469,11 +469,12 @@ document.addEventListener('click', async e => {
   else if (el.dataset.del) {
     S.tasks = S.tasks.filter(x => x.id !== el.dataset.del); render();
   }
-  else if (el.dataset.edit) {
-    patch(el.dataset.edit, { editing: true });
-  }
-  else if (el.dataset.done) {
-    patch(el.dataset.done, { editing: false });
+  else if (el.dataset.toggle) {
+    // Acordeón: la fila abre, la cabecera de la tarjeta cierra. Los
+    // controles de dentro (nombre, aprobar, borrar) no cuentan como clic.
+    if (e.target.closest('input,select,textarea,[data-approve],[data-del],[data-drag]')) return;
+    const t = S.tasks.find(x => x.id === el.dataset.toggle);
+    patch(t.id, { editing: !t.editing });
   }
   else if (el.dataset.desc) {
     const t = S.tasks.find(x => x.id === el.dataset.desc);
