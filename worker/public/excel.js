@@ -90,10 +90,17 @@ const EXCEL_PARSER = (() => {
       const tsk = clean(col(r, 'tsk'));
 
       const subpalanca = clean(col(r, 'subpalanca'));
-      const product = EXCEL.productoSubpalancaOverride[producto]?.[subpalanca]
-        || (producto === 'Info' && EXCEL.productoPorNombre.find(r => r.pattern.test(nombre))?.product)
-        || EXCEL.productoProduct[producto];
+      // Producto y sección. El caso normal es el catálogo; "Info" se
+      // reconoce por el nombre, y unos pocos productos tienen sección
+      // propia en Asana (Horecas, Enews Marca, Enews Entretenimiento).
+      const porNombre = producto === 'Info'
+        && EXCEL.productoPorNombre.find(x => x.pattern.test(nombre));
+      const product = porNombre ? porNombre.product : EXCEL.productoProduct[producto];
       if (!product) warn('producto', fila, `Producto sin mapear: "${producto}"`);
+      const sectionId = (porNombre && porNombre.section)
+        || EXCEL.productoSection[producto]
+        || CATALOGS.productSectionMap[product || 'Otros']
+        || 'otros';
 
       let format = EXCEL.medioFormat[medio];
       if (!format) warn('medio', fila, `Medio sin mapear: "${medio}"`);
@@ -113,12 +120,12 @@ const EXCEL_PARSER = (() => {
         tsk,
         name: nombre,
         product: product || 'Otros',
-        sectionId: CATALOGS.productSectionMap[product || 'Otros'],
+        sectionId,
         format: format || CATALOGS.formatOptions[0],
         dueDate,
         typology: typology || 'Growth',
         clientType: '',                       // no viene en el Excel (regla 1)
-        estado: EXCEL.viabilidadEstado[viabilidad] || CATALOGS.estadoInicial,
+        estado: CATALOGS.estadoInicial,   // Asana no distingue Aprobada/Planificada
         description: '',                      // solo lo rellena el PDF
         // Datos del Excel que no tienen campo en la UI todavía
         excel: {

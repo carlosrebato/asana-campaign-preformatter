@@ -265,16 +265,98 @@ El parser tiene que aguantar esto sin romperse:
 
 ---
 
+## Un campo rechazado no tumba la tarea
+
+Asana puede rechazar un valor que su propio catálogo lista: los Tipos de
+tarea restringen qué opciones valen, y eso no se ve hasta que se escribe.
+Pasó con `Pdte Comercialización` en la primera carga real, y tiró las tres
+tareas.
+
+La carga reintenta sin campos personalizados y avisa en el reporte. Mismo
+principio que con el documento de estrategia: **lo accesorio no puede
+romper lo principal**. Vale más una tarea con un campo vacío que una
+campaña que no llega a producción.
+
+No se puede quitar solo el campo culpable: Asana devuelve las opciones que
+acepta, pero no dice de qué campo habla, y los valores de los demás campos
+tampoco están en esa lista. Se intentó y se descartó.
+
+## Los catálogos se leen de Asana, no se copian
+
+Los enum de Asana se escriben por GID de opción. La tentación es copiar
+esos GIDs al código; es un error: en cuanto alguien añade una opción en
+Asana, la copia miente y nadie se entera.
+
+`/api/catalogos` lee el proyecto al arrancar y trae secciones, campos y
+opciones con sus GIDs. Lo que hay en `data.js` es **una copia de
+seguridad** para que la app arranque sin backend, marcada con `esCopia`.
+Cuando está activa, la entrada avisa: se puede revisar, no cargar.
+
+Lo que **no** puede venir de Asana es el mapeo del Excel: que `Fútbol+`
+sea `M+ Futbol`, o que `Helios` no tenga producto propio y vaya a `Otros`.
+Eso es una decisión de negocio y vive en `EXCEL`. **Está sin validar con
+Comercialización**, y es lo primero que hay que enseñarles.
+
+## Lo que el proyecto real enseñó
+
+Leyendo `BTL - Run ✉️` (2.594 tareas) aparecieron cosas que habíamos
+supuesto mal:
+
+- **Horecas tiene sección propia** (`🏨🍽️🍀HORECAS/LLPP`), y también
+  `💙ENEWS MARCA` y `📽️⚾ Enews Entretenimiento M+`. Se había decidido que
+  Horecas no era sección; el proyecto dice que sí.
+- **`Notificación Push` existe como formato**, así que `App Mi Movistar`
+  ya no necesita el apaño de mandarlo a Customer Journey.
+- **`VIABILIDAD` no tiene equivalente.** El campo Estado tiene 26 opciones
+  de producción (Pdte creatividad, Pdte Estudio…) y ninguna es
+  Aprobada/Planificada. Todas las tareas nacen en `estadoInicial`.
+- **Growth/Value/Servicing sigue sin existir.** Se calcula y se enseña en
+  la revisión, pero al crear la tarea no se escribe en ningún sitio.
+
+### Duplicar el proyecto NO conserva todos los GIDs
+
+Al duplicar `BTL - Run ✉️` para hacer el sandbox, Asana se comportó de dos
+maneras distintas con los campos:
+
+| Campo | En el duplicado |
+|---|---|
+| Producto, Estado | **mismo GID** — son campos del espacio de trabajo |
+| Tipo de cliente, Formatos de comunicación, Peticionario | **GID nuevo** — copia local del proyecto |
+
+Los nombres y las opciones son idénticos; los identificadores, no. Un
+código con los GIDs escritos a mano habría intentado escribir en campos
+que no existen en ese proyecto.
+
+Es la prueba de por qué los catálogos se leen en caliente y se buscan
+**por nombre de campo** (`CATALOGS.fieldNames`), no por GID.
+
+## El Worker es la única parte que necesita servidor
+
+El token de Asana no puede estar en el navegador, y Asana no acepta
+llamadas cross-origin desde una página. Por eso `src/index.js` existe:
+tres rutas (`/api/catalogos`, `/api/duplicados`, `/api/cargar`) y el token
+como secreto.
+
+Todo lo demás —leer el Excel, leer los PDF, vincular, revisar— sigue
+ocurriendo en el navegador, sin que nada salga del ordenador.
+
 ## Otros pendientes
 
-- **Estado inicial de las tareas.** Hoy es un placeholder (`CATALOGS.estadoInicial`).
-  El set definitivo se acuerda con Comercialización cuando el proyecto se amplíe
-  a ambos equipos. Configurable en un solo sitio, precisamente porque va a cambiar.
+- **Definir los estados. Conversación de los TRES equipos.** No es un detalle
+  de configuración: es el estado con el que producción va a ver entrar ~73
+  campañas cada mes, y lo tienen que acordar Comercialización, Producción y
+  Marketing juntos. Hoy `CATALOGS.estadoInicial` lleva un placeholder
+  (`Pdte Maquetación y envío - Movistar`), elegido solo porque Asana lo acepta.
+
+  Dos cosas que hay que llevar a esa conversación:
+  - El campo `Estado` tiene 26 opciones, pero los **Tipos de tarea** del
+    proyecto solo dejan escribir 12. `Pdte Comercialización`, que era el
+    candidato natural, **no** está entre ellas. La restricción no se ve
+    leyendo el campo: solo aparece al intentar escribir.
+  - El Excel trae `VIABILIDAD` (Aprobada / Planificada) y no hay ningún
+    estado que le corresponda. Ese dato se pierde hoy.
 - **Tipología (Growth/Value/Servicing).** El campo no existe en el Asana
   actual. Hay que crearlo en el proyecto nuevo.
-- **Catálogos reales.** Los valores de `data.js` son de referencia. Al cablear,
-  hay que leer el proyecto de Asana e importar los GIDs reales — los enum de
-  Asana se escriben **por GID de opción, no por texto**.
 - **Columna puente.** El arreglo de fondo al problema de vinculación no es
   técnico: sería que el Excel llevara una columna con el territorio de la
   estrategia, o que la estrategia llevara el PAC. Cuesta cero técnicamente y
