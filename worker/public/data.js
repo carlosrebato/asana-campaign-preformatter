@@ -263,6 +263,25 @@ const EXCEL = {
     'Movistar Prosegur Alarmas': 'MPA'
   },
 
+  // PRODUCTO del Excel → territorio del documento de orientación.
+  // Solo se usa cuando no hay brief de Comercialización: es material
+  // derivado y va siempre en amarillo. Un producto sin entrada aquí se
+  // queda sin contexto, que sigue siendo el caso normal.
+  productoTerritorio: {
+    'R2R':                       'Smartphone (iPhone + Swap)',
+    'Fútbol+':                   'Desarrollo y upsell de fútbol',
+    'Horecas /LLPP':             'Horecas',
+    'Deportes Total':            'Deportes / Motor / Baloncesto',
+    'Ficción Total':             'Nuevo Ficción (Full Ficción)',
+    'Fibra Adicional':           'FTTR / Fibra Adicional / Segunda Fibra',
+    'FTTR':                      'FTTR / Fibra Adicional / Segunda Fibra',
+    'Alta BAF':                  'Ganancia OC y BAF Stand Alone',
+    'eSIMFlag':                  'Renting coches / Helios / MPA / eSimFLAG',
+    'Renting coche eléctrico':   'Renting coches / Helios / MPA / eSimFLAG',
+    'Helios':                    'Renting coches / Helios / MPA / eSimFLAG',
+    'Movistar Prosegur Alarmas': 'Renting coches / Helios / MPA / eSimFLAG'
+  },
+
   // Productos que fuerzan el formato aunque MEDIO diga E-Mailing.
   productoFormatOverride: {
     'Enews contenidos': 'Enews de contenidos TV'

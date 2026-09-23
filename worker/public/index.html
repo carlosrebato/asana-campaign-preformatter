@@ -108,8 +108,12 @@ function resumenExcel(p) {
 // Cuántos briefs de mensaje se han encontrado. Si no hay ninguno, no se
 // dice nada: el documento no puede generar ruido (DECISIONES.md).
 function resumenEstrategia(p) {
-  if (!p.briefs.length) return '';
-  return `<div class="drop-hint">${p.briefs.length} briefs de mensaje</div>`;
+  // Qué ha aportado este documento. Si no aporta nada no se dramatiza:
+  // solo dos de cada tres documentos traen material de mensaje, y eso es
+  // cuestión de formato, no de calidad.
+  if (!p.briefs.length) return '<div class="drop-hint">Leído · sin material de mensaje</div>';
+  const terr = p.briefs.filter(b => b.fuente === 'territorio').length;
+  return `<div class="drop-hint">${p.briefs.length} ${terr ? 'territorios' : 'briefs'} de mensaje</div>`;
 }
 
 function viewEntrada() {
@@ -157,7 +161,7 @@ function viewEntrada() {
         ` : `
           <div class="drop-icon">${ICONS.fileBig}</div>
           <div class="drop-title">Documentos de estrategia</div>
-          <div class="drop-hint">Arrastra los .pdf o haz clic · puedes subir varios</div>
+          <div class="drop-hint">Arrastra los .pdf o .html · puedes subir varios</div>
           <span class="req">Obligatorio</span>
         `}
       </div>
@@ -346,7 +350,7 @@ function badgeHTML(t) {
 // ("Idea fuerza:", "Reason why:"…). Se resaltan para que se lea como el
 // brief que es y no como un párrafo corrido. El texto no se toca: la
 // etiqueta sale del propio contenido.
-const ETIQUETAS = /^(?:\d+(?:\.\d+)*\.?\s*)?(idea\s*fuerza(?:\s+por\s+colectivo)?|elevator\s*pitch(?:\s+de\s+comunicaci[óo]n)?|mensaje\s*principal|mensaje\s*secundario|jerarqu[ií]a|tono|reason\s*why|palancas|prioritario|secundario|restricciones)\s*:?\s*/i;
+const ETIQUETAS = /^(?:\d+(?:\.\d+)*\.?\s*)?(idea\s*fuerza(?:\s+por\s+colectivo)?|elevator\s*pitch(?:\s+de\s+comunicaci[óo]n)?|mensaje\s*principal|mensaje\s*secundario|jerarqu[ií]a|tono|reason\s*why|palancas|prioritario|secundario|restricciones|idea\s*dominante|principio|por\s*d[óo]nde\s*explorar|qu[ée]\s*evitar|verbalizaciones|mandatorios)\s*:?\s*/i;
 
 function briefHTML(texto) {
   if (!texto) return '<p class="brief-vacio">Sin contexto de estrategia vinculado</p>';
@@ -670,7 +674,7 @@ document.addEventListener('dragleave', e => {
 function abrirSelector(key) {
   const inp = document.createElement('input');
   inp.type = 'file';
-  inp.accept = key === 'excel' ? '.xlsx' : '.pdf';
+  inp.accept = key === 'excel' ? '.xlsx' : '.pdf,.html,.htm';
   inp.multiple = key === 'strategy';
   inp.onchange = async () => {
     if (!inp.files.length) return;
