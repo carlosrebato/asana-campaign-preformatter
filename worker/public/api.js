@@ -137,20 +137,26 @@ const API = {
      Devuelve los PACs que ya existen para avisar antes de crear.
      Esta es la idempotencia real: la clave de negocio es el PAC.
   ---------------------------------------------------------- */
-  async comprobarDuplicados(tasks) {
+  async comprobarDuplicados(tasks, onProgress) {
     const pacs = [...new Set(tasks.map(t => t.pac).filter(Boolean))];
     if (!pacs.length) return [];
-    try {
-      const r = await fetch('/api/duplicados', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pacs })
-      });
-      if (!r.ok) return [];
-      return (await r.json()).duplicados || [];
-    } catch {
-      return [];   // sin backend, no se puede comprobar: no se bloquea
+    const encontrados = [];
+    // Por lotes: un Worker no puede hacer más de 50 llamadas salientes
+    // por invocación, y cada PAC es una búsqueda.
+    for (const lote of enLotes(pacs, 40)) {
+      try {
+        const r = await fetch('/api/duplicados', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pacs: lote })
+        });
+        if (r.ok) encontrados.push(...((await r.json()).duplicados || []));
+      } catch {
+        /* sin backend no se puede comprobar: no se bloquea la carga */
+      }
+      onProgress?.(encontrados.length);
     }
+    return encontrados;
   },
 
   /* ----------------------------------------------------------
@@ -167,24 +173,58 @@ const API = {
        poder reintentar solo esas.
   ---------------------------------------------------------- */
   async cargarEnAsana(tasks, opts = {}) {
+    const created = [], failed = [];
+    let hechas = 0;
     opts.onProgress?.(0, tasks.length);
-    const r = await fetch('/api/cargar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tareas: tasks.map(aPayloadAsana) })
-    });
-    opts.onProgress?.(tasks.length, tasks.length);
-    if (!r.ok) {
-      const { error } = await r.json().catch(() => ({}));
-      return {
-        created: [],
-        failed: tasks.map(t => ({ id: t.id, name: t.name, error: error || 'El Worker no respondió' }))
-      };
+
+    // Por lotes, por el límite de llamadas salientes del Worker: cada
+    // tarea son dos (crearla y colocarla en su sección). Dos tandas a la
+    // vez: con 73 campañas baja de 90 a 40 segundos y Asana lo aguanta
+    // sin cortar. Más simultáneas tienta al límite de peticiones.
+    const lotes = enLotes(tasks, 20);
+    const mandar = async lote => {
+      try {
+        const r = await fetch('/api/cargar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tareas: lote.map(aPayloadAsana) })
+        });
+        if (!r.ok) {
+          const { error } = await r.json().catch(() => ({}));
+          return { created: [], failed: lote.map(t => ({ id: t.id, name: t.name, error: error || 'El Worker no respondió' })) };
+        }
+        return await r.json();
+      } catch (e) {
+        return { created: [], failed: lote.map(t => ({ id: t.id, name: t.name, error: e.message })) };
+      }
+    };
+
+    for (let i = 0; i < lotes.length; i += 2) {
+      const ronda = await Promise.all(lotes.slice(i, i + 2).map(mandar));
+      for (const res of ronda) {
+        created.push(...(res.created || []));
+        failed.push(...(res.failed || []));
+      }
+      hechas = created.length + failed.length;
+      opts.onProgress?.(hechas, tasks.length);
     }
-    return r.json();
+
+    return { created, failed };
   }
+
 };
 
+
+/* ------------------------------------------------------------
+   TROCEAR
+   El Worker tiene un techo de llamadas salientes por invocación,
+   así que el cliente parte el trabajo y llama varias veces.
+------------------------------------------------------------ */
+function enLotes(lista, tam) {
+  const lotes = [];
+  for (let i = 0; i < lista.length; i += tam) lotes.push(lista.slice(i, i + tam));
+  return lotes;
+}
 
 /* ------------------------------------------------------------
    TAREA → PAYLOAD DE ASANA

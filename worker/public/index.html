@@ -522,10 +522,14 @@ async function procesar() {
   S.screen = 'procesando';
   S.procPasos = []; S.procStep = -1;
   render();
-  const tasks = await API.interpretarDocumentos(S.files.excel, S.files.strategy, (i, pasos) => {
-    S.procPasos = pasos; S.procStep = i; render();
+  let pasos = [];
+  const tasks = await API.interpretarDocumentos(S.files.excel, S.files.strategy, (i, ps) => {
+    pasos = ps; S.procPasos = ps; S.procStep = i; render();
   });
   S.tasks = tasks.map(t => Object.assign({ approved: false, descOpen: false, flash: false, editing: false, typology: 'Growth' }, t));
+  // Comprobar PACs en Asana tarda: son tantas búsquedas como campañas.
+  S.procPasos = [...pasos, 'Comprobando en Asana si ya existen'];
+  S.procStep = pasos.length; render();
   S.dupes = await API.comprobarDuplicados(S.tasks);
   S.screen = 'revision';
   render();
