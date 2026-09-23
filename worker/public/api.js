@@ -30,8 +30,12 @@ const API = {
       if (!r.ok) throw new Error('sin catálogos');
       const c = await r.json();
 
+      // Por NOMBRE, no por GID: un proyecto duplicado tiene las mismas
+      // secciones con identificadores nuevos. Emparejar por GID dejaba
+      // todas las tareas apuntando a secciones inexistentes y la
+      // revisión salía vacía.
       CATALOGS.sections = c.sections.map(s => ({
-        id: CATALOGS.sections.find(x => x.gid === s.gid)?.id || s.gid,
+        id: CATALOGS.sections.find(x => x.name === s.name)?.id || s.gid,
         gid: s.gid, name: s.name
       }));
       for (const [clave, nombre] of Object.entries(CATALOGS.fieldNames)) {
@@ -178,10 +182,16 @@ const API = {
     opts.onProgress?.(0, tasks.length);
 
     // Por lotes, por el límite de llamadas salientes del Worker: cada
-    // tarea son dos (crearla y colocarla en su sección). Dos tandas a la
-    // vez: con 73 campañas baja de 90 a 40 segundos y Asana lo aguanta
-    // sin cortar. Más simultáneas tienta al límite de peticiones.
-    const lotes = enLotes(tasks, 20);
+    // tarea son dos (crearla y colocarla en su sección). Lotes pequeños
+    // y varios en vuelo: así la barra avanza de verdad en vez de saltar
+    // del 0 al 100, y el conjunto va igual de rápido.
+    // El lote se dimensiona para que la barra avance varias veces, tanto
+    // si son 4 campañas como si son 73: al menos cuatro tramos, y nunca
+    // más de 8 por lote (cada tarea son dos llamadas al Worker).
+    const EN_VUELO = 4;
+    const tam = Math.max(1, Math.min(8, Math.ceil(tasks.length / 4)));
+    const lotes = enLotes(tasks, tam);
+
     const mandar = async lote => {
       try {
         const r = await fetch('/api/cargar', {
@@ -199,15 +209,16 @@ const API = {
       }
     };
 
-    for (let i = 0; i < lotes.length; i += 2) {
-      const ronda = await Promise.all(lotes.slice(i, i + 2).map(mandar));
-      for (const res of ronda) {
+    let siguiente = 0;
+    const turno = async () => {
+      while (siguiente < lotes.length) {
+        const res = await mandar(lotes[siguiente++]);
         created.push(...(res.created || []));
         failed.push(...(res.failed || []));
+        opts.onProgress?.(created.length + failed.length, tasks.length);
       }
-      hechas = created.length + failed.length;
-      opts.onProgress?.(hechas, tasks.length);
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(EN_VUELO, lotes.length) }, turno));
 
     return { created, failed };
   }

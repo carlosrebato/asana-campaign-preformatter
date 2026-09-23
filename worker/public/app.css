@@ -48,6 +48,12 @@ input, select, textarea { font-family: inherit; }
 .step-label { font-size: 12.5px; font-weight: 500; color: #9F9C99; white-space: nowrap; }
 .step.active .step-label { color: #0066FF; font-weight: 700; }
 .step.done .step-label { color: #605E5C; }
+.step-ir { cursor: pointer; border-radius: 9999px; transition: background .12s; }
+.step-ir:hover { background: #D3EEFF; }
+.volver-revision {
+  margin-top: 14px; font-size: 13px; color: #605E5C;
+  display: flex; align-items: center; gap: 6px;
+}
 .step-sep { color: #DFDBD6; font-size: 11px; }
 
 /* ============ LAYOUT ============ */
@@ -58,14 +64,22 @@ h1.page { font-size: 24px; font-weight: 800; letter-spacing: -.015em; }
 h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 
 /* ============ ENTRADA ============ */
-.drop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px; }
+.drop-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px;
+  align-items: stretch;
+}
+.drop-cell { display: flex; flex-direction: column; }
 .drop {
   border: 1.5px dashed #DFDBD6; border-radius: 16px;
-  background: #fff; padding: 30px 22px;
+  background: #fff; padding: 24px 22px;
   text-align: center; transition: .16s; cursor: pointer;
-  min-height: 190px;
+  flex: 1; min-height: 210px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px;
 }
+/* Con documentos dentro, la caja se comporta como una lista, no como
+   una zona de arrastre centrada. */
+.drop.loaded { justify-content: flex-start; gap: 10px; padding: 18px; }
+.drop.loaded .drop-title { margin-top: 4px; }
 .drop:hover, .drop.over { border-color: #0066FF; background: #F5FAFF; }
 .drop.loaded { border-style: solid; border-color: #CEF7BF; background: #FBFFF9; cursor: default; }
 .drop-icon { color: #9F9C99; }
@@ -91,7 +105,6 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
   font-size: 12.5px; font-weight: 700;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.doc-briefs { font-size: 11px; color: #807D7B; white-space: nowrap; }
 
 .drop-avisos {
   list-style: none; margin: 0; padding: 0;

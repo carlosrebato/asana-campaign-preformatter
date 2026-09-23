@@ -51,7 +51,9 @@ const S = {
   loadProgress: [0, 0],
   result: null,
   dupes: [],
-  catalogos: null      // resultado de leer los catálogos de Asana
+  // null mientras se piden los catálogos: hasta que se sabe si Asana
+  // responde no se avisa de nada, que si no el aviso parpadea al cargar.
+  catalogos: null
 };
 
 const ICONS = {
@@ -80,13 +82,26 @@ const STEPS = [
   { id: 'confirmar',  label: 'Carga en Asana' }
 ];
 
+// A qué pasos se puede ir desde donde estamos. No es lineal: se vuelve
+// atrás a corregir y se avanza a lo ya hecho. Lo que no se puede es
+// saltar a un paso cuyo trabajo previo no existe todavía.
+function pasoAccesible(id) {
+  if (id === 'procesando') return false;          // no es una pantalla, es un tránsito
+  if (id === 'entrada') return S.screen !== 'procesando';
+  if (id === 'revision') return S.tasks.length > 0;
+  if (id === 'confirmar') return S.tasks.some(t => t.approved);
+  return false;
+}
+
 function renderStepper() {
   const cur = S.screen === 'resultado' ? 'confirmar' : S.screen;
   const i = STEPS.findIndex(s => s.id === cur);
   document.getElementById('stepper').innerHTML = STEPS.map((s, n) => {
     const cls = n === i ? 'step active' : n < i ? 'step done' : 'step';
     const num = n < i ? ICONS.check : (n + 1);
-    return `<div class="${cls}"><span class="step-num">${num}</span><span class="step-label">${s.label}</span></div>`
+    const ir = s.id !== cur && pasoAccesible(s.id);
+    return `<div class="${cls}${ir ? ' step-ir' : ''}"${ir ? ` data-paso="${s.id}"` : ''}>`
+      + `<span class="step-num">${num}</span><span class="step-label">${s.label}</span></div>`
       + (n < STEPS.length - 1 ? '<span class="step-sep">›</span>' : '');
   }).join('');
 }
@@ -135,7 +150,6 @@ function viewEntrada() {
           <span class="req">Obligatorio</span>
         `}
       </div>
-      ${!d ? `<p class="drop-democopy">Se lee en el navegador · nada sale de aquí</p>` : ''}
     </div>`;
   };
 
@@ -152,8 +166,6 @@ function viewEntrada() {
             ${docs.map((d, i) => `
               <li>
                 <span class="doc-nombre">${esc(d.name)}</span>
-                <span class="doc-briefs">${d.parsed?.briefs.length
-                  ? `${d.parsed.briefs.length} briefs` : 'sin briefs'}</span>
                 <button class="btn-del" data-quitar-doc="${i}" title="Quitar">${ICONS.trash}</button>
               </li>`).join('')}
           </ul>
@@ -165,7 +177,6 @@ function viewEntrada() {
           <span class="req">Obligatorio</span>
         `}
       </div>
-      ${!docs.length ? `<p class="drop-democopy">Se leen en el navegador · nada sale de aquí</p>` : ''}
     </div>`;
   };
 
@@ -174,6 +185,11 @@ function viewEntrada() {
   return `
   <main class="main-narrow">
     <h1 class="page">Cargar planificación del mes</h1>
+    ${S.tasks.length ? `
+      <p class="volver-revision">
+        Hay ${S.tasks.length} tareas ya procesadas.
+        <button class="btn-link-section" data-paso="revision">Volver a la revisión</button>
+      </p>` : ''}
     <p style="font-size:14px;color:#605E5C;margin-top:8px;line-height:1.55">
       Sube el Excel y los documentos de estrategia del mes. El Excel aporta los
       datos operativos (PAC, fechas, producto); los documentos aportan el
@@ -185,14 +201,11 @@ function viewEntrada() {
       ${cajaEstrategia()}
     </div>
 
-    ${CATALOGS.esCopia ? `
+    ${S.catalogos && !S.catalogos.ok ? `
       <p class="aviso-catalogos">
         Sin conexión con Asana: se usan los catálogos guardados.
         Se puede revisar la propuesta, pero no cargarla.
-      </p>` : `
-      <p class="drop-democopy" style="text-align:left">
-        Catálogos leídos de <strong>${esc(CATALOGS.asanaProject?.name || '')}</strong>
-      </p>`}
+      </p>` : ''}
 
     <div style="margin-top:26px;display:flex;align-items:center;gap:14px">
       <button class="btn-primary" id="btn-procesar" ${listo ? '' : 'disabled'}>
@@ -444,7 +457,7 @@ function viewConfirmar() {
     <button class="btn-ghost" id="btn-back" style="margin:0 0 18px -12px">← Volver a la revisión</button>
     <h1 class="page">Vas a crear ${app.length} tareas en Asana</h1>
     <p style="font-size:14px;color:#605E5C;margin:8px 0 24px">
-      Proyecto de destino: <strong style="color:#262423">${esc(D.asanaProject)}</strong>
+      Proyecto de destino: <strong style="color:#262423">${esc(D.asanaProject?.name || '')}</strong>
     </p>
 
     <div class="panel" style="margin-bottom:16px">
@@ -474,7 +487,7 @@ function viewResultado() {
       <span style="width:34px;height:34px;border-radius:50%;background:#CEF7BF;display:flex;align-items:center;justify-content:center">${ICONS.ok}</span>
       <h1 class="page">${r.created.length} tareas creadas</h1>
     </div>
-    <p style="font-size:14px;color:#605E5C;margin:0 0 24px">En <strong style="color:#262423">${esc(D.asanaProject)}</strong></p>
+    <p style="font-size:14px;color:#605E5C;margin:0 0 24px">En <strong style="color:#262423">${esc(D.asanaProject?.name || '')}</strong></p>
 
     <div class="panel" style="margin-bottom:16px">
       ${r.created.map(c => `
@@ -552,10 +565,14 @@ async function cargar() {
 
 /* ---------------- EVENTOS ---------------- */
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-quitar-doc],[data-descedit],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
+  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-quitar-doc],[data-descedit],[data-paso],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
   if (!el) return;
 
-  if (el.dataset.approve) {
+  if (el.dataset.paso) {
+    S.screen = el.dataset.paso; render();
+    window.scrollTo(0, 0);
+  }
+  else if (el.dataset.approve) {
     const t = S.tasks.find(x => x.id === el.dataset.approve);
     // Aprobar da la revisión por terminada: la tarjeta se cierra.
     patch(t.id, { approved: !t.approved, editing: false });
@@ -619,7 +636,11 @@ document.addEventListener('click', async e => {
     S.screen = 'confirmar'; render();
   }
   else if (el.id === 'btn-reset') {
-    Object.assign(S, { screen: 'entrada', files: { excel: null, strategy: null }, tasks: [], result: null });
+    Object.assign(S, {
+      screen: 'entrada',
+      files: { excel: null, strategy: [] },   // lista vacía, no null: la entrada la recorre
+      tasks: [], dupes: [], result: null, procStep: -1, procPasos: []
+    });
     render();
   }
 });
