@@ -13,6 +13,48 @@
 const API = {
 
   /* ----------------------------------------------------------
+     0 bis · EMPAREJAMIENTO CON MODELO
+     ----------------------------------------------------------
+     Las dos preguntas que no se pueden resolver con una tabla
+     sin que alguien la mantenga cada mes:
+
+       · qué producto de Asana es un valor nuevo del Excel
+       · qué brief le toca a cada campaña, o ninguno
+
+     Se le manda la fila entera, incluido el objetivo —el texto
+     libre de quien planificó la campaña—, que es lo que de
+     verdad permite distinguir un desarrollo de un winback.
+
+     Si el modelo no está disponible, se devuelve lo que había:
+     nunca rompe la carga.
+  ---------------------------------------------------------- */
+  async emparejarConModelo(tasks, briefs, onProgress) {
+    const campanas = tasks.map(t => ({
+      pac: t.pac, name: t.name,
+      producto: t.excel?.producto || '', palanca: t.excel?.palanca || '',
+      subpalanca: t.excel?.subpalanca || '', medio: t.excel?.medio || '',
+      objetivo: t.excel?.objetivo || '', nombreTarea: t.excel?.nombreTarea || '',
+      dueDate: t.dueDate
+    }));
+
+    const vinculos = [];
+    const lotes = enLotes(campanas, 25);
+    let hechos = 0;
+    for (const lote of lotes) {
+      try {
+        const r = await fetch('/api/vincular', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ campanas: lote, briefs })
+        });
+        if (r.ok) vinculos.push(...((await r.json()).vinculos || []));
+      } catch { /* sin modelo se sigue con lo que hay */ }
+      hechos += lote.length;
+      onProgress?.(hechos, campanas.length);
+    }
+    return vinculos;
+  },
+
+  /* ----------------------------------------------------------
      0 · CATÁLOGOS
      ----------------------------------------------------------
      Secciones, campos y opciones del proyecto, con sus GIDs.

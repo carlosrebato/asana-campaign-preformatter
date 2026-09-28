@@ -160,6 +160,7 @@ const EXCEL_PARSER = (() => {
           fila, medio, palanca, producto, viabilidad,
           subpalanca,
           objetivo: clean(col(r, 'objetivo')),
+          nombreTarea: clean(col(r, 'nombreTarea')),
           responsable: clean(col(r, 'responsable')),
           po: clean(col(r, 'po')),            // unidad sin confirmar; solo texto
           mes: col(r, 'mes'),

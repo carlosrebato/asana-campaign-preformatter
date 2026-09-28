@@ -15,6 +15,8 @@
    este fichero y nada más.
 ============================================================ */
 
+import { resolverProductos, vincular } from './ia.js';
+
 const ASANA = 'https://app.asana.com/api/1.0';
 
 /* ------------------------------------------------------------
@@ -209,6 +211,16 @@ export default {
       if (url.pathname === '/api/duplicados' && request.method === 'POST') {
         const { pacs } = await request.json();
         return json({ duplicados: await duplicados(env, env.ASANA_WORKSPACE_GID, projectGid, pacs) });
+      }
+      // El modelo solo se usa para elegir entre opciones cerradas.
+      // Si no hay clave, se responde vacío y el flujo sigue sin él.
+      if (url.pathname === '/api/productos' && request.method === 'POST') {
+        if (!env.ANTHROPIC_API_KEY) return json({ resueltos: [], sinModelo: true });
+        return json(await resolverProductos(env, await request.json()));
+      }
+      if (url.pathname === '/api/vincular' && request.method === 'POST') {
+        if (!env.ANTHROPIC_API_KEY) return json({ vinculos: [], sinModelo: true });
+        return json(await vincular(env, await request.json()));
       }
       if (url.pathname === '/api/cargar' && request.method === 'POST') {
         const { tareas } = await request.json();
