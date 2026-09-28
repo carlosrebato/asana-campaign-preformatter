@@ -14,7 +14,7 @@ un fallo.
 
 - **VALORES**: lo que aparece escrito en la columna, y un par de nombres
   de campaña reales donde aparece. Los nombres ayudan: `Champions` a secas
-  no dice mucho, pero `PAC37533 FIDE VUELVE LA CHAMPIONS NOTI M+` sí.
+  no dice mucho, pero `PAC00024 FIDE VUELVE LA CHAMPIONS NOTI M+` sí.
 - **PRODUCTOS DE ASANA**: la lista de opciones válidas.
 - **SECCIONES**: dónde puede ir la tarea.
 

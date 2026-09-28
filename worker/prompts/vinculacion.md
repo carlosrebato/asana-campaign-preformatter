@@ -16,7 +16,7 @@ está leído y los briefs ya están extraídos. Solo emparejas.
   escribió quien planificó la campaña y explica de qué va.
 
   **El objetivo es lo que más te va a servir.** Un nombre como
-  `PAC37116_FTTR_Vuelta al cole_Sept 26` dice poco; su objetivo —"dar a
+  `PAC00021_FTTR_Vuelta al cole_Sept 26` dice poco; su objetivo —"dar a
   conocer FTTR a la planta convergente que tenga fibra y no tenga aún
   FTTR"— dice exactamente con qué brief casa y con cuál no.
 
@@ -94,10 +94,10 @@ Solo un array JSON, sin texto alrededor y sin ```:
 
 ```
 [
-  { "pac": "PAC37446", "brief": "Desarrollo y winback clientes sin Futbol",
+  { "pac": "PAC00022", "brief": "Desarrollo y winback clientes sin Futbol",
     "confianza": "alta", "motivo": "Upsell a Fútbol Total; el brief es el de desarrollo de fútbol.",
     "fragmento": "" },
-  { "pac": "PAC37390", "brief": "", "confianza": "alta",
+  { "pac": "PAC00023", "brief": "", "confianza": "alta",
     "motivo": "Newsletter recurrente de contenidos; ningún brief del mes la trata.",
     "fragmento": "" }
 ]
