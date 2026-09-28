@@ -13,6 +13,102 @@
 const API = {
 
   /* ----------------------------------------------------------
+     0 ter · PROPUESTA COMPARTIDA
+     ----------------------------------------------------------
+     La propuesta deja de vivir en el navegador de quien sube los
+     ficheros: se guarda y tiene enlace propio. El responsable de
+     cada campaña entra por ahí, revisa lo suyo y aprueba, y todos
+     ven el mismo estado.
+
+     Guardar no puede romper nada: si falla, se sigue trabajando
+     en local y solo se pierde la posibilidad de compartir.
+  ---------------------------------------------------------- */
+  async crearPropuesta(ficheros, tareas) {
+    try {
+      const r = await fetch('/api/propuesta', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ficheros, tareas })
+      });
+      return r.ok ? await r.json() : null;
+    } catch { return null; }
+  },
+
+  // Se mandan solo las tareas tocadas, y el servidor las aplica sobre lo
+  // guardado. Si otra persona está revisando a la vez, no se pisan.
+  async guardarCambios(id, cambios) {
+    try {
+      const r = await fetch('/api/propuesta', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, cambios })
+      });
+      return r.ok ? await r.json() : null;
+    } catch { return null; }
+  },
+
+  // Con `desde` el servidor contesta enseguida si nadie ha tocado nada.
+  async abrirPropuesta(id, desde) {
+    try {
+      const r = await fetch('/api/propuesta/' + encodeURIComponent(id)
+        + (desde ? `?desde=${desde}` : ''));
+      return r.ok ? await r.json() : null;
+    } catch { return null; }
+  },
+
+  /* ----------------------------------------------------------
+     0 bis · LEER LOS DOCUMENTOS
+     ----------------------------------------------------------
+     El modelo lee el texto y saca el material de mensaje. Es el
+     paso que hace que esto sobreviva a que el formato cambie
+     cada mes, y no se puede resolver con reglas.
+
+     Por trozos, porque con un documento entero el modelo se
+     pierde y además la llamada se pasa de tiempo. Se corta por
+     páginas y los briefs del mismo territorio se juntan.
+  ---------------------------------------------------------- */
+  async leerDocumentos(docs, onProgress) {
+    // Se trocea para que el modelo no se pierda, pero quien mira cuenta
+    // documentos, no trozos: se informa de las dos cosas.
+    const partes = [];
+    docs.forEach((d, i) => {
+      for (const trozo of ESTRATEGIA.trozos(d.texto || '')) {
+        partes.push({ nombre: d.name, texto: trozo, doc: i + 1 });
+      }
+    });
+    if (!partes.length) return [];
+
+    const briefs = [];
+    let hechas = 0;
+    const leer = async parte => {
+      try {
+        const r = await fetch('/api/leer', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parte)
+        });
+        if (r.ok) briefs.push(...((await r.json()).briefs || []));
+      } catch { /* un trozo ilegible no rompe el resto */ }
+      hechas++;
+      onProgress?.({ hechas, total: partes.length, nombre: parte.nombre,
+                     doc: parte.doc, docs: docs.length });
+    };
+
+    // De tres en tres: más rápido sin tentar los límites.
+    let siguiente = 0;
+    const turno = async () => { while (siguiente < partes.length) await leer(partes[siguiente++]); };
+    await Promise.all(Array.from({ length: Math.min(3, partes.length) }, turno));
+
+    // Un territorio puede aparecer en dos trozos: se juntan.
+    const porTitulo = new Map();
+    for (const b of briefs) {
+      const k = b.titulo.trim().toLowerCase();
+      if (porTitulo.has(k)) {
+        const y = porTitulo.get(k);
+        if (!y.texto.includes(b.texto)) y.texto += '\n' + b.texto;
+      } else porTitulo.set(k, { ...b });
+    }
+    return [...porTitulo.values()];
+  },
+
+  /* ----------------------------------------------------------
      0 bis · EMPAREJAMIENTO CON MODELO
      ----------------------------------------------------------
      Las dos preguntas que no se pueden resolver con una tabla
@@ -38,9 +134,10 @@ const API = {
     }));
 
     const vinculos = [];
-    const lotes = enLotes(campanas, 25);
+    const lotes = enLotes(campanas, 15);
     let hechos = 0;
-    for (const lote of lotes) {
+
+    const mandar = async lote => {
       try {
         const r = await fetch('/api/vincular', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -50,7 +147,15 @@ const API = {
       } catch { /* sin modelo se sigue con lo que hay */ }
       hechos += lote.length;
       onProgress?.(hechos, campanas.length);
-    }
+    };
+
+    // La primera tanda va sola: deja los briefs en caché y las
+    // siguientes los reutilizan, que es lo que abarata y acelera.
+    if (lotes.length) await mandar(lotes[0]);
+    let siguiente = 1;
+    const turno = async () => { while (siguiente < lotes.length) await mandar(lotes[siguiente++]); };
+    await Promise.all(Array.from({ length: Math.min(3, Math.max(0, lotes.length - 1)) }, turno));
+
     return vinculos;
   },
 
@@ -116,27 +221,26 @@ const API = {
      o Copilot tocando solo esta función.
   ---------------------------------------------------------- */
   async interpretarDocumentos(excelFile, strategyFiles, onProgress) {
-    const pasos = [
-      'Leyendo Excel de campañas',
-      'Extrayendo códigos PAC y fechas',
-      'Cruzando con documento de estrategia',
-      'Generando propuesta de tareas'
-    ];
-    for (let i = 0; i < pasos.length; i++) {
-      onProgress?.(i, pasos);
-      await new Promise(r => setTimeout(r, 620));
-    }
-    onProgress?.(pasos.length, pasos);
-    await new Promise(r => setTimeout(r, 300));
+    const avisar = info => onProgress?.(info);
+    avisar({ paso: 0, detalle: '', hechas: 0, total: 0 });
 
-    // Los dos ficheros ya se han leído en inspeccionarFichero. Aquí solo
-    // se cruzan: el Excel pone los campos, el documento pone el contexto.
-    // Sin Excel real → datos de ejemplo.
+    // El Excel ya está leído (determinista). Los documentos se leen
+    // ahora con el modelo, y después se empareja.
     if (excelFile?.parsed) {
       const tasks = JSON.parse(JSON.stringify(excelFile.parsed.tasks));
-      const briefs = [].concat(strategyFiles || [])
-        .flatMap(d => d?.parsed?.briefs || []);
-      return ESTRATEGIA.vincular(tasks, briefs);
+      const docs = [].concat(strategyFiles || []).filter(d => d?.texto);
+
+      const briefs = await API.leerDocumentos(docs, p =>
+        avisar({ paso: 1, hechas: p.hechas, total: p.total,
+                 cuenta: `${p.doc} de ${p.docs}`,
+                 detalle: p.nombre ? `Documento ${p.doc} de ${p.docs} · ${p.nombre}` : '' }));
+      if (!briefs.length) return tasks;
+
+      const vinculos = await API.emparejarConModelo(tasks, briefs, (hechas, total) =>
+        avisar({ paso: 2, hechas, total, cuenta: `${hechas} de ${total}`,
+          detalle: `${briefs.length} briefs encontrados en los documentos` }));
+
+      return aplicarVinculos(tasks, briefs, vinculos);
     }
     return JSON.parse(JSON.stringify(MOCK_TASKS));
   },
@@ -156,13 +260,12 @@ const API = {
       const parsed = EXCEL_PARSER.parse(buf);
       return { name: file.name, ext: 'XLSX', parsed };
     }
-    // Estrategia: se extraen los briefs de mensaje (estrategia.js).
-    // Si viene ilegible, se devuelve sin briefs y no se avisa de nada:
-    // las tareas saldrán sin contexto, que es un estado normal.
+    // Estrategia: aquí solo se saca el texto. Quién decide qué es
+    // material de mensaje es el modelo, en el paso de lectura.
     if (file && tipo === 'strategy') {
-      const parsed = await ESTRATEGIA.parse(file);
+      const texto = await ESTRATEGIA.texto(file);
       const ext = (file.name.split('.').pop() || '').toUpperCase();
-      return { name: file.name, ext, parsed };
+      return { name: file.name, ext, texto, briefs: [] };
     }
     if (file) {
       const ext = (file.name.split('.').pop() || '').toUpperCase();
@@ -189,6 +292,7 @@ const API = {
     const encontrados = [];
     // Por lotes: un Worker no puede hacer más de 50 llamadas salientes
     // por invocación, y cada PAC es una búsqueda.
+    let mirados = 0;
     for (const lote of enLotes(pacs, 40)) {
       try {
         const r = await fetch('/api/duplicados', {
@@ -200,7 +304,8 @@ const API = {
       } catch {
         /* sin backend no se puede comprobar: no se bloquea la carga */
       }
-      onProgress?.(encontrados.length);
+      mirados += lote.length;
+      onProgress?.({ hechas: mirados, total: pacs.length, cuenta: `${mirados} de ${pacs.length}` });
     }
     return encontrados;
   },
@@ -311,4 +416,46 @@ function aPayloadAsana(t) {
     sectionGid: CATALOGS.sections.find(s => s.id === t.sectionId)?.gid || '',
     custom_fields: cf
   };
+}
+
+
+/* ------------------------------------------------------------
+   APLICAR LO QUE DECIDIÓ EL MODELO
+   El modelo señala líneas del brief, no copia texto. Así no
+   puede cambiar ni una coma de lo que escribió Comercialización,
+   y su respuesta ocupa mucho menos, que es lo que hacía lenta
+   la espera.
+------------------------------------------------------------ */
+// "1,4-6" → esas líneas del brief, en orden y sin repetir.
+function lineasDe(texto, spec) {
+  if (!spec || !/\d/.test(spec)) return '';
+  const lineas = texto.split('\n');
+  const quiero = new Set();
+  for (const tramo of String(spec).split(',')) {
+    const m = tramo.trim().match(/^(\d+)\s*(?:-\s*(\d+))?$/);
+    if (!m) continue;
+    const a = +m[1], b = +(m[2] || m[1]);
+    for (let i = a; i <= b && i <= lineas.length; i++) if (i > 0) quiero.add(i);
+  }
+  const out = [...quiero].sort((x, y) => x - y).map(i => lineas[i - 1]).filter(Boolean);
+  return out.length && out.length < lineas.length ? out.join('\n') : '';
+}
+
+function aplicarVinculos(tasks, briefs, vinculos) {
+  const porPac = new Map(vinculos.map(v => [v.pac, v]));
+  const porTitulo = new Map(briefs.map(b => [b.titulo.trim().toLowerCase(), b]));
+
+  return tasks.map(t => {
+    const v = porPac.get(t.pac);
+    if (!v || !v.brief) return t;
+    const b = porTitulo.get(v.brief.trim().toLowerCase());
+    if (!b) return t;
+
+    return Object.assign({}, t, {
+      description: lineasDe(b.texto, v.lineas) || b.texto,
+      contextSource: b.documento ? `${b.titulo} · ${b.documento}` : b.titulo,
+      linkConfidence: v.confianza === 'baja' ? 'low' : 'high',
+      linkNote: v.motivo || undefined
+    });
+  });
 }

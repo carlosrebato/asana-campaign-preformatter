@@ -15,7 +15,7 @@
    este fichero y nada más.
 ============================================================ */
 
-import { resolverProductos, vincular } from './ia.js';
+import { leerDocumento, resolverProductos, vincular } from './ia.js';
 
 const ASANA = 'https://app.asana.com/api/1.0';
 
@@ -188,6 +188,53 @@ async function crearUna(env, projectGid, t) {
   }
 }
 
+/* ---------------- PROPUESTAS COMPARTIDAS ----------------
+   La propuesta deja de vivir en el navegador de quien sube los
+   ficheros y pasa a tener un enlace propio. Así el responsable
+   de cada campaña entra, revisa lo suyo y aprueba, y todos ven
+   lo mismo.
+
+   No hay usuarios ni contraseñas: quien tenga el enlace puede
+   aprobar. Es un equipo y hay confianza (decisión tomada), pero
+   por eso el identificador es largo y no adivinable.
+---------------------------------------------------------- */
+function nuevoId() {
+  const b = new Uint8Array(9);
+  crypto.getRandomValues(b);
+  return [...b].map(x => x.toString(36).padStart(2, '0')).join('').slice(0, 14);
+}
+
+async function guardarPropuesta(env, id, datos) {
+  if (!env.PROPUESTAS) throw new Error('Falta el almacén de propuestas');
+  const ahora = new Date().toISOString();
+  const previa = await env.PROPUESTAS.get(id, 'json');
+
+  // Si llegan cambios sueltos se aplican sobre lo guardado, en vez de
+  // sobrescribir la propuesta entera. Así dos personas revisando a la
+  // vez no se pisan: cada una toca sus tareas.
+  let tareas = datos.tareas || previa?.tareas || [];
+  if (previa && Array.isArray(datos.cambios)) {
+    const porId = new Map(previa.tareas.map(t => [t.id, t]));
+    for (const c of datos.cambios) {
+      const t = porId.get(c.id);
+      if (t) Object.assign(t, c.campos);
+    }
+    tareas = [...porId.values()];
+  }
+
+  const doc = {
+    id,
+    creada: previa?.creada || ahora,
+    actualizada: ahora,
+    version: (previa?.version || 0) + 1,
+    ficheros: datos.ficheros || previa?.ficheros || {},
+    tareas
+  };
+  // 90 días: una planificación mensual no se revisa más allá de eso.
+  await env.PROPUESTAS.put(id, JSON.stringify(doc), { expirationTtl: 60 * 60 * 24 * 90 });
+  return doc;
+}
+
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), {
   status, headers: { 'Content-Type': 'application/json' }
 });
@@ -214,13 +261,37 @@ export default {
       }
       // El modelo solo se usa para elegir entre opciones cerradas.
       // Si no hay clave, se responde vacío y el flujo sigue sin él.
+      // Crear o actualizar una propuesta compartida.
+      if (url.pathname === '/api/propuesta' && request.method === 'POST') {
+        const datos = await request.json();
+        const id = datos.id || nuevoId();
+        return json(await guardarPropuesta(env, id, datos));
+      }
+      // Leerla por su enlace.
+      if (url.pathname.startsWith('/api/propuesta/') && request.method === 'GET') {
+        const id = url.pathname.split('/').pop();
+        const doc = env.PROPUESTAS ? await env.PROPUESTAS.get(id, 'json') : null;
+        if (!doc) return json({ error: 'Esa propuesta ya no existe' }, 404);
+        // Con ?desde=N solo se devuelve si alguien la ha tocado después:
+        // así se puede preguntar cada pocos segundos sin gastar.
+        const desde = +url.searchParams.get('desde');
+        if (desde && doc.version <= desde) return json({ version: doc.version, sinCambios: true });
+        return json(doc);
+      }
+      if (url.pathname === '/api/leer' && request.method === 'POST') {
+        if (!env.ANTHROPIC_API_KEY) return json({ briefs: [], sinModelo: true });
+        return json(await leerDocumento(env, await request.json()));
+      }
       if (url.pathname === '/api/productos' && request.method === 'POST') {
         if (!env.ANTHROPIC_API_KEY) return json({ resueltos: [], sinModelo: true });
         return json(await resolverProductos(env, await request.json()));
       }
       if (url.pathname === '/api/vincular' && request.method === 'POST') {
         if (!env.ANTHROPIC_API_KEY) return json({ vinculos: [], sinModelo: true });
-        return json(await vincular(env, await request.json()));
+        const cuerpo = await request.json();
+        const res = await vincular(env, cuerpo);
+        // ?crudo=1 devuelve además el texto tal cual, para depurar.
+        return json(url.searchParams.get('crudo') ? res : { vinculos: res.vinculos, uso: res.uso });
       }
       if (url.pathname === '/api/cargar' && request.method === 'POST') {
         const { tareas } = await request.json();
