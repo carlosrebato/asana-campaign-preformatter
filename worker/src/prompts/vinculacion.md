@@ -51,16 +51,18 @@ Los briefs se escriben **por territorio**, no por campaña. Que trece
 campañas de fútbol compartan brief es lo normal y lo correcto. No busques
 un brief distinto para cada una ni repartas por repartir.
 
-## Regla 4 · El texto se copia, no se reescribe
+## Regla 4 · No copias texto: señalas líneas
 
-Si el brief distingue varios colectivos (desarrollo, winback, captación) y
-la campaña es claramente de uno, puedes devolver en `fragmento` **las
-líneas literales** que le aplican.
+Cada brief te llega con sus líneas numeradas. Si el brief distingue varios
+colectivos (desarrollo, winback, captación) y la campaña es claramente de
+uno, dime **qué líneas le aplican** en `lineas`.
 
-**Copia y pega exacto.** Ni una palabra cambiada, ni resumida, ni unida.
-Si no puedes acotar sin reescribir, deja `fragmento` vacío y se usa el
-brief entero. Un fragmento que no aparezca literalmente en el brief se
-descarta.
+Ejemplo: `"lineas": "1,4-6"` — la línea 1 y de la 4 a la 6.
+
+No escribas el texto: se copia solo, de ahí. Así no puede cambiarse ni una
+coma de lo que escribió Comercialización, y la respuesta ocupa mucho menos.
+
+Si a la campaña le aplica el brief entero, deja `lineas` vacío.
 
 ## Regla 5 · Di cuándo dudas
 
@@ -95,18 +97,18 @@ Solo un array JSON, sin texto alrededor y sin ```:
 ```
 [
   { "pac": "PAC00022", "brief": "Desarrollo y winback clientes sin Futbol",
-    "confianza": "alta", "motivo": "Upsell a Fútbol Total; el brief es el de desarrollo de fútbol.",
-    "fragmento": "" },
+    "confianza": "alta", "motivo": "Upsell a Fútbol Total.", "lineas": "2,5-6" },
   { "pac": "PAC00023", "brief": "", "confianza": "alta",
-    "motivo": "Newsletter recurrente de contenidos; ningún brief del mes la trata.",
-    "fragmento": "" }
+    "motivo": "Newsletter recurrente; ningún brief la trata.", "lineas": "" }
 ]
 ```
 
 - `pac`: el de la campaña, tal cual.
 - `brief`: el **título exacto** de un brief de la lista, o `""` si ninguno.
-- `motivo`: una frase. Por qué ese y no otro, o por qué ninguno. Se lee en
-  la revisión, así que escríbela para una persona, no para un registro.
-- `fragmento`: líneas literales del brief, o `""`.
+- `motivo`: **máximo 15 palabras**. Por qué ese y no otro, o por qué
+  ninguno. Se lee en la revisión, así que escríbelo para una persona.
+  Sé breve de verdad: la respuesta entera tiene un límite y si te
+  extiendes se corta a media lista y se pierden campañas.
+- `lineas`: qué líneas del brief aplican (`"1,4-6"`), o `""` para el brief entero.
 
 Una entrada por campaña, todas, en el mismo orden en que te llegan.

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260928135642">
+<link rel="stylesheet" href="app.css?v=20260928180738">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -18,7 +18,7 @@
         <div class="brand-sub">Marketing · Planificación mensual</div>
       </div>
     </div>
-    <span class="chip-interno">Interno</span>
+    <span class="chip-beta" title="En pruebas: los emparejamientos los propone un modelo y hay que revisarlos">Beta</span>
     <nav class="stepper" id="stepper"></nav>
   </div>
 </header>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260928135642"></script>
-<script src="excel.js?v=20260928135642"></script>
-<script src="estrategia.js?v=20260928135642"></script>
-<script src="api.js?v=20260928135642"></script>
+<script src="data.js?v=20260928180738"></script>
+<script src="excel.js?v=20260928180738"></script>
+<script src="estrategia.js?v=20260928180738"></script>
+<script src="api.js?v=20260928180738"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -42,8 +42,9 @@ const D = CATALOGS;
 const S = {
   screen: 'entrada',          // entrada | procesando | revision | confirmar | resultado
   files: { excel: null, strategy: [] },   // varios documentos de estrategia
-  procStep: -1,
-  procPasos: [],
+  // Todo lo que la pantalla de proceso necesita para contar qué pasa.
+  // Tarda minutos: sin detalle real parece colgada.
+  proc: { paso: 0, detalle: '', cuenta: '', hechas: 0, total: 0, inicio: 0, seg: 0 },
   tasks: [],
   dragId: null,
   dragOverSection: null,
@@ -51,6 +52,12 @@ const S = {
   loadProgress: [0, 0],
   result: null,
   dupes: [],
+  filtro: 'todas',        // todas | revisar | sin | pendientes
+  propuestaId: '',        // identificador del enlace compartido
+  propuestaVer: 0,        // versión que tenemos de la propuesta
+  copiado: false,         // acaba de copiarse el enlace
+  tocadas: {},            // tareas cambiadas aquí, pendientes de guardar
+  sincro: '',             // '', 'guardando', 'guardado', 'fuera'
   // null mientras se piden los catálogos: hasta que se sabe si Asana
   // responde no se avisa de nada, que si no el aviso parpadea al cargar.
   catalogos: null
@@ -220,20 +227,49 @@ function viewEntrada() {
 }
 
 /* ---------------- 2 · PROCESANDO ---------------- */
+const PASOS_PROC = [
+  { titulo: 'Leyendo el Excel',
+    sub: 'Campañas, fechas, productos y objetivos. Esto es mecánico y va rápido.' },
+  { titulo: 'Leyendo los documentos de estrategia',
+    sub: 'Buscando qué se quiere contar en cada campaña. Es la parte lenta: se leen enteros.' },
+  { titulo: 'Emparejando cada campaña con su contexto',
+    sub: 'Decidiendo qué brief le toca a cada una, o si no le toca ninguno.' },
+  { titulo: 'Comprobando qué hay ya en Asana',
+    sub: 'Buscando por PAC para no crear nada dos veces.' }
+];
+
+function reloj(seg) {
+  const m = Math.floor(seg / 60), s = seg % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 function viewProcesando() {
+  const P = S.proc;
   return `
   <main class="main-narrow">
-    <h1 class="page">Interpretando documentos</h1>
-    <p style="font-size:14px;color:#605E5C;margin:8px 0 26px">
-      La IA está cruzando el Excel con el documento de estrategia.
+    <h1 class="page">Preparando la propuesta</h1>
+    <p class="proc-intro">
+      Suele tardar dos o tres minutos. Puedes dejar esta pestaña abierta y volver luego.
+      <span class="proc-reloj"><span class="proc-latido"></span>Trabajando · <span id="proc-seg">${reloj(P.seg)}</span></span>
     </p>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      ${S.procPasos.map((p, i) => {
-        const cls = i < S.procStep ? 'proc-step done' : i === S.procStep ? 'proc-step active' : 'proc-step';
-        const dot = i < S.procStep ? ICONS.check : '';
-        return `<div class="${cls}"><span class="proc-dot">${dot}</span>${esc(p)}</div>`;
+
+    <div class="proc-lista">
+      ${PASOS_PROC.map((p, i) => {
+        const hecho = i < P.paso, activo = i === P.paso;
+        const barra = activo && P.total > 1
+          ? `<div class="proc-barra"><span style="width:${Math.round(100 * P.hechas / P.total)}%"></span></div>` : '';
+        return `
+        <div class="proc-step ${hecho ? 'done' : activo ? 'active' : ''}">
+          <span class="proc-dot">${hecho ? ICONS.check : ''}</span>
+          <div class="proc-txt">
+            <div class="proc-titulo">${esc(p.titulo)}</div>
+            ${activo ? `<div class="proc-sub">${esc(P.detalle || p.sub)}</div>${barra}` : ''}
+          </div>
+          ${activo && P.cuenta ? `<span class="proc-cuenta">${esc(P.cuenta)}</span>` : ''}
+        </div>`;
       }).join('')}
     </div>
+
   </main>`;
 }
 
@@ -245,8 +281,17 @@ function viewRevision() {
   const appN = S.tasks.filter(t => t.approved).length;
   const pend = total - appN;
 
+  const pasaFiltro = t => {
+    if (S.filtro === 'revisar') return t.linkConfidence === 'low';
+    if (S.filtro === 'sin') return !t.description;
+    if (S.filtro === 'pendientes') return !t.approved;
+    return true;
+  };
+  const revisarN = S.tasks.filter(t => t.linkConfidence === 'low').length;
+  const sinN = S.tasks.filter(t => !t.description).length;
+
   const secciones = D.sections.map(sec => {
-    const ts = S.tasks.filter(t => t.sectionId === sec.id);
+    const ts = S.tasks.filter(t => t.sectionId === sec.id && pasaFiltro(t));
     if (!ts.length) return '';
     const aprob = ts.filter(t => t.approved).length;
     const hayPend = aprob < ts.length;
@@ -292,22 +337,54 @@ function viewRevision() {
       </button>
     </div>
 
-    <div style="padding:20px 2px 6px">
+    <div class="revision-cabecera">
       <h1 class="page">Propuesta de tareas</h1>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <span class="filechip">${ICONS.file}${esc(S.files.excel.name)}<span class="ext">${S.files.excel.ext}</span></span>
-        ${S.files.strategy.map(d => `<span style="color:#9F9C99;font-size:12px">+</span>
-        <span class="filechip">${ICONS.file}${esc(d.name)}<span class="ext">${d.ext}</span></span>`).join('')}
+      <p class="revision-intro">
+        Estas son las tareas que se van a crear en Asana, con el contexto que
+        les corresponde. <strong>Revisa las tuyas, corrige lo que haga falta y
+        apruébalas.</strong> Nada llega a Asana hasta que alguien pulse
+        <em>Cargar en Asana</em>. El contexto lo ha propuesto un modelo de IA
+        leyendo los documentos del mes: las marcadas en ámbar son en las que
+        tiene dudas.
+      </p>
+
+      ${S.propuestaId ? `
+      <div class="compartir">
+        <div class="compartir-txt">
+          <div class="compartir-titulo">Comparte esta revisión</div>
+          <div class="compartir-sub">
+            Quien abra el enlace ve estas mismas tareas y puede aprobar las suyas.
+            Lo que aprueba cada uno se ve al momento.
+          </div>
+        </div>
+        <button class="btn-compartir ${S.copiado ? 'ok' : ''}" data-compartir="1">
+          ${S.copiado ? '✓ Copiado' : 'Copiar enlace'}
+        </button>
+      </div>` : ''}
+
+      <div class="barra-filtros">
+        <div class="filtros">
+          ${[['todas', `Todas · ${total}`],
+             ['revisar', `A revisar · ${revisarN}`],
+             ['sin', `Sin contexto · ${sinN}`],
+             ['pendientes', `Sin aprobar · ${pend}`]]
+            .map(([id, txt]) =>
+              `<button class="filtro ${S.filtro === id ? 'on' : ''}" data-filtro="${id}">${txt}</button>`).join('')}
+        </div>
+        <span id="estado-guardado" class="sincro ${S.sincro}">${TEXTO_SINCRO[S.sincro] || ''}</span>
       </div>
+
       <div class="legend">
-        <span class="legend-item"><span class="bola ok"></span> Vinculación clara — contexto encontrado y vinculado sin dudas</span>
+        <span class="legend-item"><span class="bola ok"></span> Vinculación clara</span>
         <span class="legend-item"><span class="bola review"></span> Vinculación probable — revisar</span>
         <span class="legend-item"><span class="bola"></span> Sin vinculación</span>
         <span class="legend-item"><span class="bola manual"></span> Creada a mano</span>
       </div>
     </div>
 
-    ${secciones}
+    ${secciones.trim() ? secciones : `
+      <p class="vacio">No hay tareas con este filtro.
+        <button class="btn-link-section" data-filtro="todas">Ver todas</button></p>`}
   </main>`;
 }
 
@@ -384,8 +461,8 @@ function cardHTML(t) {
   const badge = badgeHTML(t);
 
   const sel = (campo, opts, val) => `
-    <select data-set="${campo}" data-id="${t.id}">
-      ${opts.includes(val) ? '' : '<option value="" selected>—</option>'}
+    <select data-set="${campo}" data-id="${t.id}" class="${val && !opts.includes(val) ? 'sin-catalogo' : ''}">
+      ${opts.includes(val) ? '' : `<option value="" selected>${val ? esc(val) + ' — no existe en Asana, elige otro' : 'Sin asignar'}</option>`}
       ${opts.map(o => `<option value="${esc(o)}" ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}
     </select>`;
 
@@ -418,6 +495,8 @@ function cardHTML(t) {
     <div class="card-desc field">
       ${t.descOpen ? `
         <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>
+        ${t.linkConfidence === 'low' && t.linkNote
+          ? `<p class="nota-revisar"><strong>Revisar</strong> · ${esc(t.linkNote)}</p>` : ''}
         <div class="desc-head">
           ${t.contextSource ? `<span class="desc-fuente">${esc(t.contextSource)}</span>` : '<span class="desc-fuente"></span>'}
           <button class="desc-ampliar" data-descedit="${t.id}">${t.descEdit ? 'Hecho' : 'Editar'}</button>
@@ -536,6 +615,10 @@ function patch(id, campos) {
   const t = S.tasks.find(x => x.id === id);
   if (!t) return;
   Object.assign(t, campos);
+  // Abrir o cerrar una tarjeta es cosa de quien mira, no del equipo.
+  const reales = Object.fromEntries(Object.entries(campos)
+    .filter(([k]) => !['editing', 'descOpen', 'descEdit', 'flash'].includes(k)));
+  if (Object.keys(reales).length) guardar(id, reales);
   // Cambiar producto recoloca la tarjeta en su sección
   if (campos.product) {
     const dest = D.productSectionMap[campos.product];
@@ -546,19 +629,56 @@ function patch(id, campos) {
 
 async function procesar() {
   S.screen = 'procesando';
-  S.procPasos = []; S.procStep = -1;
+  S.proc = { paso: 0, detalle: '', cuenta: '', hechas: 0, total: 0, inicio: Date.now(), seg: 0 };
   render();
-  let pasos = [];
-  const tasks = await API.interpretarDocumentos(S.files.excel, S.files.strategy, (i, ps) => {
-    pasos = ps; S.procPasos = ps; S.procStep = i; render();
-  });
-  S.tasks = tasks.map(t => Object.assign({ approved: false, descOpen: false, flash: false, editing: false, typology: 'Growth' }, t));
-  // Comprobar PACs en Asana tarda: son tantas búsquedas como campañas.
-  S.procPasos = [...pasos, 'Comprobando en Asana si ya existen'];
-  S.procStep = pasos.length; render();
-  S.dupes = await API.comprobarDuplicados(S.tasks);
-  S.screen = 'revision';
-  render();
+
+  // El reloj corre solo: es la señal de que sigue vivo aunque el paso
+  // tarde un minuto en cambiar.
+  //
+  // Se escribe directamente en su elemento, sin repintar la pantalla:
+  // repintar cada segundo recreaba el spinner y reiniciaba su giro, así
+  // que parecía parado justo cuando más importa que se mueva.
+  const tic = setInterval(() => {
+    if (S.screen !== 'procesando') return clearInterval(tic);
+    S.proc.seg = Math.floor((Date.now() - S.proc.inicio) / 1000);
+    const el = document.getElementById('proc-seg');
+    if (el) el.textContent = reloj(S.proc.seg);
+  }, 1000);
+
+  try {
+    // Repintar solo cuando cambia algo visible: cada repintado corta el
+    // giro del spinner.
+    let firma = '';
+    const tasks = await API.interpretarDocumentos(S.files.excel, S.files.strategy, info => {
+      Object.assign(S.proc, info);
+      const nueva = `${info.paso}|${info.cuenta || ''}|${info.detalle || ''}`;
+      if (nueva === firma) return;
+      firma = nueva;
+      render();
+    });
+    if (!tasks.length) { S.screen = 'entrada'; return; }
+    S.tasks = tasks.map(t => Object.assign(
+      { approved: false, descOpen: false, flash: false, editing: false, typology: 'Growth' }, t));
+    Object.assign(S.proc, { paso: 3, detalle: '', cuenta: '', hechas: 0, total: 0 });
+    render();
+    S.dupes = await API.comprobarDuplicados(S.tasks, info => {
+      Object.assign(S.proc, info, { paso: 3 });
+      render();
+    });
+    // Nace el enlace: a partir de aquí la propuesta es compartible.
+    S.propuestaId = '';
+    const doc = await API.crearPropuesta(ficherosDeLaPropuesta(), S.tasks);
+    if (doc) {
+      S.propuestaId = doc.id;
+      S.propuestaVer = doc.version || 1;
+      history.replaceState(null, '', '#' + doc.id);
+      escucharCambios();
+    }
+    S.screen = 'revision';
+  } finally {
+    clearInterval(tic);
+    render();
+  }
 }
 
 async function cargar() {
@@ -572,12 +692,104 @@ async function cargar() {
   render();
 }
 
+/* ---------------- PROPUESTA COMPARTIDA ---------------- */
+function ficherosDeLaPropuesta() {
+  return {
+    excel: S.files.excel ? { name: S.files.excel.name, ext: S.files.excel.ext } : null,
+    estrategia: (S.files.strategy || []).map(d => ({ name: d.name, ext: d.ext }))
+  };
+}
+
+// Se guarda un poco después del último cambio: aprobar una sección son
+// veinte cambios seguidos y no hace falta escribir veinte veces.
+let guardadoPendiente;
+function guardar(id, campos) {
+  if (!S.propuestaId) return;
+  S.tocadas[id] = Object.assign(S.tocadas[id] || {}, campos);
+  S.sincro = 'guardando'; pintarSincro();
+  clearTimeout(guardadoPendiente);
+  guardadoPendiente = setTimeout(async () => {
+    const cambios = Object.entries(S.tocadas).map(([id, campos]) => ({ id, campos }));
+    S.tocadas = {};
+    const doc = await API.guardarCambios(S.propuestaId, cambios);
+    if (doc) S.propuestaVer = doc.version || S.propuestaVer;
+    S.sincro = doc ? 'guardado' : 'fuera';
+    pintarSincro();
+  }, 700);
+}
+
+const TEXTO_SINCRO = {
+  guardando: 'Guardando…',
+  guardado: 'Todo guardado',
+  fuera: 'Sin conexión: los cambios no se están guardando'
+};
+function pintarSincro() {
+  const el = document.getElementById('estado-guardado');
+  if (el) {
+    el.textContent = TEXTO_SINCRO[S.sincro] || '';
+    el.className = 'sincro ' + S.sincro;
+  }
+}
+
+// Mientras la revisión está abierta se pregunta cada pocos segundos si
+// alguien ha aprobado algo. Es lo que hace que sea una revisión de
+// equipo y no cuatro copias que se pisan.
+let sondeo;
+function escucharCambios() {
+  clearInterval(sondeo);
+  sondeo = setInterval(async () => {
+    if (S.screen !== 'revision' || !S.propuestaId) return;
+    if (Object.keys(S.tocadas).length) return;   // primero lo nuestro
+    const doc = await API.abrirPropuesta(S.propuestaId, S.propuestaVer);
+    if (!doc || doc.sinCambios) return;
+    S.propuestaVer = doc.version || 0;
+    // Se respeta lo que se esté editando en esta pantalla.
+    const abiertas = new Map(S.tasks.map(t => [t.id, t]));
+    S.tasks = (doc.tareas || []).map(t => {
+      const mia = abiertas.get(t.id);
+      return mia ? { ...t, editing: mia.editing, descOpen: mia.descOpen, descEdit: mia.descEdit } : t;
+    });
+    render();
+  }, 5000);
+}
+
+// Si la dirección trae un identificador, se abre esa propuesta en vez
+// de empezar de cero.
+async function abrirDesdeEnlace() {
+  const id = location.hash.replace('#', '').trim();
+  if (!id) return false;
+  const doc = await API.abrirPropuesta(id);
+  if (!doc) return false;
+  S.propuestaId = doc.id;
+  S.files = {
+    excel: doc.ficheros?.excel || { name: '(cargado en otro momento)', ext: '' },
+    strategy: doc.ficheros?.estrategia || []
+  };
+  S.propuestaVer = doc.version || 0;
+  S.tasks = doc.tareas || [];
+  S.screen = 'revision';
+  render();
+  escucharCambios();
+  return true;
+}
+
 /* ---------------- EVENTOS ---------------- */
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-quitar-doc],[data-descedit],[data-paso],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
+  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-quitar-doc],[data-descedit],[data-paso],[data-filtro],[data-compartir],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
   if (!el) return;
 
-  if (el.dataset.paso) {
+  if (el.dataset.compartir) {
+    const url = location.origin + location.pathname + '#' + S.propuestaId;
+    let ok = false;
+    try { await navigator.clipboard.writeText(url); ok = true; } catch { /* abajo */ }
+    if (!ok) { prompt('Copia el enlace:', url); return; }
+    S.copiado = true; render();
+    setTimeout(() => { S.copiado = false; render(); }, 2600);
+  }
+  else if (el.dataset.filtro) {
+    S.filtro = el.dataset.filtro; render(); window.scrollTo(0, 0);
+  }
+  else if (el.dataset.paso) {
     S.screen = el.dataset.paso; render();
     window.scrollTo(0, 0);
   }
@@ -621,7 +833,7 @@ document.addEventListener('click', async e => {
   else if (el.dataset.approveSec) {
     const ts = S.tasks.filter(t => t.sectionId === el.dataset.approveSec);
     const hayPend = ts.some(t => !t.approved);
-    ts.forEach(t => t.approved = hayPend);
+    ts.forEach(t => { t.approved = hayPend; guardar(t.id, { approved: hayPend }); });
     render();
   }
   else if (el.dataset.clear) {
@@ -737,7 +949,10 @@ document.addEventListener('drop', async e => {
 // Los catálogos se piden a Asana antes de nada. Si no hay backend,
 // se sigue con la copia de data.js y se avisa en la entrada.
 render();
-API.cargarCatalogos().then(r => { S.catalogos = r; render(); });
+API.cargarCatalogos().then(async r => {
+  S.catalogos = r;
+  if (!await abrirDesdeEnlace()) render();
+});
 </script>
 </body>
 </html>

@@ -21,31 +21,36 @@ input, select, textarea { font-family: inherit; }
 }
 .topbar-inner {
   max-width: 1180px; margin: 0 auto;
-  padding: 14px 28px;
-  display: flex; align-items: center; gap: 14px;
+  padding: 15px 28px;
+  display: flex; align-items: center; gap: 16px;
 }
 .brand { display: flex; align-items: center; gap: 11px; }
-.brand img { width: 30px; height: 30px; object-fit: contain; }
-.brand-name { font-size: 16px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
-.brand-sub { font-size: 10.5px; color: #807D7B; letter-spacing: .01em; }
-.chip-interno {
-  font-size: 10px; font-weight: 700; color: #605E5C;
-  background: #F3EEEA; border-radius: 9999px; padding: 3px 10px;
+.brand img { width: 34px; height: 34px; object-fit: contain; }
+.brand-name { font-size: 18px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.brand-sub { font-size: 11.5px; color: #807D7B; letter-spacing: .01em; }
+/* Mismo rojo que el aviso de "Obligatorio": avisa de que esto está
+   en pruebas y de que lo que propone hay que revisarlo. */
+.chip-beta {
+  font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: #B83227; background: #FBE6E3; border-radius: 9999px; padding: 3px 9px;
 }
 
 /* ============ STEPPER ============ */
-.stepper { display: flex; align-items: center; gap: 3px; margin-left: auto; }
-.step { display: flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 9999px; }
+.stepper { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.step {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 14px; border-radius: 9999px;
+}
 .step.active { background: #D3EEFF; }
 .step-num {
-  width: 19px; height: 19px; border-radius: 50%;
+  width: 23px; height: 23px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10.5px; font-weight: 800;
+  font-size: 12px; font-weight: 800;
   background: #F3EEEA; color: #9F9C99; flex-shrink: 0;
 }
 .step.active .step-num { background: #0066FF; color: #fff; }
 .step.done .step-num { background: #CEF7BF; color: #38552B; }
-.step-label { font-size: 12.5px; font-weight: 500; color: #9F9C99; white-space: nowrap; }
+.step-label { font-size: 14px; font-weight: 500; color: #9F9C99; white-space: nowrap; }
 .step.active .step-label { color: #0066FF; font-weight: 700; }
 .step.done .step-label { color: #605E5C; }
 .step-ir { cursor: pointer; border-radius: 9999px; transition: .12s; }
@@ -57,14 +62,23 @@ input, select, textarea { font-family: inherit; }
   margin-top: 14px; font-size: 13px; color: #605E5C;
   display: flex; align-items: center; gap: 6px;
 }
-.step-sep { color: #DFDBD6; font-size: 11px; }
+
+/* En pantallas justas se esconde el nombre del paso: el número y el
+   color siguen diciendo dónde estás, y no se rompe la cabecera. */
+@media (max-width: 1080px) {
+  .step-label { display: none; }
+  .step { padding: 7px 9px; }
+  .brand-sub { display: none; }
+}
+
+.step-sep { color: #DFDBD6; font-size: 12px; }
 
 /* ============ LAYOUT ============ */
 .main { max-width: 1180px; margin: 0 auto; padding: 0 28px 96px; }
 .main-narrow { max-width: 660px; margin: 0 auto; padding: 48px 28px 96px; }
 
 h1.page { font-size: 24px; font-weight: 800; letter-spacing: -.015em; }
-h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
+h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
 
 /* ============ ENTRADA ============ */
 .drop-grid {
@@ -145,21 +159,60 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .btn-link-section:hover { background: #D3EEFF; }
 
 /* ============ PROCESANDO ============ */
+.proc-intro { font-size: 14px; color: #605E5C; margin: 8px 0 26px; line-height: 1.55; }
+
+.proc-lista { display: flex; flex-direction: column; gap: 6px; }
 .proc-step {
-  display: flex; align-items: center; gap: 13px;
-  padding: 13px 16px; border-radius: 12px;
-  font-size: 13.5px; color: #9F9C99; transition: .2s;
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px; border-radius: 12px; border: 1px solid transparent;
+  color: #9F9C99; transition: .18s;
 }
-.proc-step.active { background: #fff; border: 1px solid #D3EEFF; color: #262423; font-weight: 500; }
+.proc-step.active { background: #fff; border-color: #D3EEFF; color: #262423; }
 .proc-step.done { color: #605E5C; }
+.proc-txt { flex: 1; min-width: 0; }
+.proc-titulo { font-size: 14px; font-weight: 500; }
+.proc-step.active .proc-titulo { font-weight: 700; }
+.proc-sub {
+  font-size: 12.5px; color: #807D7B; margin-top: 3px; line-height: 1.45;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.proc-cuenta {
+  font-size: 12px; font-weight: 700; color: #0066FF;
+  font-variant-numeric: tabular-nums; flex-shrink: 0; padding-top: 1px;
+}
+.proc-barra {
+  height: 4px; background: #EFEAE5; border-radius: 9999px;
+  margin-top: 9px; overflow: hidden;
+}
+.proc-barra span {
+  display: block; height: 100%; background: #0066FF;
+  border-radius: 9999px; transition: width .4s ease;
+}
 .proc-dot {
-  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
-  border: 2px solid #DFDBD6;
-  display: flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0; margin-top: 3px;
+  border: 2px solid #EFEAE5; display: flex; align-items: center; justify-content: center;
 }
 .proc-step.done .proc-dot { background: #CEF7BF; border-color: #CEF7BF; }
-.proc-step.active .proc-dot { border-color: #0066FF; border-right-color: transparent; animation: spin .7s linear infinite; }
+/* Anillo completo y claro con un solo hueco: a 15px, dos bordes
+   transparentes se leían como una letra C en vez de como un giro. */
+.proc-step.active .proc-dot {
+  border-color: #D3EEFF; border-top-color: #0066FF;
+  animation: spin .8s linear infinite;
+}
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* El reloj y el latido son la prueba de que sigue vivo: los pasos
+   pueden tardar un minuto en cambiar y sin esto parece colgado. */
+.proc-reloj {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-left: 4px; font-size: 12.5px; color: #9F9C99;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.proc-latido {
+  width: 7px; height: 7px; border-radius: 50%; background: #0066FF;
+  animation: latido 1.6s ease-in-out infinite;
+}
+@keyframes latido { 0%,100% { opacity: .25 } 50% { opacity: 1 } }
 
 /* ============ STATS BAR ============ */
 .statsbar {
@@ -199,12 +252,67 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .filechip {
   display: inline-flex; align-items: center; gap: 7px;
   background: #fff; border: 1px solid #F3EEEA; border-radius: 9999px;
-  padding: 5px 13px; font-size: 12px; font-weight: 500; color: #403F3D;
+  padding: 6px 14px; font-size: 13px; font-weight: 500; color: #403F3D;
 }
 .filechip .ext { font-size: 9.5px; font-weight: 700; color: #9F9C99; letter-spacing: .05em; }
 
-.legend { display: flex; align-items: center; gap: 22px; margin-top: 16px; flex-wrap: wrap; }
-.legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #807D7B; }
+/* ============ PÁGINA 3 · REVISIÓN ============ */
+/* Esta es la que llega por enlace a gente que no ha subido nada, así
+   que tiene que explicarse sola: qué es, qué hacer y dónde mirar. */
+.revision-cabecera { padding: 22px 2px 4px; }
+.revision-intro {
+  max-width: 760px; margin: 12px 0 0;
+  font-size: 15px; line-height: 1.6; color: #403F3D;
+}
+.revision-intro strong { color: #262423; }
+
+/* El enlace es lo que convierte esto en una revisión de equipo, así
+   que se ve, se entiende y se copia de un clic. */
+.compartir {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  margin-top: 20px; padding: 16px 20px;
+  background: #F5FAFF; border: 1px solid #D3EEFF; border-radius: 14px;
+}
+.compartir-txt { flex: 1; min-width: 260px; }
+.compartir-titulo { font-size: 15px; font-weight: 800; color: #262423; }
+.compartir-sub { font-size: 13px; color: #605E5C; margin-top: 3px; line-height: 1.5; }
+.btn-compartir {
+  background: #0066FF; color: #fff; border: none; border-radius: 9999px;
+  padding: 11px 22px; font-size: 14px; font-weight: 700;
+  transition: .14s; white-space: nowrap;
+}
+.btn-compartir:hover { background: #0052CC; }
+.btn-compartir.ok { background: #CEF7BF; color: #38552B; }
+.guardado { margin-top: 8px; font-size: 12px; color: #9F9C99; }
+
+.barra-filtros {
+  display: flex; align-items: center; gap: 16px;
+  margin-top: 20px; flex-wrap: wrap;
+}
+.filtros { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Estado del guardado: discreto salvo cuando hay un problema. */
+.sincro { font-size: 12.5px; color: #9F9C99; margin-left: auto; }
+.sincro.guardado { color: #38552B; }
+.sincro.fuera { color: #B83227; font-weight: 700; }
+.filtro {
+  border: 1px solid #DFDBD6; background: #fff; color: #605E5C;
+  border-radius: 9999px; padding: 8px 16px;
+  font-size: 13.5px; font-weight: 500; transition: .13s;
+}
+.filtro:hover { border-color: #0066FF; color: #0066FF; }
+.filtro.on { background: #0066FF; border-color: #0066FF; color: #fff; font-weight: 700; }
+
+.nota-revisar {
+  margin: 5px 0 8px; padding: 10px 13px; border-radius: 9px;
+  background: #FFF6D6; color: #5E4A09; font-size: 13px; line-height: 1.45;
+}
+.nota-revisar strong { font-weight: 800; }
+
+.vacio { margin: 40px 0; color: #807D7B; font-size: 14px; display: flex; align-items: center; gap: 4px; }
+
+.legend { display: flex; align-items: center; gap: 22px; margin-top: 20px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #807D7B; }
 
 /* ============ SECCIONES ============ */
 .section { margin-top: 34px; border-radius: 14px; padding: 4px; transition: .15s; }
@@ -214,10 +322,10 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
   padding: 10px 2px 10px; border-bottom: 1px solid #DFDBD6; margin-bottom: 4px;
   position: sticky; top: 126px; z-index: 20; background: #FFFDFA;
 }
-.section-approved { font-size: 12px; color: #9F9C99; }
+.section-approved { font-size: 13px; color: #9F9C99; }
 .group-head { display: flex; align-items: center; gap: 8px; padding: 10px 2px 8px; }
 .group-label {
-  font-size: 12px; font-weight: 800; letter-spacing: .09em;
+  font-size: 12.5px; font-weight: 800; letter-spacing: .09em;
   text-transform: uppercase; color: #605E5C;
 }
 .group-count {
@@ -230,7 +338,7 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .row {
   display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center; gap: 10px;
-  padding: 0 6px; min-height: 46px;
+  padding: 0 6px; min-height: 52px;
   border-bottom: 1px solid #EFEAE5; transition: background .12s;
 }
 .row:hover { background: #F8F4F0; }
@@ -239,7 +347,7 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .row .btn-approve { min-width: 100px; text-align: center; }
 .row.flash { animation: flash .9s ease-out; }
 .row-body {
-  display: grid; grid-template-columns: 20px minmax(0, 1fr) 112px 124px 78px 94px;
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) 124px 136px 88px 104px;
   align-items: center; gap: 12px; min-width: 0; overflow: hidden;
   border: none; background: transparent; text-align: left;
   padding: 8px 4px; border-radius: 8px; cursor: pointer; font: inherit;
@@ -257,16 +365,16 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .row-desc { grid-column: 1 / -1; }
 .card-row1 { cursor: pointer; }
 .row-name {
-  display: flex; align-items: center; gap: 8px; min-width: 0;
+  display: flex; align-items: center; gap: 9px; min-width: 0;
   padding-right: 10px;
-  font-size: 13.5px; font-weight: 700; color: #262423;
+  font-size: 15px; font-weight: 700; color: #262423;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.row-val { font-size: 12.5px; color: #403F3D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-val { font-size: 13.5px; color: #403F3D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-val.muted, .muted { color: #9F9C99; }
 .row-desc {
-  grid-column: 1 / -1; padding: 0 4px 9px 34px; margin-top: -4px;
-  font-size: 12px; color: #807D7B; line-height: 1.4;
+  grid-column: 1 / -1; padding: 0 4px 10px 34px; margin-top: -4px;
+  font-size: 13px; color: #807D7B; line-height: 1.4;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -291,7 +399,7 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .card-name {
   flex: 1; min-width: 0;
   border: 1px solid transparent; background: transparent;
-  font-size: 13.5px; font-weight: 700; color: #262423;
+  font-size: 15px; font-weight: 700; color: #262423;
   padding: 5px 8px; border-radius: 8px;
 }
 .card-name:hover { border-color: #DFDBD6; background: #fff; }
@@ -299,8 +407,8 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 
 .btn-approve {
   border: 1px solid #DFDBD6; background: #fff; color: #403F3D;
-  border-radius: 9999px; padding: 5px 13px;
-  font-size: 12px; font-weight: 700; transition: .13s; white-space: nowrap;
+  border-radius: 9999px; padding: 7px 15px;
+  font-size: 13px; font-weight: 700; transition: .13s; white-space: nowrap;
 }
 .btn-approve:hover { border-color: #A9DD92; }
 .btn-approve.on { border-color: #CEF7BF; background: #CEF7BF; color: #38552B; }
@@ -316,12 +424,12 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 }
 .field { display: flex; flex-direction: column; gap: 3px; }
 .field-label {
-  font-size: 10.5px; font-weight: 600; letter-spacing: .05em;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .05em;
   text-transform: uppercase; color: #605E5C;
 }
 .field select, .field input {
   width: 100%; border: 1px solid #DFDBD6; border-radius: 8px;
-  height: 32px; padding: 0 8px; font-size: 12.5px;
+  height: 36px; padding: 0 9px; font-size: 13.5px;
   color: #262423; background: #fff;
 }
 .field select { cursor: pointer; }
@@ -340,7 +448,7 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .desc-cerrado { cursor: pointer; gap: 4px; }
 .desc-preview {
   margin: 0; display: flex; align-items: baseline; gap: 8px;
-  font-size: 12px; line-height: 1.45; color: #807D7B; min-width: 0;
+  font-size: 13px; line-height: 1.45; color: #807D7B; min-width: 0;
 }
 /* El recorte va en el texto, no en la fila: si no, 'Ampliar' se va
    fuera con los puntos suspensivos y no se ve. */
@@ -350,23 +458,23 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 }
 .desc-ampliar {
   border: none; background: transparent; padding: 0; flex-shrink: 0;
-  font-size: 12px; font-weight: 700; color: #0066FF;
+  font-size: 13px; font-weight: 700; color: #0066FF;
 }
 .desc-ampliar:hover { text-decoration: underline; }
 .desc-toggle.open { font-size: 11px; font-weight: 500; color: #605E5C; width: auto; }
 .desc-head { display: flex; align-items: baseline; gap: 12px; }
 .desc-fuente {
-  flex: 1; min-width: 0; font-size: 11px; color: #9F9C99;
+  flex: 1; min-width: 0; font-size: 12px; color: #9F9C99;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .brief {
   margin-top: 4px; padding: 12px 14px;
   background: #F8F4F0; border-radius: 10px;
 }
-.brief-l { margin: 0 0 7px; font-size: 12.5px; line-height: 1.5; color: #403F3D; }
+.brief-l { margin: 0 0 8px; font-size: 13.5px; line-height: 1.5; color: #403F3D; }
 .brief-l:last-child { margin-bottom: 0; }
 .brief-l b {
-  font-size: 10.5px; font-weight: 800; letter-spacing: .05em;
+  font-size: 11.5px; font-weight: 800; letter-spacing: .05em;
   text-transform: uppercase; color: #605E5C;
 }
 .brief-vacio { margin: 6px 0 0; font-size: 12.5px; color: #9F9C99; font-style: italic; }
@@ -406,3 +514,7 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .result-item:last-child { border-bottom: none; }
 .result-item a { color: #0066FF; text-decoration: none; font-size: 12px; margin-left: auto; }
 .result-item a:hover { text-decoration: underline; }
+
+/* Un valor que no está en el catálogo de Asana no se puede escribir:
+   mejor decirlo que dejar el desplegable en blanco. */
+.field select.sin-catalogo { border-color: #E8B21E; color: #5E4A09; }

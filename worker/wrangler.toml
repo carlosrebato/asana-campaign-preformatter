@@ -40,3 +40,8 @@ ASANA_WORKSPACE_GID = "8485243267402"
 [env.pruebas.assets]
 directory = "./public"
 binding = "ASSETS"
+
+# Las propuestas se guardan aquí para poder compartirlas por enlace.
+[[env.pruebas.kv_namespaces]]
+binding = "PROPUESTAS"
+id = "7cf5033bb3c645abb171aebb6c15fac3"
