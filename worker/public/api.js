@@ -363,6 +363,10 @@ const API = {
         created.push(...(res.created || []));
         failed.push(...(res.failed || []));
         opts.onProgress?.(created.length + failed.length, tasks.length);
+        // Que la tarea recuerde que ya está en Asana: así una
+        // actualización posterior del Excel sabe que no hay que crearla
+        // otra vez, solo avisar si el dato ha cambiado.
+        opts.onCreada?.(res.created || []);
       }
     };
     await Promise.all(Array.from({ length: Math.min(EN_VUELO, lotes.length) }, turno));

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260928180738">
+<link rel="stylesheet" href="app.css?v=20260928182101">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260928180738"></script>
-<script src="excel.js?v=20260928180738"></script>
-<script src="estrategia.js?v=20260928180738"></script>
-<script src="api.js?v=20260928180738"></script>
+<script src="data.js?v=20260928182101"></script>
+<script src="excel.js?v=20260928182101"></script>
+<script src="estrategia.js?v=20260928182101"></script>
+<script src="api.js?v=20260928182101"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -285,8 +285,11 @@ function viewRevision() {
     if (S.filtro === 'revisar') return t.linkConfidence === 'low';
     if (S.filtro === 'sin') return !t.description;
     if (S.filtro === 'pendientes') return !t.approved;
+    if (S.filtro === 'cambios') return t.cambio && t.cambio !== 'igual';
     return true;
   };
+  const cambios = resumenCambios(S.tasks);
+  const cambiosN = cambios.nuevas + cambios.cambiadas + cambios.idas;
   const revisarN = S.tasks.filter(t => t.linkConfidence === 'low').length;
   const sinN = S.tasks.filter(t => !t.description).length;
 
@@ -348,6 +351,17 @@ function viewRevision() {
         tiene dudas.
       </p>
 
+      ${cambiosN ? `
+      <div class="aviso-cambios">
+        <strong>Esta propuesta se ha actualizado con un Excel nuevo.</strong>
+        ${[cambios.nuevas ? `${cambios.nuevas} campaña${cambios.nuevas > 1 ? 's' : ''} nueva${cambios.nuevas > 1 ? 's' : ''}` : '',
+           cambios.cambiadas ? `${cambios.cambiadas} con datos distintos` : '',
+           cambios.idas ? `${cambios.idas} ya no está${cambios.idas > 1 ? 'n' : ''} en el Excel` : '']
+          .filter(Boolean).join(' · ')}.
+        Las que cambian vuelven a estar sin aprobar; lo demás conserva su revisión.
+        <button class="btn-link-section" data-filtro="cambios">Ver solo lo que ha cambiado</button>
+      </div>` : ''}
+
       ${S.propuestaId ? `
       <div class="compartir">
         <div class="compartir-txt">
@@ -368,6 +382,7 @@ function viewRevision() {
              ['revisar', `A revisar · ${revisarN}`],
              ['sin', `Sin contexto · ${sinN}`],
              ['pendientes', `Sin aprobar · ${pend}`]]
+            .concat(cambiosN ? [['cambios', `Cambios · ${cambiosN}`]] : [])
             .map(([id, txt]) =>
               `<button class="filtro ${S.filtro === id ? 'on' : ''}" data-filtro="${id}">${txt}</button>`).join('')}
         </div>
@@ -390,6 +405,14 @@ function viewRevision() {
 
 // Modo lectura: una fila por tarea, valores como texto. Es la vista por
 // defecto porque la mayoría de tareas se revisan, no se editan.
+// Qué le ha pasado a esta tarea en la última actualización del Excel.
+function marcaCambio(t) {
+  if (t.cambio === 'nueva') return '<span class="marca nueva">Nueva</span>';
+  if (t.cambio === 'cambiada') return `<span class="marca cambiada" title="${esc((t.cambios || []).join(', '))}">Ha cambiado</span>`;
+  if (t.cambio === 'desaparecida') return '<span class="marca ida">Ya no está en el Excel</span>';
+  return '';
+}
+
 function rowHTML(t) {
   const badge = badgeHTML(t);
   return `
@@ -397,7 +420,7 @@ function rowHTML(t) {
            draggable="true" data-drag="${t.id}">
     <button class="row-body" data-toggle="${t.id}" title="Abrir">
       <span class="chev">${ICONS.chev}</span>
-      <span class="row-name">${bolaHTML(t)}${esc(t.name) || '<em>Sin nombre</em>'}</span>
+      <span class="row-name">${bolaHTML(t)}${esc(t.name) || '<em>Sin nombre</em>'}${marcaCambio(t)}${t.asanaUrl ? '<span class="marca asana">En Asana</span>' : ''}</span>
       <span class="row-val">${esc(t.product)}</span>
       <span class="row-val">${esc(t.format)}</span>
       <span class="row-val">${fechaCorta(t.dueDate)}</span>
@@ -473,7 +496,7 @@ function cardHTML(t) {
            draggable="true" data-drag="${t.id}">
     <div class="card-row1" data-toggle="${t.id}" title="Cerrar">
       <span class="chev open">${ICONS.chev}</span>
-      ${badge}
+      ${badge}${marcaCambio(t)}
       <input class="card-name" value="${esc(t.name)}" data-set="name" data-id="${t.id}"
              placeholder="PAC00000_Nombre_Segmento_Mes" spellcheck="false">
       <button class="btn-approve ${t.approved ? 'on' : ''}" data-approve="${t.id}">
@@ -495,6 +518,10 @@ function cardHTML(t) {
     <div class="card-desc field">
       ${t.descOpen ? `
         <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>
+        ${t.cambio === 'cambiada' && t.cambios?.length
+          ? `<p class="nota-revisar"><strong>Ha cambiado</strong> · ${esc(t.cambios.join(', '))}. Vuelve a aprobarla si te cuadra.</p>` : ''}
+        ${t.asanaUrl
+          ? `<p class="nota-asana">Ya está en Asana. Si el Excel dice ahora otra cosa, corrígelo allí: esta herramienta no reescribe lo cargado. <a href="${esc(t.asanaUrl)}" target="_blank" rel="noopener">Abrir la tarea</a></p>` : ''}
         ${t.linkConfidence === 'low' && t.linkNote
           ? `<p class="nota-revisar"><strong>Revisar</strong> · ${esc(t.linkNote)}</p>` : ''}
         <div class="desc-head">
@@ -657,17 +684,25 @@ async function procesar() {
       render();
     });
     if (!tasks.length) { S.screen = 'entrada'; return; }
-    S.tasks = tasks.map(t => Object.assign(
+    const nuevas = tasks.map(t => Object.assign(
       { approved: false, descOpen: false, flash: false, editing: false, typology: 'Growth' }, t));
+
+    // Si ya había una propuesta abierta, esto es una actualización: se
+    // compara con lo que hay para no perder la revisión hecha.
+    const previas = S.propuestaId
+      ? ((await API.abrirPropuesta(S.propuestaId))?.tareas || S.tasks)
+      : [];
+    S.tasks = previas.length ? fusionarConPropuesta(previas, nuevas) : nuevas;
     Object.assign(S.proc, { paso: 3, detalle: '', cuenta: '', hechas: 0, total: 0 });
     render();
     S.dupes = await API.comprobarDuplicados(S.tasks, info => {
       Object.assign(S.proc, info, { paso: 3 });
       render();
     });
-    // Nace el enlace: a partir de aquí la propuesta es compartible.
-    S.propuestaId = '';
-    const doc = await API.crearPropuesta(ficherosDeLaPropuesta(), S.tasks);
+    // El enlace se conserva si ya existía: es el que ha circulado.
+    const doc = S.propuestaId
+      ? await API.guardarPropuesta(S.propuestaId, ficherosDeLaPropuesta(), S.tasks)
+      : await API.crearPropuesta(ficherosDeLaPropuesta(), S.tasks);
     if (doc) {
       S.propuestaId = doc.id;
       S.propuestaVer = doc.version || 1;
@@ -685,11 +720,81 @@ async function cargar() {
   S.loading = true; render();
   const app = S.tasks.filter(t => t.approved);
   S.result = await API.cargarEnAsana(app, {
+    onCreada: creadas => creadas.forEach(c => {
+      const t = S.tasks.find(x => x.id === c.id);
+      if (t) { t.asanaUrl = c.url; guardar(t.id, { asanaUrl: c.url }); }
+    }),
     onProgress: (i, tot) => { S.loadProgress = [i, tot]; render(); }
   });
   S.loading = false;
   S.screen = 'resultado';
   render();
+}
+
+/* ---------------- ACTUALIZAR UNA PROPUESTA ----------------
+   En esta compañía el Excel se vuelve a mandar: cambia una fecha, entra
+   una campaña nueva, se cae otra. Volver a empezar de cero perdería el
+   trabajo de revisión de todo el mundo.
+
+   Así que cuando ya hay una propuesta abierta, la nueva pasada se
+   compara con ella:
+
+   · igual         → se conserva, incluida su aprobación
+   · cambiada      → se marca qué cambió y pierde la aprobación, porque
+                     quien dijo que sí dijo que sí a otra cosa
+   · nueva         → entra sin aprobar
+   · desaparecida  → se avisa y no se carga. Nunca se borra nada.
+
+   Lo ya cargado en Asana no se toca: si cambia, se avisa y lo corrige
+   una persona. Esto es una carretilla de volcado, no reescribe.
+---------------------------------------------------------- */
+const CAMPOS_COMPARADOS = [
+  ['name', 'Nombre'],
+  ['product', 'Producto'],
+  ['format', 'Formato'],
+  ['dueDate', 'Fecha de entrega'],
+  ['palanca', 'Palanca'],
+  ['sectionId', 'Sección'],
+  ['description', 'Contexto']
+];
+
+function compararTarea(previa, nueva) {
+  return CAMPOS_COMPARADOS
+    .filter(([campo]) => (previa[campo] || '') !== (nueva[campo] || ''))
+    .map(([, etiqueta]) => etiqueta);
+}
+
+function fusionarConPropuesta(previas, nuevas) {
+  const antes = new Map(previas.map(t => [t.pac || t.id, t]));
+  const vistas = new Set();
+
+  const tareas = nuevas.map(n => {
+    const clave = n.pac || n.id;
+    const p = antes.get(clave);
+    vistas.add(clave);
+    if (!p) return { ...n, cambio: 'nueva' };
+
+    const cambios = compararTarea(p, n);
+    // Lo que ya está en Asana no se reescribe: se arrastra su enlace y
+    // se avisa si el Excel dice ahora otra cosa.
+    const enAsana = p.asanaUrl ? { asanaUrl: p.asanaUrl } : {};
+    if (!cambios.length) {
+      return { ...n, ...enAsana, approved: p.approved, cambio: 'igual' };
+    }
+    return { ...n, ...enAsana, approved: false, cambio: 'cambiada', cambios };
+  });
+
+  // Las que ya no vienen en el Excel: se avisan, no se borran.
+  const idas = previas
+    .filter(t => !vistas.has(t.pac || t.id))
+    .map(t => ({ ...t, approved: false, cambio: 'desaparecida' }));
+
+  return [...tareas, ...idas];
+}
+
+function resumenCambios(tareas) {
+  const cuenta = t => tareas.filter(x => x.cambio === t).length;
+  return { nuevas: cuenta('nueva'), cambiadas: cuenta('cambiada'), idas: cuenta('desaparecida') };
 }
 
 /* ---------------- PROPUESTA COMPARTIDA ---------------- */

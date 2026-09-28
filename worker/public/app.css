@@ -303,6 +303,29 @@ h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
 .filtro:hover { border-color: #0066FF; color: #0066FF; }
 .filtro.on { background: #0066FF; border-color: #0066FF; color: #fff; font-weight: 700; }
 
+/* Marcas de la última actualización del Excel. */
+.marca {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+  border-radius: 9999px; padding: 2px 8px; flex-shrink: 0;
+}
+.marca.nueva { background: #D3EEFF; color: #0052CC; }
+.marca.cambiada { background: #FFF6D6; color: #5E4A09; cursor: help; }
+.marca.ida { background: #FBE6E3; color: #B83227; }
+.marca.asana { background: #CEF7BF; color: #38552B; }
+
+.aviso-cambios {
+  margin-top: 18px; padding: 14px 18px; border-radius: 12px;
+  background: #D3EEFF; color: #16324F;
+  font-size: 13.5px; line-height: 1.55;
+}
+.aviso-cambios strong { display: block; margin-bottom: 2px; }
+
+.nota-asana {
+  margin: 5px 0 8px; padding: 10px 13px; border-radius: 9px;
+  background: #F4FBF0; color: #38552B; font-size: 13px; line-height: 1.45;
+}
+.nota-asana a { color: #0066FF; font-weight: 700; }
+
 .nota-revisar {
   margin: 5px 0 8px; padding: 10px 13px; border-radius: 9px;
   background: #FFF6D6; color: #5E4A09; font-size: 13px; line-height: 1.45;
