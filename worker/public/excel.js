@@ -21,7 +21,12 @@ const EXCEL_PARSER = (() => {
 
   // '21-sep.-2026' | '21/9/26' | Date → 'YYYY-MM-DD'. '' si no se entiende.
   function parseFecha(v) {
-    if (v instanceof Date && !isNaN(v)) return v.toISOString().slice(0, 10);
+    // Ojo: NO usar toISOString(). Cuando la celda es una fecha de verdad,
+    // Excel la da a medianoche local; pasarla a UTC la echa al día
+    // anterior y la tarea entra en Asana con un día menos, sin avisar.
+    if (v instanceof Date && !isNaN(v)) {
+      return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+    }
     const s = clean(v).toLowerCase();
     let m = s.match(/^(\d{1,2})-([a-z]+)\.?-(\d{4})$/);
     if (m && MESES[m[2]]) return `${m[3]}-${pad(MESES[m[2]])}-${pad(m[1])}`;
