@@ -257,6 +257,7 @@ function aPayloadAsana(t) {
   poner('producto', t.product);
   poner('formato', t.format);
   poner('tipoCliente', t.clientType);
+  poner('objetivo', CATALOGS.palancaObjetivo[t.palanca]);
   poner('estado', t.estado || CATALOGS.estadoInicial);
   poner('peticionario', t.excel?.responsable);
 

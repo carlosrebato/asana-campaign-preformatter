@@ -48,8 +48,11 @@ input, select, textarea { font-family: inherit; }
 .step-label { font-size: 12.5px; font-weight: 500; color: #9F9C99; white-space: nowrap; }
 .step.active .step-label { color: #0066FF; font-weight: 700; }
 .step.done .step-label { color: #605E5C; }
-.step-ir { cursor: pointer; border-radius: 9999px; transition: background .12s; }
+.step-ir { cursor: pointer; border-radius: 9999px; transition: .12s; }
+.step-ir .step-label { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #DFDBD6; }
 .step-ir:hover { background: #D3EEFF; }
+.step-ir:hover .step-label { color: #0066FF; text-decoration-color: #0066FF; }
+.step-ir:hover .step-num { border-color: #0066FF; color: #0066FF; }
 .volver-revision {
   margin-top: 14px; font-size: 13px; color: #605E5C;
   display: flex; align-items: center; gap: 6px;
@@ -324,7 +327,7 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .field select { cursor: pointer; }
 .field select:focus, .field input:focus { outline: none; border-color: #0066FF; }
 
-.card-desc { margin-top: 8px; padding-left: 26px; }
+.card-desc { margin-top: 10px; padding-left: 26px; gap: 4px; }
 .desc-toggle {
   display: flex; align-items: center; gap: 6px; width: 100%;
   text-align: left; border: none; background: transparent;
@@ -332,9 +335,26 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
   border-radius: 6px; overflow: hidden;
 }
 .desc-toggle:hover { background: #F8F4F0; color: #605E5C; }
-.desc-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+/* Cerrado, el contexto se lee como un campo más de la tarjeta:
+   etiqueta arriba y contenido debajo, igual que Producto o Formato. */
+.desc-cerrado { cursor: pointer; gap: 4px; }
+.desc-preview {
+  margin: 0; display: flex; align-items: baseline; gap: 8px;
+  font-size: 12px; line-height: 1.45; color: #807D7B; min-width: 0;
+}
+/* El recorte va en el texto, no en la fila: si no, 'Ampliar' se va
+   fuera con los puntos suspensivos y no se ve. */
+.desc-txt {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.desc-ampliar {
+  border: none; background: transparent; padding: 0; flex-shrink: 0;
+  font-size: 12px; font-weight: 700; color: #0066FF;
+}
+.desc-ampliar:hover { text-decoration: underline; }
 .desc-toggle.open { font-size: 11px; font-weight: 500; color: #605E5C; width: auto; }
-.desc-head { display: flex; align-items: center; gap: 8px; }
+.desc-head { display: flex; align-items: baseline; gap: 12px; }
 .desc-fuente {
   flex: 1; min-width: 0; font-size: 11px; color: #9F9C99;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

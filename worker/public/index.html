@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="app.css?v=20260928091047">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js"></script>
-<script src="excel.js"></script>
-<script src="estrategia.js"></script>
-<script src="api.js"></script>
+<script src="data.js?v=20260928091047"></script>
+<script src="excel.js?v=20260928091047"></script>
+<script src="estrategia.js?v=20260928091047"></script>
+<script src="api.js?v=20260928091047"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -96,6 +96,9 @@ function pasoAccesible(id) {
 function renderStepper() {
   const cur = S.screen === 'resultado' ? 'confirmar' : S.screen;
   const i = STEPS.findIndex(s => s.id === cur);
+  // Los pasos a los que se puede ir llevan data-paso y se marcan como
+  // pulsables; el resto se queda apagado. Sin esa señal nadie descubre
+  // que la barra sirve para moverse.
   document.getElementById('stepper').innerHTML = STEPS.map((s, n) => {
     const cls = n === i ? 'step active' : n < i ? 'step done' : 'step';
     const num = n < i ? ICONS.check : (n + 1);
@@ -299,6 +302,7 @@ function viewRevision() {
       <div class="legend">
         <span class="legend-item"><span class="bola ok"></span> Vinculación clara — contexto encontrado y vinculado sin dudas</span>
         <span class="legend-item"><span class="bola review"></span> Vinculación probable — revisar</span>
+        <span class="legend-item"><span class="bola"></span> Sin vinculación</span>
         <span class="legend-item"><span class="bola manual"></span> Creada a mano</span>
       </div>
     </div>
@@ -320,7 +324,7 @@ function rowHTML(t) {
       <span class="row-val">${esc(t.product)}</span>
       <span class="row-val">${esc(t.format)}</span>
       <span class="row-val">${fechaCorta(t.dueDate)}</span>
-      <span class="row-val muted">${esc(t.typology)}${t.clientType ? ' · ' + esc(t.clientType) : ''}</span>
+      <span class="row-val muted">${esc(t.typology)}${t.palanca ? ' · ' + esc(t.palanca) : ''}</span>
     </button>
     <button class="btn-approve ${t.approved ? 'on' : ''}" data-approve="${t.id}">
       ${t.approved ? '✓ Aprobada' : 'Aprobar'}
@@ -385,7 +389,7 @@ function cardHTML(t) {
       ${opts.map(o => `<option value="${esc(o)}" ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}
     </select>`;
 
-  const descPrev = t.description ? t.description.replace(/\n/g, ' · ').slice(0, 150) : 'Añadir contexto de estrategia';
+  const descPrev = t.description ? t.description.replace(/\n/g, ' · ').slice(0, 150) : 'Añadir a mano';
 
   return `
   <article class="card ${t.approved ? 'approved' : ''} ${t.flash ? 'flash' : ''}" data-card="${t.id}"
@@ -407,24 +411,29 @@ function cardHTML(t) {
       <label class="field"><span class="field-label">Entrega</span>
         <input type="date" value="${esc(t.dueDate)}" data-set="dueDate" data-id="${t.id}">
       </label>
-      <label class="field"><span class="field-label">Tipo de cliente</span>${sel('clientType', D.clientTypeOptions, t.clientType)}</label>
+      <label class="field"><span class="field-label">Palanca</span>${sel('palanca', D.palancaOptions, t.palanca)}</label>
       <label class="field"><span class="field-label">Tipología</span>${sel('typology', D.typologyOptions, t.typology || 'Growth')}</label>
     </div>
 
-    <div class="card-desc">
+    <div class="card-desc field">
       ${t.descOpen ? `
+        <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>
         <div class="desc-head">
-          <button class="desc-toggle open" data-desc="${t.id}">${ICONS.chevD} Contexto de estrategia</button>
-          ${t.contextSource ? `<span class="desc-fuente">${esc(t.contextSource)}</span>` : ''}
-          <button class="btn-ghost" data-descedit="${t.id}" style="font-size:12px">
-            ${t.descEdit ? 'Ver' : 'Editar'}
-          </button>
+          ${t.contextSource ? `<span class="desc-fuente">${esc(t.contextSource)}</span>` : '<span class="desc-fuente"></span>'}
+          <button class="desc-ampliar" data-descedit="${t.id}">${t.descEdit ? 'Hecho' : 'Editar'}</button>
+          <button class="desc-ampliar" data-desc="${t.id}">Ocultar</button>
         </div>
         ${t.descEdit
           ? `<textarea class="desc-ta" rows="10" data-set="description" data-id="${t.id}">${esc(t.description)}</textarea>`
           : briefHTML(t.description)}
       ` : `
-        <button class="desc-toggle" data-desc="${t.id}">${ICONS.chevR}<span class="desc-preview">${esc(descPrev)}</span></button>
+        <div class="field desc-cerrado" data-desc="${t.id}">
+          <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>
+          <p class="desc-preview">
+            <span class="desc-txt">${esc(descPrev)}</span>
+            <button class="desc-ampliar" data-desc="${t.id}">${t.description ? 'Ampliar' : 'Añadir'}</button>
+          </p>
+        </div>
       `}
     </div>
   </article>`;
@@ -600,7 +609,7 @@ document.addEventListener('click', async e => {
     const prod = Object.keys(D.productSectionMap).find(p => D.productSectionMap[p] === sec) || 'Otros';
     S.tasks.push({
       id: 'm' + Date.now(), sectionId: sec, name: '', product: prod,
-      format: D.formatOptions[0], dueDate: '', clientType: D.clientTypeOptions[0],
+      format: D.formatOptions[0], dueDate: '', clientType: '', palanca: '',
       typology: 'Growth', manual: true, description: '',
       approved: false, descOpen: false, flash: true, editing: true
     });

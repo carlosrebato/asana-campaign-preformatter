@@ -35,6 +35,19 @@ const EXCEL_PARSER = (() => {
   const pad = n => String(n).padStart(2, '0');
 
   // Localiza cada columna por su cabecera, tolerando espacios y saltos.
+  // Todos los formatos de Asana que aparecen en una celda de MEDIO,
+  // sin repetir y en el orden en que se reconocen.
+  function formatosDe(medio) {
+    const t = clean(medio).toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[_/+,;&]/g, ' ');
+    const out = [];
+    for (const [patron, formato] of EXCEL.medioFragmentos) {
+      if (patron.test(t) && !out.includes(formato)) out.push(formato);
+    }
+    return out;
+  }
+
   function mapColumns(headerRow) {
     const norm = s => clean(s).replace(/\s+/g, ' ').toLowerCase();
     const idx = {};
@@ -102,8 +115,17 @@ const EXCEL_PARSER = (() => {
         || CATALOGS.productSectionMap[product || 'Otros']
         || 'otros';
 
-      let format = EXCEL.medioFormat[medio];
-      if (!format) warn('medio', fila, `Medio sin mapear: "${medio}"`);
+      // El medio puede traer varios canales en la misma celda. Se
+      // buscan todos los que se reconozcan; si apuntan al mismo formato
+      // de Asana (el caso de e-Mailing + SMS) no hay nada que decidir.
+      const formatos = formatosDe(medio);
+      let format = formatos[0];
+      if (!format) warn('medio', fila, `Medio sin reconocer: "${medio}"`);
+      else if (formatos.length > 1) {
+        warn('medio', fila,
+          `"${medio}" mezcla ${formatos.length} formatos (${formatos.join(' + ')}). ` +
+          `Se ha puesto "${format}"; revísalo.`);
+      }
       if (EXCEL.productoFormatOverride[producto]) format = EXCEL.productoFormatOverride[producto];
 
       const typology = EXCEL.palancaTypology[palanca];
@@ -125,6 +147,7 @@ const EXCEL_PARSER = (() => {
         dueDate,
         typology: typology || 'Growth',
         clientType: '',                       // no viene en el Excel (regla 1)
+        palanca,                              // sí viene siempre, y se escribe en Asana
         estado: CATALOGS.estadoInicial,   // Asana no distingue Aprobada/Planificada
         description: '',                      // solo lo rellena el PDF
         // Datos del Excel que no tienen campo en la UI todavía

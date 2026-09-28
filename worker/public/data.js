@@ -49,6 +49,7 @@ const CATALOGS = {
     formato:      'Formatos de comunicación',
     tipoCliente:  'Tipo de cliente',
     estado:       'Estado',
+    objetivo:     'Objetivo de la campaña',
     peticionario: 'Peticionario'
   },
 
@@ -96,6 +97,13 @@ const CATALOGS = {
         'En Suspenso': '1204969494118743'
       }
     },
+    objetivo: {
+      gid: '1204870126999139', tipo: 'multi_enum',
+      options: {
+        'Captación': '1204870126999140', 'Desarrollo': '1204870126999141',
+        'Activación': '1204870126999142', 'Fidelización': '1204870126999143'
+      }
+    },
     peticionario: { gid: '1204870123950404', tipo: 'text' }
   },
 
@@ -117,6 +125,16 @@ const CATALOGS = {
     'Gaming': 'gaming',
     'Solar360': 'nuevos', 'Movistar Prosegur Alarmas': 'nuevos',
     'Otros': 'otros'
+  },
+
+  // Palancas del Excel. Se enseñan en la revisión y se escriben en el
+  // campo "Objetivo de la campaña" de Asana, que tiene las mismas
+  // categorías con otro nombre.
+  palancaOptions: ['Desarrollo', 'Captación No Cliente', 'Fidelización/Dinamización', 'Legal'],
+  palancaObjetivo: {
+    'Desarrollo':                'Desarrollo',
+    'Captación No Cliente':      'Captación',
+    'Fidelización/Dinamización': 'Fidelización'
   },
 
   // Growth/Value/Servicing NO existe como campo en Asana. Se calcula
@@ -187,16 +205,32 @@ const EXCEL = {
     'Planificada': 'Pdte Comercialización'
   },
 
-  // MEDIO (Excel) → Formato (Asana). Normalizar espacios antes de buscar.
-  // 'Enews contenidos' no se detecta por MEDIO sino por PRODUCTO (ver abajo).
-  medioFormat: {
-    'E-Mailing':       'Email y/o SMS',
-    'SMS':             'Email y/o SMS',
-    'RCS':             'RCS',
-    'Carta Oficial':   'Mailing y formatos offline',
-    'CARTA SAT':       'Mailing y formatos offline',
-    'App Mi Movistar': 'Notificación Push'
-  },
+  // MEDIO (Excel) → Formato (Asana).
+  //
+  // La columna MEDIO es texto libre y Comercialización escribe lo que
+  // necesita: "e-Mailing_SMS", "App M+", combinaciones de dos o tres.
+  // No se les puede pedir que se ciñan a una lista nuestra — la única
+  // lista que manda es la del campo de Asana, y es corta y fija.
+  //
+  // Así que en vez de comparar la celda entera, se buscan fragmentos.
+  // Gana el primero que aparece, por eso el orden importa: "e-mailing"
+  // tiene que mirarse antes que "mailing".
+  //
+  // Nota: "Email y/o SMS" YA es una combinación en Asana, así que
+  // "e-Mailing_SMS" no necesita ninguna opción nueva.
+  medioFragmentos: [
+    [/rcs/,                          'RCS'],
+    [/enews|e-news/,                 'Enews de contenidos TV'],
+    [/banner/,                       'Banners TV'],
+    [/push|notificaci/,              'Notificación Push'],
+    [/\bapp\b/,                      'Notificación Push'],
+    [/journey|\bcj\b/,               'Customer Journey'],
+    [/e-?mailing|e-?mail|@/,         'Email y/o SMS'],
+    [/\bsms\b/,                      'Email y/o SMS'],
+    // "mailing" solo cuenta como envío físico si va suelto: en
+    // "e-Mailing" es un correo electrónico, no una carta.
+    [/carta|buzoneo|folleto|offline|(^|\s)mailing/, 'Mailing y formatos offline']
+  ],
 
   // PRODUCTO / KPI (Excel) → Producto (Asana). Los nombres de la derecha
   // son opciones reales del campo: lo que no esté ahí no se puede escribir.
