@@ -21,7 +21,12 @@ const EXCEL_PARSER = (() => {
 
   // '21-sep.-2026' | '21/9/26' | Date → 'YYYY-MM-DD'. '' si no se entiende.
   function parseFecha(v) {
-    if (v instanceof Date && !isNaN(v)) return v.toISOString().slice(0, 10);
+    // Ojo: NO usar toISOString(). Cuando la celda es una fecha de verdad,
+    // Excel la da a medianoche local; pasarla a UTC la echa al día
+    // anterior y la tarea entra en Asana con un día menos, sin avisar.
+    if (v instanceof Date && !isNaN(v)) {
+      return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+    }
     const s = clean(v).toLowerCase();
     let m = s.match(/^(\d{1,2})-([a-z]+)\.?-(\d{4})$/);
     if (m && MESES[m[2]]) return `${m[3]}-${pad(MESES[m[2]])}-${pad(m[1])}`;
@@ -35,6 +40,19 @@ const EXCEL_PARSER = (() => {
   const pad = n => String(n).padStart(2, '0');
 
   // Localiza cada columna por su cabecera, tolerando espacios y saltos.
+  // Todos los formatos de Asana que aparecen en una celda de MEDIO,
+  // sin repetir y en el orden en que se reconocen.
+  function formatosDe(medio) {
+    const t = clean(medio).toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[_/+,;&]/g, ' ');
+    const out = [];
+    for (const [patron, formato] of EXCEL.medioFragmentos) {
+      if (patron.test(t) && !out.includes(formato)) out.push(formato);
+    }
+    return out;
+  }
+
   function mapColumns(headerRow) {
     const norm = s => clean(s).replace(/\s+/g, ' ').toLowerCase();
     const idx = {};
@@ -102,8 +120,17 @@ const EXCEL_PARSER = (() => {
         || CATALOGS.productSectionMap[product || 'Otros']
         || 'otros';
 
-      let format = EXCEL.medioFormat[medio];
-      if (!format) warn('medio', fila, `Medio sin mapear: "${medio}"`);
+      // El medio puede traer varios canales en la misma celda. Se
+      // buscan todos los que se reconozcan; si apuntan al mismo formato
+      // de Asana (el caso de e-Mailing + SMS) no hay nada que decidir.
+      const formatos = formatosDe(medio);
+      let format = formatos[0];
+      if (!format) warn('medio', fila, `Medio sin reconocer: "${medio}"`);
+      else if (formatos.length > 1) {
+        warn('medio', fila,
+          `"${medio}" mezcla ${formatos.length} formatos (${formatos.join(' + ')}). ` +
+          `Se ha puesto "${format}"; revísalo.`);
+      }
       if (EXCEL.productoFormatOverride[producto]) format = EXCEL.productoFormatOverride[producto];
 
       const typology = EXCEL.palancaTypology[palanca];
@@ -125,6 +152,7 @@ const EXCEL_PARSER = (() => {
         dueDate,
         typology: typology || 'Growth',
         clientType: '',                       // no viene en el Excel (regla 1)
+        palanca,                              // sí viene siempre, y se escribe en Asana
         estado: CATALOGS.estadoInicial,   // Asana no distingue Aprobada/Planificada
         description: '',                      // solo lo rellena el PDF
         // Datos del Excel que no tienen campo en la UI todavía
@@ -132,6 +160,7 @@ const EXCEL_PARSER = (() => {
           fila, medio, palanca, producto, viabilidad,
           subpalanca,
           objetivo: clean(col(r, 'objetivo')),
+          nombreTarea: clean(col(r, 'nombreTarea')),
           responsable: clean(col(r, 'responsable')),
           po: clean(col(r, 'po')),            // unidad sin confirmar; solo texto
           mes: col(r, 'mes'),

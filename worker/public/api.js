@@ -13,6 +13,48 @@
 const API = {
 
   /* ----------------------------------------------------------
+     0 bis · EMPAREJAMIENTO CON MODELO
+     ----------------------------------------------------------
+     Las dos preguntas que no se pueden resolver con una tabla
+     sin que alguien la mantenga cada mes:
+
+       · qué producto de Asana es un valor nuevo del Excel
+       · qué brief le toca a cada campaña, o ninguno
+
+     Se le manda la fila entera, incluido el objetivo —el texto
+     libre de quien planificó la campaña—, que es lo que de
+     verdad permite distinguir un desarrollo de un winback.
+
+     Si el modelo no está disponible, se devuelve lo que había:
+     nunca rompe la carga.
+  ---------------------------------------------------------- */
+  async emparejarConModelo(tasks, briefs, onProgress) {
+    const campanas = tasks.map(t => ({
+      pac: t.pac, name: t.name,
+      producto: t.excel?.producto || '', palanca: t.excel?.palanca || '',
+      subpalanca: t.excel?.subpalanca || '', medio: t.excel?.medio || '',
+      objetivo: t.excel?.objetivo || '', nombreTarea: t.excel?.nombreTarea || '',
+      dueDate: t.dueDate
+    }));
+
+    const vinculos = [];
+    const lotes = enLotes(campanas, 25);
+    let hechos = 0;
+    for (const lote of lotes) {
+      try {
+        const r = await fetch('/api/vincular', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ campanas: lote, briefs })
+        });
+        if (r.ok) vinculos.push(...((await r.json()).vinculos || []));
+      } catch { /* sin modelo se sigue con lo que hay */ }
+      hechos += lote.length;
+      onProgress?.(hechos, campanas.length);
+    }
+    return vinculos;
+  },
+
+  /* ----------------------------------------------------------
      0 · CATÁLOGOS
      ----------------------------------------------------------
      Secciones, campos y opciones del proyecto, con sus GIDs.
@@ -30,8 +72,12 @@ const API = {
       if (!r.ok) throw new Error('sin catálogos');
       const c = await r.json();
 
+      // Por NOMBRE, no por GID: un proyecto duplicado tiene las mismas
+      // secciones con identificadores nuevos. Emparejar por GID dejaba
+      // todas las tareas apuntando a secciones inexistentes y la
+      // revisión salía vacía.
       CATALOGS.sections = c.sections.map(s => ({
-        id: CATALOGS.sections.find(x => x.gid === s.gid)?.id || s.gid,
+        id: CATALOGS.sections.find(x => x.name === s.name)?.id || s.gid,
         gid: s.gid, name: s.name
       }));
       for (const [clave, nombre] of Object.entries(CATALOGS.fieldNames)) {
@@ -137,20 +183,26 @@ const API = {
      Devuelve los PACs que ya existen para avisar antes de crear.
      Esta es la idempotencia real: la clave de negocio es el PAC.
   ---------------------------------------------------------- */
-  async comprobarDuplicados(tasks) {
+  async comprobarDuplicados(tasks, onProgress) {
     const pacs = [...new Set(tasks.map(t => t.pac).filter(Boolean))];
     if (!pacs.length) return [];
-    try {
-      const r = await fetch('/api/duplicados', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pacs })
-      });
-      if (!r.ok) return [];
-      return (await r.json()).duplicados || [];
-    } catch {
-      return [];   // sin backend, no se puede comprobar: no se bloquea
+    const encontrados = [];
+    // Por lotes: un Worker no puede hacer más de 50 llamadas salientes
+    // por invocación, y cada PAC es una búsqueda.
+    for (const lote of enLotes(pacs, 40)) {
+      try {
+        const r = await fetch('/api/duplicados', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pacs: lote })
+        });
+        if (r.ok) encontrados.push(...((await r.json()).duplicados || []));
+      } catch {
+        /* sin backend no se puede comprobar: no se bloquea la carga */
+      }
+      onProgress?.(encontrados.length);
     }
+    return encontrados;
   },
 
   /* ----------------------------------------------------------
@@ -167,24 +219,65 @@ const API = {
        poder reintentar solo esas.
   ---------------------------------------------------------- */
   async cargarEnAsana(tasks, opts = {}) {
+    const created = [], failed = [];
+    let hechas = 0;
     opts.onProgress?.(0, tasks.length);
-    const r = await fetch('/api/cargar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tareas: tasks.map(aPayloadAsana) })
-    });
-    opts.onProgress?.(tasks.length, tasks.length);
-    if (!r.ok) {
-      const { error } = await r.json().catch(() => ({}));
-      return {
-        created: [],
-        failed: tasks.map(t => ({ id: t.id, name: t.name, error: error || 'El Worker no respondió' }))
-      };
-    }
-    return r.json();
+
+    // Por lotes, por el límite de llamadas salientes del Worker: cada
+    // tarea son dos (crearla y colocarla en su sección). Lotes pequeños
+    // y varios en vuelo: así la barra avanza de verdad en vez de saltar
+    // del 0 al 100, y el conjunto va igual de rápido.
+    // El lote se dimensiona para que la barra avance varias veces, tanto
+    // si son 4 campañas como si son 73: al menos cuatro tramos, y nunca
+    // más de 8 por lote (cada tarea son dos llamadas al Worker).
+    const EN_VUELO = 4;
+    const tam = Math.max(1, Math.min(8, Math.ceil(tasks.length / 4)));
+    const lotes = enLotes(tasks, tam);
+
+    const mandar = async lote => {
+      try {
+        const r = await fetch('/api/cargar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tareas: lote.map(aPayloadAsana) })
+        });
+        if (!r.ok) {
+          const { error } = await r.json().catch(() => ({}));
+          return { created: [], failed: lote.map(t => ({ id: t.id, name: t.name, error: error || 'El Worker no respondió' })) };
+        }
+        return await r.json();
+      } catch (e) {
+        return { created: [], failed: lote.map(t => ({ id: t.id, name: t.name, error: e.message })) };
+      }
+    };
+
+    let siguiente = 0;
+    const turno = async () => {
+      while (siguiente < lotes.length) {
+        const res = await mandar(lotes[siguiente++]);
+        created.push(...(res.created || []));
+        failed.push(...(res.failed || []));
+        opts.onProgress?.(created.length + failed.length, tasks.length);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(EN_VUELO, lotes.length) }, turno));
+
+    return { created, failed };
   }
+
 };
 
+
+/* ------------------------------------------------------------
+   TROCEAR
+   El Worker tiene un techo de llamadas salientes por invocación,
+   así que el cliente parte el trabajo y llama varias veces.
+------------------------------------------------------------ */
+function enLotes(lista, tam) {
+  const lotes = [];
+  for (let i = 0; i < lista.length; i += tam) lotes.push(lista.slice(i, i + tam));
+  return lotes;
+}
 
 /* ------------------------------------------------------------
    TAREA → PAYLOAD DE ASANA
@@ -206,6 +299,7 @@ function aPayloadAsana(t) {
   poner('producto', t.product);
   poner('formato', t.format);
   poner('tipoCliente', t.clientType);
+  poner('objetivo', CATALOGS.palancaObjetivo[t.palanca]);
   poner('estado', t.estado || CATALOGS.estadoInicial);
   poner('peticionario', t.excel?.responsable);
 

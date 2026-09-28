@@ -1,0 +1,9 @@
+# El navegador se quedaba con versiones viejas del CSS y del JS tras cada
+# despliegue: se veían arreglos a medias y parecían fallos nuevos.
+# no-cache no significa "no guardes", significa "pregunta antes de usar".
+/*
+  Cache-Control: no-cache
+
+# Las librerías no cambian nunca: esas sí se guardan a largo plazo.
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable

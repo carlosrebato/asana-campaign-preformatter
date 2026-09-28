@@ -15,7 +15,23 @@
    este fichero y nada más.
 ============================================================ */
 
+import { resolverProductos, vincular } from './ia.js';
+
 const ASANA = 'https://app.asana.com/api/1.0';
+
+/* ------------------------------------------------------------
+   LÍMITE DE SUBPETICIONES
+   ------------------------------------------------------------
+   Un Worker no puede hacer más de 50 llamadas salientes por
+   invocación. Con 73 campañas eso se supera sin despeinarse:
+   la comprobación de duplicados son 73 búsquedas y la carga son
+   dos llamadas por tarea (crear + colocar en su sección).
+
+   Por eso el cliente trocea y llama varias veces. Estos números
+   son el tamaño máximo de cada trozo, con margen.
+------------------------------------------------------------ */
+const MAX_DUPLICADOS = 40;   // 1 búsqueda por PAC
+const MAX_CARGA = 20;        // 2 llamadas por tarea
 
 /* ------------------------------------------------------------
    GUARDARRAÍL · PROYECTOS DONDE NO SE ESCRIBE NUNCA
@@ -97,17 +113,20 @@ async function catalogos(env, projectGid) {
    tareas: traerlas todas no es una opción.
 ------------------------------------------------------------ */
 async function duplicados(env, workspaceGid, projectGid, pacs) {
-  const encontrados = [];
-  for (const pac of pacs) {
-    if (!pac) continue;
-    const r = await asana(env,
-      `/workspaces/${workspaceGid}/tasks/search` +
-      `?projects.any=${projectGid}&text=${encodeURIComponent(pac)}` +
-      `&opt_fields=name,permalink_url&limit=5`);
-    const ya = (r || []).find(t => t.name && t.name.includes(pac));
-    if (ya) encontrados.push({ pac, gid: ya.gid, name: ya.name, url: ya.permalink_url });
-  }
-  return encontrados;
+  const lote = pacs.filter(Boolean).slice(0, MAX_DUPLICADOS);
+  const resultados = await Promise.all(lote.map(async pac => {
+    try {
+      const r = await asana(env,
+        `/workspaces/${workspaceGid}/tasks/search` +
+        `?projects.any=${projectGid}&text=${encodeURIComponent(pac)}` +
+        `&opt_fields=name,permalink_url&limit=5`);
+      const ya = (r || []).find(t => t.name && t.name.includes(pac));
+      return ya ? { pac, gid: ya.gid, name: ya.name, url: ya.permalink_url } : null;
+    } catch {
+      return null;   // no poder comprobar no puede bloquear la carga
+    }
+  }));
+  return resultados.filter(Boolean);
 }
 
 /* ---------------- CREAR TAREAS ----------------
@@ -117,50 +136,56 @@ async function duplicados(env, workspaceGid, projectGid, pacs) {
 ------------------------------------------------------------ */
 async function crear(env, projectGid, tareas) {
   exigirEscribible(projectGid);
-  const created = [], failed = [];
-  for (const t of tareas) {
-    let aviso = '';
+
+  // En paralelo: secuencial son ~4 minutos para 73 campañas, porque cada
+  // llamada a Asana tarda casi dos segundos. El lote lo acota el cliente
+  // (MAX_CARGA), así que caben dentro del techo de subpeticiones.
+  const resultados = await Promise.all(
+    tareas.slice(0, MAX_CARGA).map(t => crearUna(env, projectGid, t))
+  );
+  return {
+    created: resultados.filter(r => r.ok).map(r => r.dato),
+    failed: resultados.filter(r => !r.ok).map(r => r.dato)
+  };
+}
+
+async function crearUna(env, projectGid, t) {
+  let aviso = '';
+  try {
+    const base = {
+      name: t.name,
+      projects: [projectGid],
+      notes: t.notes || '',
+      ...(t.dueDate ? { due_on: t.dueDate } : {})
+    };
+    const cf = t.custom_fields || {};
+
+    let tarea;
     try {
-      const base = {
-        name: t.name,
-        projects: [projectGid],
-        notes: t.notes || '',
-        ...(t.dueDate ? { due_on: t.dueDate } : {})
-      };
-      const cf = t.custom_fields || {};
-
-      // Un campo no puede tumbar la carga. Asana rechaza valores que el
-      // catálogo sí lista (los tipos de tarea restringen qué opciones
-      // valen), y eso no se ve hasta que se intenta escribir. Si pasa,
-      // la tarea se crea igual sin campos y se avisa de cuál se perdió.
-      let tarea;
-      try {
-        tarea = await asana(env, '/tasks', {
-          method: 'POST',
-          body: JSON.stringify({ data: Object.keys(cf).length ? { ...base, custom_fields: cf } : base })
-        });
-      } catch (e) {
-        if (!Object.keys(cf).length) throw e;
-        // Un campo no puede tumbar la carga: se reintenta sin ellos.
-        // No se puede saber cuál sobra: Asana devuelve las opciones
-        // válidas pero no dice de qué campo, y los valores de los demás
-        // campos tampoco están en esa lista. Se avisa y se sigue.
-        tarea = await asana(env, '/tasks', { method: 'POST', body: JSON.stringify({ data: base }) });
-        aviso = `Creada sin campos personalizados. Asana: ${e.message.slice(0, 140)}`;
-      }
-
-      // La sección se asigna después: /tasks no acepta sección al crear.
-      if (t.sectionGid) {
-        await asana(env, `/sections/${t.sectionGid}/addTask`, {
-          method: 'POST', body: JSON.stringify({ data: { task: tarea.gid } })
-        });
-      }
-      created.push({ id: t.id, name: t.name, gid: tarea.gid, url: tarea.permalink_url, ...(aviso ? { aviso } : {}) });
+      tarea = await asana(env, '/tasks', {
+        method: 'POST',
+        body: JSON.stringify({ data: Object.keys(cf).length ? { ...base, custom_fields: cf } : base })
+      });
     } catch (e) {
-      failed.push({ id: t.id, name: t.name, error: e.message });
+      if (!Object.keys(cf).length) throw e;
+      // Un campo no puede tumbar la carga: se reintenta sin ellos.
+      // No se puede saber cuál sobra: Asana devuelve las opciones
+      // válidas pero no dice de qué campo, y los valores de los demás
+      // campos tampoco están en esa lista. Se avisa y se sigue.
+      tarea = await asana(env, '/tasks', { method: 'POST', body: JSON.stringify({ data: base }) });
+      aviso = `Creada sin campos personalizados. Asana: ${e.message.slice(0, 140)}`;
     }
+
+    // La sección se asigna después: /tasks no la acepta al crear.
+    if (t.sectionGid) {
+      await asana(env, `/sections/${t.sectionGid}/addTask`, {
+        method: 'POST', body: JSON.stringify({ data: { task: tarea.gid } })
+      });
+    }
+    return { ok: true, dato: { id: t.id, name: t.name, gid: tarea.gid, url: tarea.permalink_url, ...(aviso ? { aviso } : {}) } };
+  } catch (e) {
+    return { ok: false, dato: { id: t.id, name: t.name, error: e.message } };
   }
-  return { created, failed };
 }
 
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), {
@@ -186,6 +211,16 @@ export default {
       if (url.pathname === '/api/duplicados' && request.method === 'POST') {
         const { pacs } = await request.json();
         return json({ duplicados: await duplicados(env, env.ASANA_WORKSPACE_GID, projectGid, pacs) });
+      }
+      // El modelo solo se usa para elegir entre opciones cerradas.
+      // Si no hay clave, se responde vacío y el flujo sigue sin él.
+      if (url.pathname === '/api/productos' && request.method === 'POST') {
+        if (!env.ANTHROPIC_API_KEY) return json({ resueltos: [], sinModelo: true });
+        return json(await resolverProductos(env, await request.json()));
+      }
+      if (url.pathname === '/api/vincular' && request.method === 'POST') {
+        if (!env.ANTHROPIC_API_KEY) return json({ vinculos: [], sinModelo: true });
+        return json(await vincular(env, await request.json()));
       }
       if (url.pathname === '/api/cargar' && request.method === 'POST') {
         const { tareas } = await request.json();

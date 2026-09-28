@@ -83,6 +83,57 @@ const ESTRATEGIA = (() => {
     return out;
   }
 
+  /* ---------- HTML: el documento de orientación ----------
+     No trae la plantilla de Comercialización, pero sí 21 fichas por
+     territorio con idea dominante, tono, qué evitar y verbalizaciones.
+     Eso es registro de mensaje: le habla al cliente. Lo que es registro
+     de planner —objetivo, tensión, audiencia, misión por soporte— se
+     descarta igual que en los PDF.
+
+     Los datos viven en una variable del propio HTML, así que se leen de
+     ahí y no de la maqueta: si cambia el diseño, esto sigue valiendo.
+  ---------------------------------------------------------- */
+  const CAMPOS_TERRITORIO = [
+    ['d',   'Idea dominante'],
+    ['ton', 'Tono'],
+    ['pri', 'Principio'],
+    ['exp', 'Por dónde explorar'],
+    ['evi', 'Qué evitar']
+  ];
+
+  function recortarArray(texto, desde) {
+    let prof = 0;
+    for (let i = desde; i < texto.length; i++) {
+      if (texto[i] === '[') prof++;
+      else if (texto[i] === ']' && --prof === 0) return texto.slice(desde, i + 1);
+    }
+    return '';
+  }
+
+  function territorios(html) {
+    const m = html.match(/TERR\s*=\s*\[/);
+    if (!m) return [];
+    let lista;
+    try { lista = JSON.parse(recortarArray(html, m.index + m[0].length - 1)); }
+    catch { return []; }
+
+    return lista.map(t => {
+      const lineas = [];
+      for (const [clave, etiqueta] of CAMPOS_TERRITORIO) {
+        if (t[clave]) lineas.push(`${etiqueta}: ${t[clave]}`);
+      }
+      if (Array.isArray(t.ver) && t.ver.length) {
+        lineas.push('Verbalizaciones: ' + t.ver.map(v => v.replace(/^Territorio:\s*/, '')).join(' · '));
+      }
+      if (Array.isArray(t.man) && t.man.length) {
+        lineas.push('Mandatorios: ' + t.man.map(x => x.t || x).join(' · '));
+      }
+      return lineas.length
+        ? { pagina: 0, titulo: t.n || t.t || '', texto: lineas.join('\n'), fuente: 'territorio' }
+        : null;
+    }).filter(Boolean);
+  }
+
   async function extraer(file) {
     const pdfjs = await import('./vendor/pdf.min.mjs');
     pdfjs.GlobalWorkerOptions.workerSrc = './vendor/pdf.worker.min.mjs';
@@ -122,8 +173,12 @@ const ESTRATEGIA = (() => {
 
   async function parse(file) {
     try {
+      if (/\.html?$/i.test(file.name)) {
+        const t = territorios(await file.text());
+        return { briefs: t, paginas: t.length };
+      }
       const paginas = await extraer(file);
-      return { briefs: briefs(paginas), paginas: paginas.length };
+      return { briefs: briefs(paginas).map(b => ({ ...b, fuente: 'plantilla' })), paginas: paginas.length };
     } catch (e) {
       // El documento no puede romper la carga: sin briefs, sin ruido.
       return { briefs: [], paginas: 0 };
@@ -134,31 +189,56 @@ const ESTRATEGIA = (() => {
   // umbral alto, prefiere no encontrar a encontrar mal.
   function vincular(tasks, briefs) {
     if (!briefs.length) return tasks;
-    const porTitulo = {};
-    for (const b of briefs) porTitulo[b.titulo.slice(0, 22).toLowerCase()] = b;
+    const porTitulo = (fuente) => {
+      const m = {};
+      for (const b of briefs.filter(b => b.fuente === fuente)) {
+        m[b.titulo.slice(0, 22).toLowerCase()] = b;
+      }
+      return m;
+    };
+    const plantillas = porTitulo('plantilla');
+    const territorios = porTitulo('territorio');
 
     return tasks.map(t => {
-      const clave = EXCEL.productoBrief[t.excel?.producto];
-      if (!clave) return t;
-      // Una entrada puede declarar varios briefs candidatos. Si el
-      // documento trae más de uno, la vinculación es dudosa: se pega el
-      // primero y la tarea sale en amarillo para que alguien la mire.
-      const candidatos = [].concat(clave)
-        .map(c => porTitulo[c.slice(0, 22).toLowerCase()])
-        .filter(Boolean);
-      if (!candidatos.length) return t;
-      const b = candidatos[0];
-      const dudoso = candidatos.length > 1;
-      return Object.assign({}, t, {
-        description: b.texto,
-        contextSource: `${b.titulo} (pág. ${b.pagina})`,
-        linkConfidence: dudoso ? 'low' : 'high',
-        linkNote: dudoso
-          ? `El documento trae ${candidatos.length} briefs que encajan con este producto `
-            + `(${candidatos.map(c => c.titulo).join(' · ')}) y el Excel no dice cuál. `
-            + 'Se ha pegado el primero.'
-          : undefined
-      });
+      const producto = t.excel?.producto;
+
+      // 1 · El brief de Comercialización manda: es el material original.
+      const clave = EXCEL.productoBrief[producto];
+      if (clave) {
+        const candidatos = [].concat(clave)
+          .map(c => plantillas[c.slice(0, 22).toLowerCase()])
+          .filter(Boolean);
+        if (candidatos.length) {
+          const b = candidatos[0];
+          const dudoso = candidatos.length > 1;
+          return Object.assign({}, t, {
+            description: b.texto,
+            contextSource: `${b.titulo} (pág. ${b.pagina})`,
+            linkConfidence: dudoso ? 'low' : 'high',
+            linkNote: dudoso
+              ? `El documento trae ${candidatos.length} briefs que encajan con este producto `
+                + `(${candidatos.map(c => c.titulo).join(' · ')}) y el Excel no dice cuál. `
+                + 'Se ha pegado el primero.'
+              : undefined
+          });
+        }
+      }
+
+      // 2 · Sin brief, el territorio del documento de orientación. Es
+      // material derivado, no el brief original: vinculación dudosa a
+      // propósito, para que alguien lo mire antes de cargarlo.
+      const terr = EXCEL.productoTerritorio[producto];
+      const b = terr && territorios[terr.slice(0, 22).toLowerCase()];
+      if (b) {
+        return Object.assign({}, t, {
+          description: b.texto,
+          contextSource: `Territorio · ${b.titulo}`,
+          linkConfidence: 'low',
+          linkNote: 'Sale del documento de orientación, no del brief de '
+            + 'Comercialización. Es material derivado: conviene leerlo antes de cargar.'
+        });
+      }
+      return t;
     });
   }
 

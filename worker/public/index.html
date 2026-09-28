@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="app.css?v=20260928135642">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js"></script>
-<script src="excel.js"></script>
-<script src="estrategia.js"></script>
-<script src="api.js"></script>
+<script src="data.js?v=20260928135642"></script>
+<script src="excel.js?v=20260928135642"></script>
+<script src="estrategia.js?v=20260928135642"></script>
+<script src="api.js?v=20260928135642"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -51,7 +51,9 @@ const S = {
   loadProgress: [0, 0],
   result: null,
   dupes: [],
-  catalogos: null      // resultado de leer los catálogos de Asana
+  // null mientras se piden los catálogos: hasta que se sabe si Asana
+  // responde no se avisa de nada, que si no el aviso parpadea al cargar.
+  catalogos: null
 };
 
 const ICONS = {
@@ -80,13 +82,29 @@ const STEPS = [
   { id: 'confirmar',  label: 'Carga en Asana' }
 ];
 
+// A qué pasos se puede ir desde donde estamos. No es lineal: se vuelve
+// atrás a corregir y se avanza a lo ya hecho. Lo que no se puede es
+// saltar a un paso cuyo trabajo previo no existe todavía.
+function pasoAccesible(id) {
+  if (id === 'procesando') return false;          // no es una pantalla, es un tránsito
+  if (id === 'entrada') return S.screen !== 'procesando';
+  if (id === 'revision') return S.tasks.length > 0;
+  if (id === 'confirmar') return S.tasks.some(t => t.approved);
+  return false;
+}
+
 function renderStepper() {
   const cur = S.screen === 'resultado' ? 'confirmar' : S.screen;
   const i = STEPS.findIndex(s => s.id === cur);
+  // Los pasos a los que se puede ir llevan data-paso y se marcan como
+  // pulsables; el resto se queda apagado. Sin esa señal nadie descubre
+  // que la barra sirve para moverse.
   document.getElementById('stepper').innerHTML = STEPS.map((s, n) => {
     const cls = n === i ? 'step active' : n < i ? 'step done' : 'step';
     const num = n < i ? ICONS.check : (n + 1);
-    return `<div class="${cls}"><span class="step-num">${num}</span><span class="step-label">${s.label}</span></div>`
+    const ir = s.id !== cur && pasoAccesible(s.id);
+    return `<div class="${cls}${ir ? ' step-ir' : ''}"${ir ? ` data-paso="${s.id}"` : ''}>`
+      + `<span class="step-num">${num}</span><span class="step-label">${s.label}</span></div>`
       + (n < STEPS.length - 1 ? '<span class="step-sep">›</span>' : '');
   }).join('');
 }
@@ -108,8 +126,12 @@ function resumenExcel(p) {
 // Cuántos briefs de mensaje se han encontrado. Si no hay ninguno, no se
 // dice nada: el documento no puede generar ruido (DECISIONES.md).
 function resumenEstrategia(p) {
-  if (!p.briefs.length) return '';
-  return `<div class="drop-hint">${p.briefs.length} briefs de mensaje</div>`;
+  // Qué ha aportado este documento. Si no aporta nada no se dramatiza:
+  // solo dos de cada tres documentos traen material de mensaje, y eso es
+  // cuestión de formato, no de calidad.
+  if (!p.briefs.length) return '<div class="drop-hint">Leído · sin material de mensaje</div>';
+  const terr = p.briefs.filter(b => b.fuente === 'territorio').length;
+  return `<div class="drop-hint">${p.briefs.length} ${terr ? 'territorios' : 'briefs'} de mensaje</div>`;
 }
 
 function viewEntrada() {
@@ -131,7 +153,6 @@ function viewEntrada() {
           <span class="req">Obligatorio</span>
         `}
       </div>
-      ${!d ? `<p class="drop-democopy">Se lee en el navegador · nada sale de aquí</p>` : ''}
     </div>`;
   };
 
@@ -148,8 +169,6 @@ function viewEntrada() {
             ${docs.map((d, i) => `
               <li>
                 <span class="doc-nombre">${esc(d.name)}</span>
-                <span class="doc-briefs">${d.parsed?.briefs.length
-                  ? `${d.parsed.briefs.length} briefs` : 'sin briefs'}</span>
                 <button class="btn-del" data-quitar-doc="${i}" title="Quitar">${ICONS.trash}</button>
               </li>`).join('')}
           </ul>
@@ -157,11 +176,10 @@ function viewEntrada() {
         ` : `
           <div class="drop-icon">${ICONS.fileBig}</div>
           <div class="drop-title">Documentos de estrategia</div>
-          <div class="drop-hint">Arrastra los .pdf o haz clic · puedes subir varios</div>
+          <div class="drop-hint">Arrastra los .pdf o .html · puedes subir varios</div>
           <span class="req">Obligatorio</span>
         `}
       </div>
-      ${!docs.length ? `<p class="drop-democopy">Se leen en el navegador · nada sale de aquí</p>` : ''}
     </div>`;
   };
 
@@ -170,6 +188,11 @@ function viewEntrada() {
   return `
   <main class="main-narrow">
     <h1 class="page">Cargar planificación del mes</h1>
+    ${S.tasks.length ? `
+      <p class="volver-revision">
+        Hay ${S.tasks.length} tareas ya procesadas.
+        <button class="btn-link-section" data-paso="revision">Volver a la revisión</button>
+      </p>` : ''}
     <p style="font-size:14px;color:#605E5C;margin-top:8px;line-height:1.55">
       Sube el Excel y los documentos de estrategia del mes. El Excel aporta los
       datos operativos (PAC, fechas, producto); los documentos aportan el
@@ -181,14 +204,11 @@ function viewEntrada() {
       ${cajaEstrategia()}
     </div>
 
-    ${CATALOGS.esCopia ? `
+    ${S.catalogos && !S.catalogos.ok ? `
       <p class="aviso-catalogos">
         Sin conexión con Asana: se usan los catálogos guardados.
         Se puede revisar la propuesta, pero no cargarla.
-      </p>` : `
-      <p class="drop-democopy" style="text-align:left">
-        Catálogos leídos de <strong>${esc(CATALOGS.asanaProject?.name || '')}</strong>
-      </p>`}
+      </p>` : ''}
 
     <div style="margin-top:26px;display:flex;align-items:center;gap:14px">
       <button class="btn-primary" id="btn-procesar" ${listo ? '' : 'disabled'}>
@@ -282,6 +302,7 @@ function viewRevision() {
       <div class="legend">
         <span class="legend-item"><span class="bola ok"></span> Vinculación clara — contexto encontrado y vinculado sin dudas</span>
         <span class="legend-item"><span class="bola review"></span> Vinculación probable — revisar</span>
+        <span class="legend-item"><span class="bola"></span> Sin vinculación</span>
         <span class="legend-item"><span class="bola manual"></span> Creada a mano</span>
       </div>
     </div>
@@ -303,7 +324,7 @@ function rowHTML(t) {
       <span class="row-val">${esc(t.product)}</span>
       <span class="row-val">${esc(t.format)}</span>
       <span class="row-val">${fechaCorta(t.dueDate)}</span>
-      <span class="row-val muted">${esc(t.typology)}${t.clientType ? ' · ' + esc(t.clientType) : ''}</span>
+      <span class="row-val muted">${esc(t.typology)}${t.palanca ? ' · ' + esc(t.palanca) : ''}</span>
     </button>
     <button class="btn-approve ${t.approved ? 'on' : ''}" data-approve="${t.id}">
       ${t.approved ? '✓ Aprobada' : 'Aprobar'}
@@ -346,7 +367,7 @@ function badgeHTML(t) {
 // ("Idea fuerza:", "Reason why:"…). Se resaltan para que se lea como el
 // brief que es y no como un párrafo corrido. El texto no se toca: la
 // etiqueta sale del propio contenido.
-const ETIQUETAS = /^(?:\d+(?:\.\d+)*\.?\s*)?(idea\s*fuerza(?:\s+por\s+colectivo)?|elevator\s*pitch(?:\s+de\s+comunicaci[óo]n)?|mensaje\s*principal|mensaje\s*secundario|jerarqu[ií]a|tono|reason\s*why|palancas|prioritario|secundario|restricciones)\s*:?\s*/i;
+const ETIQUETAS = /^(?:\d+(?:\.\d+)*\.?\s*)?(idea\s*fuerza(?:\s+por\s+colectivo)?|elevator\s*pitch(?:\s+de\s+comunicaci[óo]n)?|mensaje\s*principal|mensaje\s*secundario|jerarqu[ií]a|tono|reason\s*why|palancas|prioritario|secundario|restricciones|idea\s*dominante|principio|por\s*d[óo]nde\s*explorar|qu[ée]\s*evitar|verbalizaciones|mandatorios)\s*:?\s*/i;
 
 function briefHTML(texto) {
   if (!texto) return '<p class="brief-vacio">Sin contexto de estrategia vinculado</p>';
@@ -368,7 +389,7 @@ function cardHTML(t) {
       ${opts.map(o => `<option value="${esc(o)}" ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}
     </select>`;
 
-  const descPrev = t.description ? t.description.replace(/\n/g, ' · ').slice(0, 150) : 'Añadir contexto de estrategia';
+  const descPrev = t.description ? t.description.replace(/\n/g, ' · ').slice(0, 150) : 'Añadir a mano';
 
   return `
   <article class="card ${t.approved ? 'approved' : ''} ${t.flash ? 'flash' : ''}" data-card="${t.id}"
@@ -390,24 +411,29 @@ function cardHTML(t) {
       <label class="field"><span class="field-label">Entrega</span>
         <input type="date" value="${esc(t.dueDate)}" data-set="dueDate" data-id="${t.id}">
       </label>
-      <label class="field"><span class="field-label">Tipo de cliente</span>${sel('clientType', D.clientTypeOptions, t.clientType)}</label>
+      <label class="field"><span class="field-label">Palanca</span>${sel('palanca', D.palancaOptions, t.palanca)}</label>
       <label class="field"><span class="field-label">Tipología</span>${sel('typology', D.typologyOptions, t.typology || 'Growth')}</label>
     </div>
 
-    <div class="card-desc">
+    <div class="card-desc field">
       ${t.descOpen ? `
+        <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>
         <div class="desc-head">
-          <button class="desc-toggle open" data-desc="${t.id}">${ICONS.chevD} Contexto de estrategia</button>
-          ${t.contextSource ? `<span class="desc-fuente">${esc(t.contextSource)}</span>` : ''}
-          <button class="btn-ghost" data-descedit="${t.id}" style="font-size:12px">
-            ${t.descEdit ? 'Ver' : 'Editar'}
-          </button>
+          ${t.contextSource ? `<span class="desc-fuente">${esc(t.contextSource)}</span>` : '<span class="desc-fuente"></span>'}
+          <button class="desc-ampliar" data-descedit="${t.id}">${t.descEdit ? 'Hecho' : 'Editar'}</button>
+          <button class="desc-ampliar" data-desc="${t.id}">Ocultar</button>
         </div>
         ${t.descEdit
           ? `<textarea class="desc-ta" rows="10" data-set="description" data-id="${t.id}">${esc(t.description)}</textarea>`
           : briefHTML(t.description)}
       ` : `
-        <button class="desc-toggle" data-desc="${t.id}">${ICONS.chevR}<span class="desc-preview">${esc(descPrev)}</span></button>
+        <div class="field desc-cerrado" data-desc="${t.id}">
+          <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>
+          <p class="desc-preview">
+            <span class="desc-txt">${esc(descPrev)}</span>
+            <button class="desc-ampliar" data-desc="${t.id}">${t.description ? 'Ampliar' : 'Añadir'}</button>
+          </p>
+        </div>
       `}
     </div>
   </article>`;
@@ -440,7 +466,7 @@ function viewConfirmar() {
     <button class="btn-ghost" id="btn-back" style="margin:0 0 18px -12px">← Volver a la revisión</button>
     <h1 class="page">Vas a crear ${app.length} tareas en Asana</h1>
     <p style="font-size:14px;color:#605E5C;margin:8px 0 24px">
-      Proyecto de destino: <strong style="color:#262423">${esc(D.asanaProject)}</strong>
+      Proyecto de destino: <strong style="color:#262423">${esc(D.asanaProject?.name || '')}</strong>
     </p>
 
     <div class="panel" style="margin-bottom:16px">
@@ -470,7 +496,7 @@ function viewResultado() {
       <span style="width:34px;height:34px;border-radius:50%;background:#CEF7BF;display:flex;align-items:center;justify-content:center">${ICONS.ok}</span>
       <h1 class="page">${r.created.length} tareas creadas</h1>
     </div>
-    <p style="font-size:14px;color:#605E5C;margin:0 0 24px">En <strong style="color:#262423">${esc(D.asanaProject)}</strong></p>
+    <p style="font-size:14px;color:#605E5C;margin:0 0 24px">En <strong style="color:#262423">${esc(D.asanaProject?.name || '')}</strong></p>
 
     <div class="panel" style="margin-bottom:16px">
       ${r.created.map(c => `
@@ -522,10 +548,14 @@ async function procesar() {
   S.screen = 'procesando';
   S.procPasos = []; S.procStep = -1;
   render();
-  const tasks = await API.interpretarDocumentos(S.files.excel, S.files.strategy, (i, pasos) => {
-    S.procPasos = pasos; S.procStep = i; render();
+  let pasos = [];
+  const tasks = await API.interpretarDocumentos(S.files.excel, S.files.strategy, (i, ps) => {
+    pasos = ps; S.procPasos = ps; S.procStep = i; render();
   });
   S.tasks = tasks.map(t => Object.assign({ approved: false, descOpen: false, flash: false, editing: false, typology: 'Growth' }, t));
+  // Comprobar PACs en Asana tarda: son tantas búsquedas como campañas.
+  S.procPasos = [...pasos, 'Comprobando en Asana si ya existen'];
+  S.procStep = pasos.length; render();
   S.dupes = await API.comprobarDuplicados(S.tasks);
   S.screen = 'revision';
   render();
@@ -544,10 +574,14 @@ async function cargar() {
 
 /* ---------------- EVENTOS ---------------- */
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-quitar-doc],[data-descedit],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
+  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-quitar-doc],[data-descedit],[data-paso],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
   if (!el) return;
 
-  if (el.dataset.approve) {
+  if (el.dataset.paso) {
+    S.screen = el.dataset.paso; render();
+    window.scrollTo(0, 0);
+  }
+  else if (el.dataset.approve) {
     const t = S.tasks.find(x => x.id === el.dataset.approve);
     // Aprobar da la revisión por terminada: la tarjeta se cierra.
     patch(t.id, { approved: !t.approved, editing: false });
@@ -575,7 +609,7 @@ document.addEventListener('click', async e => {
     const prod = Object.keys(D.productSectionMap).find(p => D.productSectionMap[p] === sec) || 'Otros';
     S.tasks.push({
       id: 'm' + Date.now(), sectionId: sec, name: '', product: prod,
-      format: D.formatOptions[0], dueDate: '', clientType: D.clientTypeOptions[0],
+      format: D.formatOptions[0], dueDate: '', clientType: '', palanca: '',
       typology: 'Growth', manual: true, description: '',
       approved: false, descOpen: false, flash: true, editing: true
     });
@@ -611,7 +645,11 @@ document.addEventListener('click', async e => {
     S.screen = 'confirmar'; render();
   }
   else if (el.id === 'btn-reset') {
-    Object.assign(S, { screen: 'entrada', files: { excel: null, strategy: null }, tasks: [], result: null });
+    Object.assign(S, {
+      screen: 'entrada',
+      files: { excel: null, strategy: [] },   // lista vacía, no null: la entrada la recorre
+      tasks: [], dupes: [], result: null, procStep: -1, procPasos: []
+    });
     render();
   }
 });
@@ -666,7 +704,7 @@ document.addEventListener('dragleave', e => {
 function abrirSelector(key) {
   const inp = document.createElement('input');
   inp.type = 'file';
-  inp.accept = key === 'excel' ? '.xlsx' : '.pdf';
+  inp.accept = key === 'excel' ? '.xlsx' : '.pdf,.html,.htm';
   inp.multiple = key === 'strategy';
   inp.onchange = async () => {
     if (!inp.files.length) return;

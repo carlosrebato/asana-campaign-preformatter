@@ -48,6 +48,15 @@ input, select, textarea { font-family: inherit; }
 .step-label { font-size: 12.5px; font-weight: 500; color: #9F9C99; white-space: nowrap; }
 .step.active .step-label { color: #0066FF; font-weight: 700; }
 .step.done .step-label { color: #605E5C; }
+.step-ir { cursor: pointer; border-radius: 9999px; transition: .12s; }
+.step-ir .step-label { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #DFDBD6; }
+.step-ir:hover { background: #D3EEFF; }
+.step-ir:hover .step-label { color: #0066FF; text-decoration-color: #0066FF; }
+.step-ir:hover .step-num { border-color: #0066FF; color: #0066FF; }
+.volver-revision {
+  margin-top: 14px; font-size: 13px; color: #605E5C;
+  display: flex; align-items: center; gap: 6px;
+}
 .step-sep { color: #DFDBD6; font-size: 11px; }
 
 /* ============ LAYOUT ============ */
@@ -58,14 +67,22 @@ h1.page { font-size: 24px; font-weight: 800; letter-spacing: -.015em; }
 h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 
 /* ============ ENTRADA ============ */
-.drop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px; }
+.drop-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px;
+  align-items: stretch;
+}
+.drop-cell { display: flex; flex-direction: column; }
 .drop {
   border: 1.5px dashed #DFDBD6; border-radius: 16px;
-  background: #fff; padding: 30px 22px;
+  background: #fff; padding: 24px 22px;
   text-align: center; transition: .16s; cursor: pointer;
-  min-height: 190px;
+  flex: 1; min-height: 210px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px;
 }
+/* Con documentos dentro, la caja se comporta como una lista, no como
+   una zona de arrastre centrada. */
+.drop.loaded { justify-content: flex-start; gap: 10px; padding: 18px; }
+.drop.loaded .drop-title { margin-top: 4px; }
 .drop:hover, .drop.over { border-color: #0066FF; background: #F5FAFF; }
 .drop.loaded { border-style: solid; border-color: #CEF7BF; background: #FBFFF9; cursor: default; }
 .drop-icon { color: #9F9C99; }
@@ -91,7 +108,6 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
   font-size: 12.5px; font-weight: 700;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.doc-briefs { font-size: 11px; color: #807D7B; white-space: nowrap; }
 
 .drop-avisos {
   list-style: none; margin: 0; padding: 0;
@@ -311,7 +327,7 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
 .field select { cursor: pointer; }
 .field select:focus, .field input:focus { outline: none; border-color: #0066FF; }
 
-.card-desc { margin-top: 8px; padding-left: 26px; }
+.card-desc { margin-top: 10px; padding-left: 26px; gap: 4px; }
 .desc-toggle {
   display: flex; align-items: center; gap: 6px; width: 100%;
   text-align: left; border: none; background: transparent;
@@ -319,9 +335,26 @@ h2.section-title { font-size: 19px; font-weight: 800; letter-spacing: -.015em; }
   border-radius: 6px; overflow: hidden;
 }
 .desc-toggle:hover { background: #F8F4F0; color: #605E5C; }
-.desc-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+/* Cerrado, el contexto se lee como un campo más de la tarjeta:
+   etiqueta arriba y contenido debajo, igual que Producto o Formato. */
+.desc-cerrado { cursor: pointer; gap: 4px; }
+.desc-preview {
+  margin: 0; display: flex; align-items: baseline; gap: 8px;
+  font-size: 12px; line-height: 1.45; color: #807D7B; min-width: 0;
+}
+/* El recorte va en el texto, no en la fila: si no, 'Ampliar' se va
+   fuera con los puntos suspensivos y no se ve. */
+.desc-txt {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.desc-ampliar {
+  border: none; background: transparent; padding: 0; flex-shrink: 0;
+  font-size: 12px; font-weight: 700; color: #0066FF;
+}
+.desc-ampliar:hover { text-decoration: underline; }
 .desc-toggle.open { font-size: 11px; font-weight: 500; color: #605E5C; width: auto; }
-.desc-head { display: flex; align-items: center; gap: 8px; }
+.desc-head { display: flex; align-items: baseline; gap: 12px; }
 .desc-fuente {
   flex: 1; min-width: 0; font-size: 11px; color: #9F9C99;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
