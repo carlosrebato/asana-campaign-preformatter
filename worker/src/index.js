@@ -228,11 +228,47 @@ async function guardarPropuesta(env, id, datos) {
     actualizada: ahora,
     version: (previa?.version || 0) + 1,
     ficheros: datos.ficheros || previa?.ficheros || {},
+    // El material de mensaje que sacó el modelo de los documentos se
+    // guarda con la propuesta. Si vuelve el mismo Excel corregido, no
+    // hay que releer nada: los documentos son los de siempre.
+    briefs: datos.briefs || previa?.briefs || [],
     tareas
   };
   // 90 días: una planificación mensual no se revisa más allá de eso.
   await env.PROPUESTAS.put(id, JSON.stringify(doc), { expirationTtl: 60 * 60 * 24 * 90 });
   return doc;
+}
+
+/* ---------------- VACIAR EL SANDBOX ----------------
+   Probar de verdad exige empezar con el proyecto vacío, y borrar
+   ochenta tareas a mano cada vez no es razonable.
+
+   Tres cerrojos, porque esto borra y borrar no se deshace:
+   · el proyecto no puede estar en SOLO_LECTURA
+   · su nombre tiene que contener SANDBOX
+   · hay que mandar su propio identificador como confirmación
+------------------------------------------------------------ */
+async function vaciarSandbox(env, projectGid, confirmacion) {
+  exigirEscribible(projectGid);
+  if (confirmacion !== projectGid) {
+    throw Object.assign(new Error('Falta la confirmación con el identificador del proyecto'), { status: 400 });
+  }
+  const proyecto = await asana(env, `/projects/${projectGid}?opt_fields=name`);
+  if (!/sandbox/i.test(proyecto.name || '')) {
+    throw Object.assign(new Error(`"${proyecto.name}" no es un sandbox. Aquí no se vacía nada.`), { status: 403 });
+  }
+
+  const tareas = await asana(env, `/projects/${projectGid}/tasks?opt_fields=name&limit=100`);
+  const lote = (tareas || []).slice(0, 45);   // techo de subpeticiones
+  const hechas = await Promise.all(lote.map(async t => {
+    try { await asana(env, `/tasks/${t.gid}`, { method: 'DELETE' }); return true; }
+    catch { return false; }
+  }));
+  return {
+    proyecto: proyecto.name,
+    borradas: hechas.filter(Boolean).length,
+    quedan: Math.max(0, (tareas || []).length - lote.length)
+  };
 }
 
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), {
@@ -292,6 +328,10 @@ export default {
         const res = await vincular(env, cuerpo);
         // ?crudo=1 devuelve además el texto tal cual, para depurar.
         return json(url.searchParams.get('crudo') ? res : { vinculos: res.vinculos, uso: res.uso });
+      }
+      if (url.pathname === '/api/vaciar-sandbox' && request.method === 'POST') {
+        const { confirmacion } = await request.json();
+        return json(await vaciarSandbox(env, projectGid, confirmacion));
       }
       if (url.pathname === '/api/cargar' && request.method === 'POST') {
         const { tareas } = await request.json();

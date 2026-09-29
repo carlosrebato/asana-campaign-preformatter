@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260928182101">
+<link rel="stylesheet" href="app.css?v=20260928203032">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260928182101"></script>
-<script src="excel.js?v=20260928182101"></script>
-<script src="estrategia.js?v=20260928182101"></script>
-<script src="api.js?v=20260928182101"></script>
+<script src="data.js?v=20260928203032"></script>
+<script src="excel.js?v=20260928203032"></script>
+<script src="estrategia.js?v=20260928203032"></script>
+<script src="api.js?v=20260928203032"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -40,7 +40,8 @@
 const D = CATALOGS;
 
 const S = {
-  screen: 'entrada',          // entrada | procesando | revision | confirmar | resultado
+  screen: 'entrada',          // entrada | procesando | revision | confirmar | resultado | error
+  error: '',                  // por qué se paró el procesado, si se paró
   files: { excel: null, strategy: [] },   // varios documentos de estrategia
   // Todo lo que la pantalla de proceso necesita para contar qué pasa.
   // Tarda minutos: sin detalle real parece colgada.
@@ -273,6 +274,38 @@ function viewProcesando() {
   </main>`;
 }
 
+// Lo que se ve el segundo que tarda en llegar la propuesta compartida.
+function viewCargando() {
+  return `
+  <main class="main-narrow">
+    <h1 class="page">Abriendo la revisión</h1>
+    <p class="proc-intro">
+      <span class="proc-reloj"><span class="proc-latido"></span>Un momento</span>
+    </p>
+  </main>`;
+}
+
+/* ---------------- FALLO DURANTE EL PROCESADO ----------------
+   Antes, un error aquí dejaba la barra de progreso llena y el reloj
+   corriendo, sin decir nada. Quien lo usa no abre la consola: si algo
+   se rompe, se cuenta y se ofrece volver a intentarlo.
+------------------------------------------------------------- */
+function viewError() {
+  return `
+  <main class="main-narrow">
+    <h1 class="page">No se ha podido terminar</h1>
+    <p class="proc-intro">El proceso se ha parado antes de acabar. No se ha
+      creado ni modificado nada en Asana.</p>
+    <div class="aviso-fallo">${esc(S.error || 'Error desconocido')}</div>
+    <p class="proc-intro">Puedes volver a intentarlo. Si vuelve a fallar,
+      pásale este mensaje a quien mantiene la herramienta.</p>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:20px">
+      <button class="btn-primary" id="btn-procesar">Volver a intentarlo</button>
+      <button class="btn-ghost" data-paso="entrada">Volver a los ficheros</button>
+    </div>
+  </main>`;
+}
+
 /* ---------------- 3 · REVISIÓN ---------------- */
 function viewRevision() {
   const total = S.tasks.length;
@@ -286,10 +319,12 @@ function viewRevision() {
     if (S.filtro === 'sin') return !t.description;
     if (S.filtro === 'pendientes') return !t.approved;
     if (S.filtro === 'cambios') return t.cambio && t.cambio !== 'igual';
+    if (S.filtro === 'fallo') return !!t.sinRespuesta;
     return true;
   };
   const cambios = resumenCambios(S.tasks);
   const cambiosN = cambios.nuevas + cambios.cambiadas + cambios.idas;
+  const fallosN = S.tasks.filter(t => t.sinRespuesta).length;
   const revisarN = S.tasks.filter(t => t.linkConfidence === 'low').length;
   const sinN = S.tasks.filter(t => !t.description).length;
 
@@ -351,6 +386,14 @@ function viewRevision() {
         tiene dudas.
       </p>
 
+      ${fallosN ? `
+      <div class="aviso-fallo">
+        <strong>${fallosN} campaña${fallosN > 1 ? 's' : ''} sin emparejar.</strong>
+        El modelo no llegó a responder sobre ${fallosN > 1 ? 'ellas' : 'ella'}: no es que no
+        tuvieran brief, es que no se comprobó. La tarea se crea igual, sin contexto.
+        <button class="btn-link-section" data-filtro="fallo">Verlas</button>
+      </div>` : ''}
+
       ${cambiosN ? `
       <div class="aviso-cambios">
         <strong>Esta propuesta se ha actualizado con un Excel nuevo.</strong>
@@ -372,8 +415,9 @@ function viewRevision() {
           </div>
         </div>
         <button class="btn-compartir ${S.copiado ? 'ok' : ''}" data-compartir="1">
-          ${S.copiado ? '✓ Copiado' : 'Copiar enlace'}
+          ${S.copiado ? '✓ Enlace copiado' : 'Copiar enlace'}
         </button>
+        ${S.copiado ? `<div class="compartir-url">${esc(location.origin + location.pathname)}#${esc(S.propuestaId)}</div>` : ''}
       </div>` : ''}
 
       <div class="barra-filtros">
@@ -420,7 +464,7 @@ function rowHTML(t) {
            draggable="true" data-drag="${t.id}">
     <button class="row-body" data-toggle="${t.id}" title="Abrir">
       <span class="chev">${ICONS.chev}</span>
-      <span class="row-name">${bolaHTML(t)}${esc(t.name) || '<em>Sin nombre</em>'}${marcaCambio(t)}${t.asanaUrl ? '<span class="marca asana">En Asana</span>' : ''}</span>
+      <span class="row-name">${bolaHTML(t)}${esc(t.name) || '<em>Sin nombre</em>'}${marcaCambio(t)}${t.sinRespuesta ? '<span class="marca fallo" title="El modelo no llegó a responder sobre esta campaña. La tarea se crea igual, pero sin contexto.">No se pudo emparejar</span>' : ''}${t.asanaUrl ? '<span class="marca asana">En Asana</span>' : ''}</span>
       <span class="row-val">${esc(t.product)}</span>
       <span class="row-val">${esc(t.format)}</span>
       <span class="row-val">${fechaCorta(t.dueDate)}</span>
@@ -518,6 +562,8 @@ function cardHTML(t) {
     <div class="card-desc field">
       ${t.descOpen ? `
         <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>
+        ${t.sinRespuesta
+          ? `<p class="nota-revisar"><strong>No se pudo emparejar</strong> · El modelo no llegó a responder sobre esta campaña, así que no sabemos si le tocaba algún brief. La tarea se crea igual. Si quieres, vuelve a procesar.</p>` : ''}
         ${t.cambio === 'cambiada' && t.cambios?.length
           ? `<p class="nota-revisar"><strong>Ha cambiado</strong> · ${esc(t.cambios.join(', '))}. Vuelve a aprobarla si te cuadra.</p>` : ''}
         ${t.asanaUrl
@@ -631,8 +677,8 @@ function viewResultado() {
 /* ---------------- RENDER ---------------- */
 function render() {
   renderStepper();
-  const v = { entrada: viewEntrada, procesando: viewProcesando, revision: viewRevision,
-              confirmar: viewConfirmar, resultado: viewResultado }[S.screen];
+  const v = { entrada: viewEntrada, cargando: viewCargando, procesando: viewProcesando, revision: viewRevision,
+              confirmar: viewConfirmar, resultado: viewResultado, error: viewError }[S.screen];
   document.getElementById('app').innerHTML = v();
   S.tasks.forEach(t => t.flash = false);
 }
@@ -673,25 +719,37 @@ async function procesar() {
   }, 1000);
 
   try {
+    // Si ya había una propuesta abierta, esto es una actualización: hay
+    // que saber qué había antes ANTES de gastar un solo minuto de
+    // modelo, porque de ahí sale qué hace falta calcular y qué no.
+    const guardada = S.propuestaId ? await API.abrirPropuesta(S.propuestaId) : null;
+    const previas = guardada?.tareas || (S.propuestaId ? S.tasks : []);
+
+    // Mismos documentos → el contexto ya está calculado y guardado.
+    // Solo se buscará para las campañas que no estaban en la propuesta.
+    const seguimos = previas.length && mismosDocumentos(guardada?.ficheros?.estrategia, S.files.strategy);
+    const briefs = seguimos ? (guardada?.briefs || []) : [];
+    const conocidos = new Set(previas.map(t => t.pac).filter(Boolean));
+    const soloPacs = briefs.length
+      ? new Set((S.files.excel?.parsed?.tasks || [])
+          .map(t => t.pac).filter(p => p && !conocidos.has(p)))
+      : null;
+
     // Repintar solo cuando cambia algo visible: cada repintado corta el
     // giro del spinner.
     let firma = '';
-    const tasks = await API.interpretarDocumentos(S.files.excel, S.files.strategy, info => {
+    const leido = await API.interpretarDocumentos(S.files.excel, S.files.strategy, info => {
       Object.assign(S.proc, info);
       const nueva = `${info.paso}|${info.cuenta || ''}|${info.detalle || ''}`;
       if (nueva === firma) return;
       firma = nueva;
       render();
-    });
+    }, { briefs, soloPacs });
+    const tasks = leido.tareas;
     if (!tasks.length) { S.screen = 'entrada'; return; }
     const nuevas = tasks.map(t => Object.assign(
       { approved: false, descOpen: false, flash: false, editing: false, typology: 'Growth' }, t));
 
-    // Si ya había una propuesta abierta, esto es una actualización: se
-    // compara con lo que hay para no perder la revisión hecha.
-    const previas = S.propuestaId
-      ? ((await API.abrirPropuesta(S.propuestaId))?.tareas || S.tasks)
-      : [];
     S.tasks = previas.length ? fusionarConPropuesta(previas, nuevas) : nuevas;
     Object.assign(S.proc, { paso: 3, detalle: '', cuenta: '', hechas: 0, total: 0 });
     render();
@@ -701,8 +759,8 @@ async function procesar() {
     });
     // El enlace se conserva si ya existía: es el que ha circulado.
     const doc = S.propuestaId
-      ? await API.guardarPropuesta(S.propuestaId, ficherosDeLaPropuesta(), S.tasks)
-      : await API.crearPropuesta(ficherosDeLaPropuesta(), S.tasks);
+      ? await API.guardarPropuesta(S.propuestaId, ficherosDeLaPropuesta(), S.tasks, leido.briefs)
+      : await API.crearPropuesta(ficherosDeLaPropuesta(), S.tasks, leido.briefs);
     if (doc) {
       S.propuestaId = doc.id;
       S.propuestaVer = doc.version || 1;
@@ -710,10 +768,25 @@ async function procesar() {
       escucharCambios();
     }
     S.screen = 'revision';
+  } catch (e) {
+    // Un fallo aquí dejaba la pantalla de progreso girando para siempre.
+    // Quien lo usa no tiene consola: si algo se rompe, se dice.
+    console.error(e);
+    S.error = e?.message || 'Algo ha fallado durante el procesado';
+    S.screen = 'error';
   } finally {
     clearInterval(tic);
     render();
   }
+}
+
+// Dos documentos son el mismo si coinciden nombre y tamaño. No hace
+// falta más: nadie manda dos ficheros distintos con el mismo nombre y
+// los mismos bytes.
+function mismosDocumentos(antes, ahora) {
+  const firma = ds => (ds || []).map(d => `${d.name}:${d.bytes || 0}`).sort().join('|');
+  const a = firma(antes);
+  return !!a && a === firma(ahora);
 }
 
 async function cargar() {
@@ -774,14 +847,27 @@ function fusionarConPropuesta(previas, nuevas) {
     vistas.add(clave);
     if (!p) return { ...n, cambio: 'nueva' };
 
-    const cambios = compararTarea(p, n);
+    // El contexto no es un dato del Excel: lo deduce el modelo de unos
+    // documentos que normalmente no han cambiado. Así que se conserva,
+    // y con él la aprobación. Y lo que alguien escribió a mano no lo
+    // pisa nadie, ni una pasada nueva.
+    const contexto = (p.editada || !n.description) ? {
+      description:    p.description,
+      editada:        p.editada,
+      contextSource:  p.contextSource,
+      linkConfidence: p.linkConfidence,
+      linkNote:       p.linkNote
+    } : {};
+    const fusion = { ...n, ...contexto };
+
+    const cambios = compararTarea(p, fusion);
     // Lo que ya está en Asana no se reescribe: se arrastra su enlace y
     // se avisa si el Excel dice ahora otra cosa.
     const enAsana = p.asanaUrl ? { asanaUrl: p.asanaUrl } : {};
     if (!cambios.length) {
-      return { ...n, ...enAsana, approved: p.approved, cambio: 'igual' };
+      return { ...fusion, ...enAsana, approved: p.approved, cambio: 'igual' };
     }
-    return { ...n, ...enAsana, approved: false, cambio: 'cambiada', cambios };
+    return { ...fusion, ...enAsana, approved: false, cambio: 'cambiada', cambios };
   });
 
   // Las que ya no vienen en el Excel: se avisan, no se borran.
@@ -801,7 +887,7 @@ function resumenCambios(tareas) {
 function ficherosDeLaPropuesta() {
   return {
     excel: S.files.excel ? { name: S.files.excel.name, ext: S.files.excel.ext } : null,
-    estrategia: (S.files.strategy || []).map(d => ({ name: d.name, ext: d.ext }))
+    estrategia: (S.files.strategy || []).map(d => ({ name: d.name, ext: d.ext, bytes: d.bytes || 0 }))
   };
 }
 
@@ -864,7 +950,11 @@ async function abrirDesdeEnlace() {
   const id = location.hash.replace('#', '').trim();
   if (!id) return false;
   const doc = await API.abrirPropuesta(id);
-  if (!doc) return false;
+  if (!doc || doc.error) {
+    alert('Ese enlace ya no existe o ha caducado. Las revisiones se guardan 90 días.');
+    history.replaceState(null, '', location.pathname);
+    return false;
+  }
   S.propuestaId = doc.id;
   S.files = {
     excel: doc.ficheros?.excel || { name: '(cargado en otro momento)', ext: '' },
@@ -886,10 +976,25 @@ document.addEventListener('click', async e => {
   if (el.dataset.compartir) {
     const url = location.origin + location.pathname + '#' + S.propuestaId;
     let ok = false;
-    try { await navigator.clipboard.writeText(url); ok = true; } catch { /* abajo */ }
+    try {
+      await navigator.clipboard.writeText(url); ok = true;
+    } catch {
+      // Algunos navegadores no dejan copiar así. Se intenta a la antigua
+      // antes de rendirse y pedírselo a la persona.
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        ok = document.execCommand('copy');
+        ta.remove();
+      } catch { /* abajo */ }
+    }
     if (!ok) { prompt('Copia el enlace:', url); return; }
+    // El aviso se queda cinco segundos y enseña el enlace copiado: si
+    // solo cambia el botón medio segundo, parece que no ha pasado nada.
     S.copiado = true; render();
-    setTimeout(() => { S.copiado = false; render(); }, 2600);
+    clearTimeout(window.__copiado);
+    window.__copiado = setTimeout(() => { S.copiado = false; render(); }, 5000);
   }
   else if (el.dataset.filtro) {
     S.filtro = el.dataset.filtro; render(); window.scrollTo(0, 0);
@@ -974,7 +1079,11 @@ document.addEventListener('click', async e => {
 document.addEventListener('change', e => {
   const el = e.target.closest('[data-set]');
   if (!el) return;
-  patch(el.dataset.id, { [el.dataset.set]: el.value });
+  const campos = { [el.dataset.set]: el.value };
+  // Un contexto escrito a mano queda marcado para siempre: ninguna
+  // pasada posterior lo sobrescribe.
+  if (el.dataset.set === 'description') campos.editada = true;
+  patch(el.dataset.id, campos);
 });
 
 // Drag & drop entre secciones
@@ -1053,11 +1162,18 @@ document.addEventListener('drop', async e => {
 
 // Los catálogos se piden a Asana antes de nada. Si no hay backend,
 // se sigue con la copia de data.js y se avisa en la entrada.
-render();
-API.cargarCatalogos().then(async r => {
-  S.catalogos = r;
-  if (!await abrirDesdeEnlace()) render();
-});
+// Si la dirección trae un enlace de propuesta, no se pinta la pantalla
+// de subir ficheros ni un instante: quien llega por el enlace viene a
+// revisar, y ver la pantalla de subida le hace dudar de si va bien.
+if (location.hash.length > 1) {
+  S.screen = 'cargando';
+  render();
+  abrirDesdeEnlace().then(ok => { if (!ok) { S.screen = 'entrada'; render(); } });
+  API.cargarCatalogos().then(r => { S.catalogos = r; });
+} else {
+  render();
+  API.cargarCatalogos().then(r => { S.catalogos = r; render(); });
+}
 </script>
 </body>
 </html>

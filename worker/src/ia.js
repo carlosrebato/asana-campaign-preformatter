@@ -37,7 +37,14 @@ const MODELO = 'claude-sonnet-5';
 // una parte como cacheable: en el emparejamiento los briefs son los
 // mismos en todas las tandas, y volver a mandarlos cada vez es la mayor
 // parte del gasto y de la espera.
-async function preguntar(env, system, contenido, maxTokens = 8000) {
+// `pensar` decide si el modelo delibera antes de responder.
+//
+// Leer un documento y decidir qué es material de mensaje SÍ lo
+// necesita: sin ello encontró 23 briefs donde antes encontraba 41.
+// Emparejar NO: es elegir de una lista con reglas escritas, y
+// deliberando escribía 36.000 tokens para devolver 3.000, que era
+// toda la espera.
+async function preguntar(env, system, contenido, maxTokens = 8000, pensar = false) {
   const r = await fetch(API, {
     method: 'POST',
     headers: {
@@ -50,11 +57,9 @@ async function preguntar(env, system, contenido, maxTokens = 8000) {
       max_tokens: maxTokens,
       system,
       messages: [{ role: 'user', content: contenido }],
-      // La mayor parte de la espera era razonamiento interno que no
-      // usamos: la respuesta útil son 3.000 tokens y escribía 36.000.
-      // Estas son decisiones de elección cerrada con reglas claras;
-      // no necesitan deliberación larga.
-      thinking: { type: 'disabled' }
+      // Pensando, se deja el ajuste por defecto del modelo; sin
+      // pensar, se desactiva explícitamente.
+      ...(pensar ? {} : { thinking: { type: 'disabled' } })
     })
   });
   if (!r.ok) throw new Error(`El modelo respondió ${r.status}: ${(await r.text()).slice(0, 200)}`);
@@ -94,7 +99,7 @@ function comoArray(texto) {
 export async function leerDocumento(env, { nombre, texto }) {
   if (!texto || texto.length < 200) return { briefs: [], uso: null };
   const contenido = `DOCUMENTO: ${nombre}\n\n${texto.slice(0, 180000)}`;
-  const { texto: salida, uso } = await preguntar(env, PROMPT_LECTURA, contenido, 16000);
+  const { texto: salida, uso } = await preguntar(env, PROMPT_LECTURA, contenido, 16000, true);
   const briefs = comoArray(salida).map(b => ({
     titulo: b.titulo || '',
     texto: b.texto || '',

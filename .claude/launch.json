@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8765", "--directory", "worker"],
       "port": 8765
+    },
+    {
+      "name": "campaign-loader-pruebas",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["wrangler", "dev", "--env", "pruebas", "--remote", "--port", "8787", "--cwd", "worker"],
+      "port": 8787
     }
   ]
 }

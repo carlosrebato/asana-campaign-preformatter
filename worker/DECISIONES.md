@@ -330,6 +330,57 @@ que no existen en ese proyecto.
 Es la prueba de por qué los catálogos se leen en caliente y se buscan
 **por nombre de campo** (`CATALOGS.fieldNames`), no por GID.
 
+## El contexto no es un dato del Excel
+
+Cuando llega un Excel corregido —y llega, porque en esta casa el fichero
+se vuelve a mandar— la propuesta se actualiza en vez de empezar de cero.
+La primera versión de eso comparaba tarea a tarea, incluido el contexto,
+y marcaba como "cambiada" cualquiera cuya descripción fuera distinta.
+
+Probado con dos Excel reales (73 campañas y 69), el resultado fue:
+
+- **2** campañas habían cambiado de verdad (una fecha de entrega)
+- **45** se marcaron como cambiadas, y perdieron su aprobación
+- lo escrito a mano por una persona se borró sin avisar
+
+La diferencia no venía del Excel: venía de que se releían los mismos tres
+documentos y el modelo, leyéndolos otra vez, no devolvía exactamente lo
+mismo. Cuatro minutos de espera para empeorar el resultado.
+
+La regla, entonces:
+
+> El Excel dice **qué campañas hay y con qué datos**. El contexto se
+> deduce de los documentos. Si los documentos no han cambiado, el
+> contexto tampoco, y no se vuelve a calcular.
+
+En la práctica:
+
+- los briefs que saca el modelo se guardan **con la propuesta**
+- dos documentos son el mismo si coinciden nombre y tamaño
+- si lo son, solo se busca contexto para los PAC que no estaban antes
+- una descripción **editada a mano** (`editada`) no la pisa ninguna pasada
+- con eso, la segunda pasada bajó de 4 min 15 s a **37 s**, y de 45
+  aprobaciones perdidas a 2 (las que cambiaron de verdad)
+
+Si los documentos **sí** cambian, es otro mes: se relee todo y se
+re-empareja todo. Ahí perder las aprobaciones es lo correcto, porque el
+contexto que se aprobó ya no es el que hay.
+
+## Si algo se rompe, se dice
+
+El fallo que destapó todo esto fue que `API.guardarPropuesta` no existía:
+se llamaba desde el procesado y nunca se había escrito. La actualización
+no se guardaba nunca, y el enlace compartido seguía enseñando lo viejo.
+
+Lo grave no era el fallo, era cómo se veía: la pantalla de progreso se
+quedaba con la barra llena y el reloj corriendo, para siempre. El error
+solo estaba en la consola, y quien usa esto no abre la consola.
+
+Ahora el procesado tiene su pantalla de error, con el motivo y un botón
+de reintentar. Y `guardarPropuesta` **lanza error** en vez de devolver
+`null` como sus vecinas: guardar los cambios de todo un equipo no es algo
+que pueda fallar en silencio.
+
 ## El Worker es la única parte que necesita servidor
 
 El token de Asana no puede estar en el navegador, y Asana no acepta
