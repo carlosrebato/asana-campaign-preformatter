@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260928203032">
+<link rel="stylesheet" href="app.css?v=20260929161522">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260928203032"></script>
-<script src="excel.js?v=20260928203032"></script>
-<script src="estrategia.js?v=20260928203032"></script>
-<script src="api.js?v=20260928203032"></script>
+<script src="data.js?v=20260929161522"></script>
+<script src="excel.js?v=20260929161522"></script>
+<script src="estrategia.js?v=20260929161522"></script>
+<script src="api.js?v=20260929161522"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -42,6 +42,7 @@ const D = CATALOGS;
 const S = {
   screen: 'entrada',          // entrada | procesando | revision | confirmar | resultado | error
   error: '',                  // por qué se paró el procesado, si se paró
+  falloModelo: '',            // por qué no contestó el modelo, si no contestó
   files: { excel: null, strategy: [] },   // varios documentos de estrategia
   // Todo lo que la pantalla de proceso necesita para contar qué pasa.
   // Tarda minutos: sin detalle real parece colgada.
@@ -386,7 +387,14 @@ function viewRevision() {
         tiene dudas.
       </p>
 
-      ${fallosN ? `
+      ${fallosN && fallosN === total && S.falloModelo ? `
+      <div class="aviso-fallo">
+        <strong>No se ha podido usar el modelo en esta pasada.</strong>
+        ${esc(motivoClaro(S.falloModelo))}
+        Las ${total} tareas salen del Excel enteras, pero <strong>sin contexto</strong>.
+        Cuando se resuelva, vuelve a procesar el mismo Excel: solo se buscará
+        el contexto que falta, no se repite nada de lo hecho.
+      </div>` : fallosN ? `
       <div class="aviso-fallo">
         <strong>${fallosN} campaña${fallosN > 1 ? 's' : ''} sin emparejar.</strong>
         El modelo no llegó a responder sobre ${fallosN > 1 ? 'ellas' : 'ella'}: no es que no
@@ -645,6 +653,22 @@ function viewConfirmar() {
 // tiene que hacer algo o solo volver a darle al botón.
 function motivoClaro(txt) {
   const t = txt || '';
+  if (/usage limits?/i.test(t)) {
+    const cuando = (t.match(/regain access on ([0-9-]+)/i) || [])[1];
+    return 'La cuenta de Anthropic ha llegado a su límite de gasto'
+      + (cuando ? `, y no vuelve hasta el ${cuando}` : '')
+      + '. Hay que subir el límite en la consola de Anthropic; no es un fallo de los ficheros.';
+  }
+  // Un 503 de Anthropic dice "credential validation failed", que suena a
+  // clave mala y no lo es: pasó el 29-sep-2026 y lo primero que se hizo
+  // fue sospechar de la clave. Rotarla habría empeorado las cosas.
+  if (/\b503\b|overloaded|service unavailable/i.test(t)) {
+    return 'Anthropic está teniendo problemas en este momento. No es tu fichero '
+      + 'ni tu clave: se puede comprobar en status.claude.com. Reintenta en unos minutos.';
+  }
+  if (/credit balance|insufficient/i.test(t)) {
+    return 'La cuenta de Anthropic se ha quedado sin saldo. Hay que recargarla; no es un fallo de los ficheros.';
+  }
   if (/too many requests|rate limit/i.test(t)) {
     return 'Asana estaba saturado en ese momento. Reintenta: no hay nada que corregir.';
   }
@@ -743,7 +767,13 @@ async function procesar() {
     // Solo se buscará para las campañas que no estaban en la propuesta.
     const seguimos = previas.length && mismosDocumentos(guardada?.ficheros?.estrategia, S.files.strategy);
     const briefs = seguimos ? (guardada?.briefs || []) : [];
-    const conocidos = new Set(previas.map(t => t.pac).filter(Boolean));
+    // "Ya la conocemos" solo vale si el modelo llegó a contestar sobre
+    // ella. Si se quedó sin respuesta —se cayó el modelo, se agotó la
+    // cuenta— no es una decisión, es una pregunta sin hacer: se vuelve a
+    // preguntar. Si no, esas campañas se quedarían sin contexto para
+    // siempre, porque las pasadas siguientes las darían por resueltas.
+    const conocidos = new Set(previas.filter(t => !t.sinRespuesta)
+      .map(t => t.pac).filter(Boolean));
     const soloPacs = briefs.length
       ? new Set((S.files.excel?.parsed?.tasks || [])
           .map(t => t.pac).filter(p => p && !conocidos.has(p)))
@@ -760,6 +790,7 @@ async function procesar() {
       render();
     }, { briefs, soloPacs });
     const tasks = leido.tareas;
+    S.falloModelo = leido.fallo || '';
     if (!tasks.length) { S.screen = 'entrada'; return; }
     const nuevas = tasks.map(t => Object.assign(
       { approved: false, descOpen: false, flash: false, editing: false, typology: 'Growth' }, t));

@@ -381,6 +381,36 @@ de reintentar. Y `guardarPropuesta` **lanza error** en vez de devolver
 `null` como sus vecinas: guardar los cambios de todo un equipo no es algo
 que pueda fallar en silencio.
 
+## Los productos se cierran en origen, no se adivinan
+
+Cuando el Excel trae un PRODUCTO / KPI que la tabla de `data.js` no
+conoce (`Champions`, `Prepago`, `Movistar Plus+ (OTT)`, `Migración
+Tecnológica`), la tarea sale con producto `Otros`. Se avisa al subir el
+fichero, pero el aviso no viaja con la tarea: llega a Asana con el
+producto equivocado y, probablemente, en la sección equivocada.
+
+Hay dos arreglos posibles y se ha elegido el lento a propósito
+(29-sep-2026):
+
+1. **Que lo dirima el modelo.** La ruta `/api/productos` ya existe y no
+   está enchufada. Acertaría casi siempre: Champions es fútbol y lo
+   sabe cualquiera.
+2. **Que Comercialización cierre la lista**, igual que se cerró la de
+   medios.
+
+Se espera a 2. La razón no es técnica: adivinar bien tapa el problema en
+vez de resolverlo, y el mes siguiente aparece otro valor nuevo. Cerrar la
+lista lo corta de raíz y además obliga a la conversación que hace falta.
+
+Ojo con un detalle que confunde: **`Otros` es una categoría legítima de
+Asana**. `Marca`, `Info`, `Helios`, `Renting coche eléctrico` y
+`eSIMFlag` apuntan ahí a propósito. Un `Otros` decidido y un `Otros` por
+defecto salen hoy como la misma cadena y no se distinguen mirando la
+tarea. Lo que los separa es si alguien lo escribió alguna vez en la
+tabla. Si algún día hace falta distinguirlos en pantalla, el aviso del
+lector ya lleva el valor exacto del Excel: basta con que acompañe a la
+tarea hasta la revisión.
+
 ## El Worker es la única parte que necesita servidor
 
 El token de Asana no puede estar en el navegador, y Asana no acepta
@@ -393,11 +423,11 @@ ocurriendo en el navegador, sin que nada salga del ordenador.
 
 ## Otros pendientes
 
-- **Definir los estados. Conversación de los TRES equipos.** No es un detalle
-  de configuración: es el estado con el que producción va a ver entrar ~73
-  campañas cada mes, y lo tienen que acordar Comercialización, Producción y
-  Marketing juntos. Hoy `CATALOGS.estadoInicial` lleva un placeholder
-  (`Pdte Maquetación y envío - Movistar`), elegido solo porque Asana lo acepta.
+- **Definir los estados. Lo decide el equipo de Carlos** (29-sep-2026: "por
+  determinar, pendiente de mi equipo"). No es un detalle de configuración: es
+  el estado con el que producción va a ver entrar ~73 campañas cada mes. Hoy
+  `CATALOGS.estadoInicial` lleva un placeholder (`Pdte Maquetación y envío -
+  Movistar`), elegido solo porque Asana lo acepta.
 
   Dos cosas que hay que llevar a esa conversación:
   - El campo `Estado` tiene 26 opciones, pero los **Tipos de tarea** del
@@ -406,8 +436,11 @@ ocurriendo en el navegador, sin que nada salga del ordenador.
     leyendo el campo: solo aparece al intentar escribir.
   - El Excel trae `VIABILIDAD` (Aprobada / Planificada) y no hay ningún
     estado que le corresponda. Ese dato se pierde hoy.
-- **Tipología (Growth/Value/Servicing).** El campo no existe en el Asana
-  actual. Hay que crearlo en el proyecto nuevo.
+- ~~**Tipología (Growth/Value/Servicing).** El campo no existe en el Asana
+  actual.~~ **Resuelto (29-sep-2026): no hace falta crearlo.** La tipología
+  sirve para agrupar de cara a los equipos, no para definir una campaña. Se
+  calcula, se enseña agrupando la revisión, y no se escribe en Asana. Que no
+  exista el campo deja de ser un pendiente.
 - **Columna puente.** El arreglo de fondo al problema de vinculación no es
   técnico: sería que el Excel llevara una columna con el territorio de la
   estrategia, o que la estrategia llevara el PAC. Cuesta cero técnicamente y

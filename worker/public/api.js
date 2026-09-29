@@ -149,6 +149,9 @@ const API = {
     const lotes = enLotes(campanas, 15);
     let hechos = 0;
 
+    // Por qué falló, si falló. Sin esto, quedarse sin modelo y que el
+    // modelo decida que no hay brief se veían exactamente igual.
+    let fallo = '';
     const mandar = async lote => {
       try {
         const r = await fetch('/api/vincular', {
@@ -156,7 +159,11 @@ const API = {
           body: JSON.stringify({ campanas: lote, briefs })
         });
         if (r.ok) vinculos.push(...((await r.json()).vinculos || []));
-      } catch { /* se reintenta abajo */ }
+        else {
+          const { error } = await r.json().catch(() => ({}));
+          fallo = error || `El servidor respondió ${r.status}`;
+        }
+      } catch (e) { fallo = e.message; }
       hechos += lote.length;
       onProgress?.(hechos, campanas.length);
     };
@@ -181,7 +188,7 @@ const API = {
       for (const lote of enLotes(faltan, 8)) await mandar(lote);
     }
 
-    return vinculos;
+    return { vinculos, fallo };
   },
 
   /* ----------------------------------------------------------
@@ -264,7 +271,7 @@ const API = {
             avisar({ paso: 1, hechas: p.hechas, total: p.total,
                      cuenta: `${p.doc} de ${p.docs}`,
                      detalle: p.nombre ? `Documento ${p.doc} de ${p.docs} · ${p.nombre}` : '' }));
-      if (!briefs.length) return { tareas: tasks, briefs: [] };
+      if (!briefs.length) return { tareas: tasks, briefs: [], fallo: '' };
 
       // Cuando esto es un Excel corregido, solo se busca contexto para
       // las campañas que no estaban antes. Las demás ya lo tienen, y
@@ -273,9 +280,9 @@ const API = {
       const pendientes = soloPacs
         ? tasks.filter(t => !t.pac || soloPacs.has(t.pac))
         : tasks;
-      if (!pendientes.length) return { tareas: tasks, briefs };
+      if (!pendientes.length) return { tareas: tasks, briefs, fallo: '' };
 
-      const vinculos = await API.emparejarConModelo(pendientes, briefs, (hechas, total, nota) =>
+      const { vinculos, fallo } = await API.emparejarConModelo(pendientes, briefs, (hechas, total, nota) =>
         avisar({ paso: 2, hechas, total, cuenta: `${hechas} de ${total}`,
           detalle: nota || `${briefs.length} briefs encontrados en los documentos` }));
 
@@ -284,12 +291,12 @@ const API = {
       // o sin él. Si esto no se cumple, hay un fallo que hay que ver.
       if (emparejadas.length !== pendientes.length) {
         console.error(`Se perdieron tareas: ${pendientes.length} a emparejar, ${emparejadas.length} al final`);
-        return { tareas: tasks, briefs };
+        return { tareas: tasks, briefs, fallo };
       }
       const porId = new Map(emparejadas.map(t => [t.id, t]));
-      return { tareas: tasks.map(t => porId.get(t.id) || t), briefs };
+      return { tareas: tasks.map(t => porId.get(t.id) || t), briefs, fallo };
     }
-    return { tareas: JSON.parse(JSON.stringify(MOCK_TASKS)), briefs: [] };
+    return { tareas: JSON.parse(JSON.stringify(MOCK_TASKS)), briefs: [], fallo: '' };
   },
 
   /* ----------------------------------------------------------
