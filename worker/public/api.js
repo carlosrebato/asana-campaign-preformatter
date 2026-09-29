@@ -384,7 +384,10 @@ const API = {
     // El lote se dimensiona para que la barra avance varias veces, tanto
     // si son 4 campañas como si son 73: al menos cuatro tramos, y nunca
     // más de 8 por lote (cada tarea son dos llamadas al Worker).
-    const EN_VUELO = 4;
+    // Tres lotes en vuelo, no cuatro: el Worker crea 3 tareas a la vez
+    // dentro de cada lote, y Asana corta por encima de ~15 escrituras
+    // simultáneas con "too many requests at the same time".
+    const EN_VUELO = 3;
     const tam = Math.max(1, Math.min(8, Math.ceil(tasks.length / 4)));
     const lotes = enLotes(tasks, tam);
 

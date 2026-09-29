@@ -33,6 +33,11 @@ const ASANA = 'https://app.asana.com/api/1.0';
 const MAX_DUPLICADOS = 40;   // 1 búsqueda por PAC
 const MAX_CARGA = 20;        // 2 llamadas por tarea
 
+// Asana no deja escribir más de ~15 cosas a la vez, contando TODAS las
+// invocaciones en vuelo. El cliente manda 3 lotes en paralelo, así que
+// 3 por lote deja el total en 9, con margen para los reintentos.
+const A_LA_VEZ = 3;
+
 /* ------------------------------------------------------------
    GUARDARRAÍL · PROYECTOS DONDE NO SE ESCRIBE NUNCA
    ------------------------------------------------------------
@@ -60,21 +65,44 @@ function exigirEscribible(projectGid) {
   }
 }
 
+// Asana tiene dos techos distintos y el que nos pilla es el segundo:
+// peticiones por minuto, y peticiones *a la vez* (unas 15 para escribir).
+// Pasado ese, contesta 429 y dice "too many requests at the same time".
+//
+// Un 429 no es un error de la tarea: es "ahora no, vuelve en un momento".
+// Así que se espera lo que pida la cabecera Retry-After y se reintenta.
+// Sin esto, una carga de 73 campañas dejaba la mitad sin crear.
+const ESPERAS = [1200, 3000, 6000];
+
 async function asana(env, ruta, opciones = {}) {
-  const r = await fetch(ASANA + ruta, {
-    ...opciones,
-    headers: {
-      Authorization: `Bearer ${env.ASANA_TOKEN}`,
-      'Content-Type': 'application/json',
-      ...opciones.headers
+  let ultimo = '';
+  for (let intento = 0; intento <= ESPERAS.length; intento++) {
+    const r = await fetch(ASANA + ruta, {
+      ...opciones,
+      headers: {
+        Authorization: `Bearer ${env.ASANA_TOKEN}`,
+        'Content-Type': 'application/json',
+        ...opciones.headers
+      }
+    });
+    if (r.ok) return (await r.json().catch(() => ({}))).data;
+
+    const cuerpo = await r.json().catch(() => ({}));
+    ultimo = cuerpo.errors?.[0]?.message || `Asana respondió ${r.status}`;
+
+    // 429 (demasiadas) y 5xx (Asana de capa caída) se reintentan.
+    // Lo demás es culpa nuestra y reintentar no lo arregla.
+    const reintentable = r.status === 429 || r.status >= 500;
+    if (!reintentable || intento === ESPERAS.length) {
+      // El código viaja con el error: quien lo recoja tiene que poder
+      // distinguir "este dato no vale" de "ahora mismo no puedo".
+      throw Object.assign(new Error(ultimo), { status: r.status });
     }
-  });
-  const cuerpo = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    const msg = cuerpo.errors?.[0]?.message || `Asana respondió ${r.status}`;
-    throw new Error(msg);
+
+    const dice = Number(r.headers.get('Retry-After')) * 1000;
+    await new Promise(z => setTimeout(z, dice > 0 ? Math.min(dice, 10000) : ESPERAS[intento]));
   }
-  return cuerpo.data;
+  throw new Error(ultimo);
 }
 
 /* ---------------- CATÁLOGOS ----------------
@@ -137,12 +165,23 @@ async function duplicados(env, workspaceGid, projectGid, pacs) {
 async function crear(env, projectGid, tareas) {
   exigirEscribible(projectGid);
 
-  // En paralelo: secuencial son ~4 minutos para 73 campañas, porque cada
-  // llamada a Asana tarda casi dos segundos. El lote lo acota el cliente
-  // (MAX_CARGA), así que caben dentro del techo de subpeticiones.
-  const resultados = await Promise.all(
-    tareas.slice(0, MAX_CARGA).map(t => crearUna(env, projectGid, t))
-  );
+  // En paralelo, pero con freno: secuencial son ~4 minutos para 73
+  // campañas, porque cada llamada a Asana tarda casi dos segundos. Sin
+  // freno, en cambio, el cliente mandaba cuatro lotes a la vez y salían
+  // más de treinta escrituras simultáneas: Asana devolvía 429 y la carga
+  // se caía a trozos. Tres a la vez por invocación, y como el cliente
+  // manda tres lotes en vuelo, son nueve, por debajo del techo de Asana.
+  const pendientes = tareas.slice(0, MAX_CARGA);
+  const resultados = new Array(pendientes.length);
+  let siguiente = 0;
+  const turno = async () => {
+    while (siguiente < pendientes.length) {
+      const i = siguiente++;
+      resultados[i] = await crearUna(env, projectGid, pendientes[i]);
+    }
+  };
+  await Promise.all(Array.from(
+    { length: Math.min(A_LA_VEZ, pendientes.length) }, turno));
   return {
     created: resultados.filter(r => r.ok).map(r => r.dato),
     failed: resultados.filter(r => !r.ok).map(r => r.dato)
@@ -167,7 +206,10 @@ async function crearUna(env, projectGid, t) {
         body: JSON.stringify({ data: Object.keys(cf).length ? { ...base, custom_fields: cf } : base })
       });
     } catch (e) {
-      if (!Object.keys(cf).length) throw e;
+      // Reintentar sin campos solo tiene sentido si el problema SON los
+      // campos. Con un 429 o un 500, los campos están bien y volver a
+      // pedirlo pelado crearía la tarea a medias sin que nadie lo note.
+      if (!Object.keys(cf).length || e.status === 429 || e.status >= 500) throw e;
       // Un campo no puede tumbar la carga: se reintenta sin ellos.
       // No se puede saber cuál sobra: Asana devuelve las opciones
       // válidas pero no dice de qué campo, y los valores de los demás

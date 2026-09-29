@@ -394,16 +394,6 @@ function viewRevision() {
         <button class="btn-link-section" data-filtro="fallo">Verlas</button>
       </div>` : ''}
 
-      ${cambiosN ? `
-      <div class="aviso-cambios">
-        <strong>Esta propuesta se ha actualizado con un Excel nuevo.</strong>
-        ${[cambios.nuevas ? `${cambios.nuevas} campaña${cambios.nuevas > 1 ? 's' : ''} nueva${cambios.nuevas > 1 ? 's' : ''}` : '',
-           cambios.cambiadas ? `${cambios.cambiadas} con datos distintos` : '',
-           cambios.idas ? `${cambios.idas} ya no está${cambios.idas > 1 ? 'n' : ''} en el Excel` : '']
-          .filter(Boolean).join(' · ')}.
-        Las que cambian vuelven a estar sin aprobar; lo demás conserva su revisión.
-        <button class="btn-link-section" data-filtro="cambios">Ver solo lo que ha cambiado</button>
-      </div>` : ''}
 
       ${S.propuestaId ? `
       <div class="compartir">
@@ -433,6 +423,16 @@ function viewRevision() {
         <span id="estado-guardado" class="sincro ${S.sincro}">${TEXTO_SINCRO[S.sincro] || ''}</span>
       </div>
 
+      ${cambiosN ? `
+      <p class="nota-cambios">
+        Excel actualizado:
+        ${[cambios.nuevas ? `${cambios.nuevas} nueva${cambios.nuevas > 1 ? 's' : ''}` : '',
+           cambios.cambiadas ? `${cambios.cambiadas} con datos distintos` : '',
+           cambios.idas ? `${cambios.idas} ya no está${cambios.idas > 1 ? 'n' : ''} en el Excel` : '']
+          .filter(Boolean).join(' · ')}.
+        Cada una lleva su etiqueta. Lo demás conserva su revisión.
+      </p>` : ''}
+
       <div class="legend">
         <span class="legend-item"><span class="bola ok"></span> Vinculación clara</span>
         <span class="legend-item"><span class="bola review"></span> Vinculación probable — revisar</span>
@@ -453,7 +453,7 @@ function viewRevision() {
 function marcaCambio(t) {
   if (t.cambio === 'nueva') return '<span class="marca nueva">Nueva</span>';
   if (t.cambio === 'cambiada') return `<span class="marca cambiada" title="${esc((t.cambios || []).join(', '))}">Ha cambiado</span>`;
-  if (t.cambio === 'desaparecida') return '<span class="marca ida">Ya no está en el Excel</span>';
+  if (t.cambio === 'desaparecida') return '<span class="marca ida" title="Esta campaña no viene en el Excel nuevo. No se carga en Asana; se enseña para que alguien decida.">Ya no está</span>';
   return '';
 }
 
@@ -464,7 +464,7 @@ function rowHTML(t) {
            draggable="true" data-drag="${t.id}">
     <button class="row-body" data-toggle="${t.id}" title="Abrir">
       <span class="chev">${ICONS.chev}</span>
-      <span class="row-name">${bolaHTML(t)}${esc(t.name) || '<em>Sin nombre</em>'}${marcaCambio(t)}${t.sinRespuesta ? '<span class="marca fallo" title="El modelo no llegó a responder sobre esta campaña. La tarea se crea igual, pero sin contexto.">No se pudo emparejar</span>' : ''}${t.asanaUrl ? '<span class="marca asana">En Asana</span>' : ''}</span>
+      <span class="row-name">${bolaHTML(t)}<span class="row-nombre">${esc(t.name) || '<em>Sin nombre</em>'}</span>${marcaCambio(t)}${t.sinRespuesta ? '<span class="marca fallo" title="El modelo no llegó a responder sobre esta campaña. La tarea se crea igual, pero sin contexto.">No se pudo emparejar</span>' : ''}${t.asanaUrl ? '<span class="marca asana">En Asana</span>' : ''}</span>
       <span class="row-val">${esc(t.product)}</span>
       <span class="row-val">${esc(t.format)}</span>
       <span class="row-val">${fechaCorta(t.dueDate)}</span>
@@ -640,6 +640,20 @@ function viewConfirmar() {
 }
 
 /* ---------------- 5 · RESULTADO ---------------- */
+// Asana contesta en inglés y con un enlace a su documentación. Quien
+// usa esto no necesita leer la documentación de Asana: necesita saber si
+// tiene que hacer algo o solo volver a darle al botón.
+function motivoClaro(txt) {
+  const t = txt || '';
+  if (/too many requests|rate limit/i.test(t)) {
+    return 'Asana estaba saturado en ese momento. Reintenta: no hay nada que corregir.';
+  }
+  if (/not a valid value|enum/i.test(t)) {
+    return 'Asana no acepta alguno de los valores. Revisa producto, formato o estado.';
+  }
+  return t;
+}
+
 function viewResultado() {
   const r = S.result;
   return `
@@ -664,7 +678,7 @@ function viewResultado() {
       <div class="panel" style="margin-bottom:16px">
         ${r.failed.map(f => `
           <div class="result-item">${ICONS.fail}<span>${esc(f.name)}</span>
-            <span style="margin-left:auto;font-size:11.5px;color:#B83227">${esc(f.error)}</span></div>
+            <span style="margin-left:auto;font-size:11.5px;color:#B83227" title="${esc(f.error)}">${esc(motivoClaro(f.error))}</span></div>
         `).join('')}
       </div>
       <button class="btn-primary" id="btn-retry">Reintentar ${r.failed.length} fallidas</button>

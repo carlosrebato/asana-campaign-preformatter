@@ -327,12 +327,11 @@ h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
 }
 .aviso-fallo strong { display: block; margin-bottom: 2px; }
 
-.aviso-cambios {
-  margin-top: 18px; padding: 14px 18px; border-radius: 12px;
-  background: #D3EEFF; color: #16324F;
-  font-size: 13.5px; line-height: 1.55;
+/* Lo que ha cambiado se cuenta junto a los filtros, que es donde se
+   actúa, y no en otro cuadro de color arriba del todo. */
+.nota-cambios {
+  margin: 2px 0 0; font-size: 13px; color: #605E5C; line-height: 1.5;
 }
-.aviso-cambios strong { display: block; margin-bottom: 2px; }
 
 .nota-asana {
   margin: 5px 0 8px; padding: 10px 13px; border-radius: 9px;
@@ -405,7 +404,14 @@ h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
   display: flex; align-items: center; gap: 9px; min-width: 0;
   padding-right: 10px;
   font-size: 15px; font-weight: 700; color: #262423;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; overflow: hidden;
+}
+/* El nombre es lo único que se recorta. Las etiquetas (Nueva, Ha
+   cambiado, Ya no está) salen enteras o no dicen nada: antes se
+   partían por la mitad y quedaba "YA NO ESTÁ EN EL". */
+.row-nombre {
+  flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .row-val { font-size: 13.5px; color: #403F3D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-val.muted, .muted { color: #9F9C99; }
