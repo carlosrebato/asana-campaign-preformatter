@@ -474,11 +474,39 @@ function aPayloadAsana(t) {
   return {
     id: t.id,
     name: t.name,
-    notes: t.description || '',
+    notes: notasDe(t),
     dueDate: t.dueDate || '',
     sectionGid: CATALOGS.sections.find(s => s.id === t.sectionId)?.gid || '',
     custom_fields: cf
   };
+}
+
+
+/* ------------------------------------------------------------
+   LO QUE LEE QUIEN ABRE LA TAREA EN ASANA
+   ------------------------------------------------------------
+   Dos cosas distintas, y hacen falta las dos:
+
+   · QUÉ ES ESTA CAMPAÑA — la columna OBJETIVO del Excel, escrita
+     por quien la planificó. Es literal y determinista.
+   · EL MENSAJE DEL MES — el brief del territorio.
+
+   Un brief sirve a varias campañas: nueve de Horecas llevaban el
+   mismo párrafo y eran tres trabajos distintos (un welcome pack,
+   una captación y seis newsletters). Con solo el brief, quien abre
+   la tarea no sabe cuál le toca. El dato estaba en el Excel: se
+   usaba para emparejar y luego se tiraba.
+------------------------------------------------------------- */
+function notasDe(t) {
+  const objetivo = (t.excel?.objetivo || '').trim();
+  const contexto = (t.description || '').trim();
+  const fuente = (t.contextSource || '').trim();
+  const partes = [];
+  if (objetivo) partes.push(`ESTA CAMPAÑA\n${objetivo}`);
+  if (contexto) {
+    partes.push(`MENSAJE DEL MES${fuente ? ` · ${fuente}` : ''}\n${contexto}`);
+  }
+  return partes.join('\n\n');
 }
 
 

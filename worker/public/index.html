@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260929165505">
+<link rel="stylesheet" href="app.css?v=20260929170038">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260929165505"></script>
-<script src="excel.js?v=20260929165505"></script>
-<script src="estrategia.js?v=20260929165505"></script>
-<script src="api.js?v=20260929165505"></script>
+<script src="data.js?v=20260929170038"></script>
+<script src="excel.js?v=20260929170038"></script>
+<script src="estrategia.js?v=20260929170038"></script>
+<script src="api.js?v=20260929170038"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -582,6 +582,11 @@ function cardHTML(t) {
     <div class="card-desc field">
       ${t.descOpen ? `
         <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>
+        ${t.excel?.objetivo ? `
+          <div class="desc-objetivo">
+            <span class="desc-objetivo-lbl">Esta campaña</span>
+            <p>${esc(t.excel.objetivo)}</p>
+          </div>` : ''}
         ${t.sinRespuesta
           ? `<p class="nota-revisar"><strong>No se pudo emparejar</strong> · El modelo no llegó a responder sobre esta campaña, así que no sabemos si le tocaba algún brief. La tarea se crea igual. Si quieres, vuelve a procesar.</p>` : ''}
         ${t.cambio === 'cambiada' && t.cambios?.length
