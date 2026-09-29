@@ -393,11 +393,11 @@ ocurriendo en el navegador, sin que nada salga del ordenador.
 
 ## Otros pendientes
 
-- **Definir los estados. Conversación de los TRES equipos.** No es un detalle
-  de configuración: es el estado con el que producción va a ver entrar ~73
-  campañas cada mes, y lo tienen que acordar Comercialización, Producción y
-  Marketing juntos. Hoy `CATALOGS.estadoInicial` lleva un placeholder
-  (`Pdte Maquetación y envío - Movistar`), elegido solo porque Asana lo acepta.
+- **Definir los estados. Lo decide el equipo de Carlos** (29-sep-2026: "por
+  determinar, pendiente de mi equipo"). No es un detalle de configuración: es
+  el estado con el que producción va a ver entrar ~73 campañas cada mes. Hoy
+  `CATALOGS.estadoInicial` lleva un placeholder (`Pdte Maquetación y envío -
+  Movistar`), elegido solo porque Asana lo acepta.
 
   Dos cosas que hay que llevar a esa conversación:
   - El campo `Estado` tiene 26 opciones, pero los **Tipos de tarea** del
@@ -406,8 +406,11 @@ ocurriendo en el navegador, sin que nada salga del ordenador.
     leyendo el campo: solo aparece al intentar escribir.
   - El Excel trae `VIABILIDAD` (Aprobada / Planificada) y no hay ningún
     estado que le corresponda. Ese dato se pierde hoy.
-- **Tipología (Growth/Value/Servicing).** El campo no existe en el Asana
-  actual. Hay que crearlo en el proyecto nuevo.
+- ~~**Tipología (Growth/Value/Servicing).** El campo no existe en el Asana
+  actual.~~ **Resuelto (29-sep-2026): no hace falta crearlo.** La tipología
+  sirve para agrupar de cara a los equipos, no para definir una campaña. Se
+  calcula, se enseña agrupando la revisión, y no se escribe en Asana. Que no
+  exista el campo deja de ser un pendiente.
 - **Columna puente.** El arreglo de fondo al problema de vinculación no es
   técnico: sería que el Excel llevara una columna con el territorio de la
   estrategia, o que la estrategia llevara el PAC. Cuesta cero técnicamente y
