@@ -23,14 +23,26 @@ const API = {
      Guardar no puede romper nada: si falla, se sigue trabajando
      en local y solo se pierde la posibilidad de compartir.
   ---------------------------------------------------------- */
-  async crearPropuesta(ficheros, tareas) {
+  async crearPropuesta(ficheros, tareas, briefs) {
     try {
       const r = await fetch('/api/propuesta', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ficheros, tareas })
+        body: JSON.stringify({ ficheros, tareas, briefs })
       });
       return r.ok ? await r.json() : null;
     } catch { return null; }
+  },
+
+  // Un Excel corregido reescribe la propuesta entera, conservando su
+  // enlace: es el que ha circulado por el equipo. A diferencia de
+  // guardarCambios, aquí la lista de tareas manda.
+  async guardarPropuesta(id, ficheros, tareas, briefs) {
+    const r = await fetch('/api/propuesta', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ficheros, tareas, briefs })
+    });
+    if (!r.ok) throw new Error('No se ha podido guardar la propuesta actualizada');
+    return await r.json();
   },
 
   // Se mandan solo las tareas tocadas, y el servidor las aplica sobre lo
@@ -144,7 +156,7 @@ const API = {
           body: JSON.stringify({ campanas: lote, briefs })
         });
         if (r.ok) vinculos.push(...((await r.json()).vinculos || []));
-      } catch { /* sin modelo se sigue con lo que hay */ }
+      } catch { /* se reintenta abajo */ }
       hechos += lote.length;
       onProgress?.(hechos, campanas.length);
     };
@@ -155,6 +167,19 @@ const API = {
     let siguiente = 1;
     const turno = async () => { while (siguiente < lotes.length) await mandar(lotes[siguiente++]); };
     await Promise.all(Array.from({ length: Math.min(3, Math.max(0, lotes.length - 1)) }, turno));
+
+    // Ninguna campaña puede quedarse sin respuesta en silencio. Una
+    // tanda puede volver incompleta —pasó con PAC37488— y entonces la
+    // campaña aparecía sin contexto como si el modelo hubiera decidido
+    // que no le tocaba ninguno. No es lo mismo: eso hay que reintentarlo.
+    for (let intento = 0; intento < 2; intento++) {
+      const contestadas = new Set(vinculos.map(v => v.pac));
+      const faltan = campanas.filter(c => !contestadas.has(c.pac));
+      if (!faltan.length) break;
+      onProgress?.(campanas.length - faltan.length, campanas.length,
+        `reintentando ${faltan.length}`);
+      for (const lote of enLotes(faltan, 8)) await mandar(lote);
+    }
 
     return vinculos;
   },
@@ -220,7 +245,7 @@ const API = {
      Aislar aquí la llamada al LLM permite migrar a Azure OpenAI
      o Copilot tocando solo esta función.
   ---------------------------------------------------------- */
-  async interpretarDocumentos(excelFile, strategyFiles, onProgress) {
+  async interpretarDocumentos(excelFile, strategyFiles, onProgress, opciones = {}) {
     const avisar = info => onProgress?.(info);
     avisar({ paso: 0, detalle: '', hechas: 0, total: 0 });
 
@@ -230,19 +255,41 @@ const API = {
       const tasks = JSON.parse(JSON.stringify(excelFile.parsed.tasks));
       const docs = [].concat(strategyFiles || []).filter(d => d?.texto);
 
-      const briefs = await API.leerDocumentos(docs, p =>
-        avisar({ paso: 1, hechas: p.hechas, total: p.total,
-                 cuenta: `${p.doc} de ${p.docs}`,
-                 detalle: p.nombre ? `Documento ${p.doc} de ${p.docs} · ${p.nombre}` : '' }));
-      if (!briefs.length) return tasks;
+      // Los mismos documentos no se releen. Cuesta cuatro minutos y,
+      // peor todavía, la segunda lectura no da lo mismo que la primera:
+      // el contexto de campañas que nadie ha tocado se movería solo.
+      const briefs = opciones.briefs?.length
+        ? opciones.briefs
+        : await API.leerDocumentos(docs, p =>
+            avisar({ paso: 1, hechas: p.hechas, total: p.total,
+                     cuenta: `${p.doc} de ${p.docs}`,
+                     detalle: p.nombre ? `Documento ${p.doc} de ${p.docs} · ${p.nombre}` : '' }));
+      if (!briefs.length) return { tareas: tasks, briefs: [] };
 
-      const vinculos = await API.emparejarConModelo(tasks, briefs, (hechas, total) =>
+      // Cuando esto es un Excel corregido, solo se busca contexto para
+      // las campañas que no estaban antes. Las demás ya lo tienen, y
+      // sale de unos documentos que no han cambiado.
+      const soloPacs = opciones.soloPacs;
+      const pendientes = soloPacs
+        ? tasks.filter(t => !t.pac || soloPacs.has(t.pac))
+        : tasks;
+      if (!pendientes.length) return { tareas: tasks, briefs };
+
+      const vinculos = await API.emparejarConModelo(pendientes, briefs, (hechas, total, nota) =>
         avisar({ paso: 2, hechas, total, cuenta: `${hechas} de ${total}`,
-          detalle: `${briefs.length} briefs encontrados en los documentos` }));
+          detalle: nota || `${briefs.length} briefs encontrados en los documentos` }));
 
-      return aplicarVinculos(tasks, briefs, vinculos);
+      const emparejadas = aplicarVinculos(pendientes, briefs, vinculos);
+      // Regla de oro: toda fila del Excel acaba como tarea, con contexto
+      // o sin él. Si esto no se cumple, hay un fallo que hay que ver.
+      if (emparejadas.length !== pendientes.length) {
+        console.error(`Se perdieron tareas: ${pendientes.length} a emparejar, ${emparejadas.length} al final`);
+        return { tareas: tasks, briefs };
+      }
+      const porId = new Map(emparejadas.map(t => [t.id, t]));
+      return { tareas: tasks.map(t => porId.get(t.id) || t), briefs };
     }
-    return JSON.parse(JSON.stringify(MOCK_TASKS));
+    return { tareas: JSON.parse(JSON.stringify(MOCK_TASKS)), briefs: [] };
   },
 
   /* ----------------------------------------------------------
@@ -265,7 +312,9 @@ const API = {
     if (file && tipo === 'strategy') {
       const texto = await ESTRATEGIA.texto(file);
       const ext = (file.name.split('.').pop() || '').toUpperCase();
-      return { name: file.name, ext, texto, briefs: [] };
+      // El tamaño viaja con el documento: nombre y tamaño juntos bastan
+      // para saber si es el mismo fichero de la vez anterior.
+      return { name: file.name, ext, bytes: file.size, texto, briefs: [] };
     }
     if (file) {
       const ext = (file.name.split('.').pop() || '').toUpperCase();
@@ -447,11 +496,18 @@ function lineasDe(texto, spec) {
 
 function aplicarVinculos(tasks, briefs, vinculos) {
   const porPac = new Map(vinculos.map(v => [v.pac, v]));
+  const sinRespuesta = tasks.filter(t => !porPac.has(t.pac)).length;
+  if (sinRespuesta) {
+    console.warn(`${sinRespuesta} campañas se quedaron sin respuesta del modelo`);
+  }
   const porTitulo = new Map(briefs.map(b => [b.titulo.trim().toLowerCase(), b]));
 
   return tasks.map(t => {
     const v = porPac.get(t.pac);
-    if (!v || !v.brief) return t;
+    // Sin respuesta no es lo mismo que sin contexto: una es un fallo y
+    // la otra es el caso normal. Se distinguen en la revisión.
+    if (!v) return { ...t, sinRespuesta: true };
+    if (!v.brief) return t;
     const b = porTitulo.get(v.brief.trim().toLowerCase());
     if (!b) return t;
 
