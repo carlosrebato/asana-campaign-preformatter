@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260929161522">
+<link rel="stylesheet" href="app.css?v=20260929165505">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260929161522"></script>
-<script src="excel.js?v=20260929161522"></script>
-<script src="estrategia.js?v=20260929161522"></script>
-<script src="api.js?v=20260929161522"></script>
+<script src="data.js?v=20260929165505"></script>
+<script src="excel.js?v=20260929165505"></script>
+<script src="estrategia.js?v=20260929165505"></script>
+<script src="api.js?v=20260929165505"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -415,7 +415,6 @@ function viewRevision() {
         <button class="btn-compartir ${S.copiado ? 'ok' : ''}" data-compartir="1">
           ${S.copiado ? '✓ Enlace copiado' : 'Copiar enlace'}
         </button>
-        ${S.copiado ? `<div class="compartir-url">${esc(location.origin + location.pathname)}#${esc(S.propuestaId)}</div>` : ''}
       </div>` : ''}
 
       <div class="barra-filtros">
@@ -458,6 +457,18 @@ function viewRevision() {
 // Modo lectura: una fila por tarea, valores como texto. Es la vista por
 // defecto porque la mayoría de tareas se revisan, no se editan.
 // Qué le ha pasado a esta tarea en la última actualización del Excel.
+// Cuántas campañas llevan este mismo contexto. Seis tarjetas seguidas
+// con el mismo texto parecen un fallo, y no lo son: un brief de
+// territorio da para varios envíos del mes. Basta con decir cuántas son;
+// explicar POR QUÉ sobra, porque quien lo lee es quien escribió el brief.
+// Va DESPUÉS del texto: manda el contexto.
+function compartenContexto(t) {
+  const clave = (t.contextSource || '').trim() || (t.description || '').trim();
+  if (!clave) return 0;
+  return S.tasks.filter(x =>
+    ((x.contextSource || '').trim() || (x.description || '').trim()) === clave).length;
+}
+
 function marcaCambio(t) {
   if (t.cambio === 'nueva') return '<span class="marca nueva">Nueva</span>';
   if (t.cambio === 'cambiada') return `<span class="marca cambiada" title="${esc((t.cambios || []).join(', '))}">Ha cambiado</span>`;
@@ -542,6 +553,7 @@ function cardHTML(t) {
     </select>`;
 
   const descPrev = t.description ? t.description.replace(/\n/g, ' · ').slice(0, 150) : 'Añadir a mano';
+  const comparten = compartenContexto(t);
 
   return `
   <article class="card ${t.approved ? 'approved' : ''} ${t.flash ? 'flash' : ''}" data-card="${t.id}"
@@ -586,6 +598,8 @@ function cardHTML(t) {
         ${t.descEdit
           ? `<textarea class="desc-ta" rows="10" data-set="description" data-id="${t.id}">${esc(t.description)}</textarea>`
           : briefHTML(t.description)}
+        ${!t.descEdit && comparten > 1
+          ? `<p class="desc-compartido">Este contexto lo comparten ${comparten} campañas.</p>` : ''}
       ` : `
         <div class="field desc-cerrado" data-desc="${t.id}">
           <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>

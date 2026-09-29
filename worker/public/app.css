@@ -283,12 +283,10 @@ h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
 }
 .btn-compartir:hover { background: #0052CC; }
 .btn-compartir.ok { background: #CEF7BF; color: #38552B; }
-.compartir-url {
-  flex-basis: 100%; margin-top: 4px;
-  font-size: 12.5px; color: #38552B; font-family: ui-monospace, monospace;
-  background: #F4FBF0; border-radius: 8px; padding: 8px 12px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.desc-compartido {
+  margin: 12px 0 0; font-size: 12.5px; color: #9F9C99; line-height: 1.5;
 }
+
 .guardado { margin-top: 8px; font-size: 12px; color: #9F9C99; }
 
 .barra-filtros {

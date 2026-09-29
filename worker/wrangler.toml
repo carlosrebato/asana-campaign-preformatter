@@ -13,6 +13,15 @@ ASANA_WORKSPACE_GID = "8485243267402"
 directory = "./public"
 binding = "ASSETS"
 
+# Las propuestas compartidas viven aquí. El principal se quedó sin este
+# binding y por eso ningún enlace compartido funcionaba en él: la página
+# cargaba, pero la propuesta "ya no existía". Es el mismo almacén que el
+# entorno de pruebas, a propósito: un enlace tiene que abrirse desde
+# cualquiera de los dos.
+[[kv_namespaces]]
+binding = "PROPUESTAS"
+id = "7cf5033bb3c645abb171aebb6c15fac3"
+
 # Secretos (nunca en este fichero):
 #   npx wrangler secret put ASANA_TOKEN
 #   npx wrangler secret put ANTHROPIC_API_KEY
