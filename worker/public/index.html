@@ -659,6 +659,13 @@ function motivoClaro(txt) {
       + (cuando ? `, y no vuelve hasta el ${cuando}` : '')
       + '. Hay que subir el límite en la consola de Anthropic; no es un fallo de los ficheros.';
   }
+  // Un 503 de Anthropic dice "credential validation failed", que suena a
+  // clave mala y no lo es: pasó el 29-sep-2026 y lo primero que se hizo
+  // fue sospechar de la clave. Rotarla habría empeorado las cosas.
+  if (/\b503\b|overloaded|service unavailable/i.test(t)) {
+    return 'Anthropic está teniendo problemas en este momento. No es tu fichero '
+      + 'ni tu clave: se puede comprobar en status.claude.com. Reintenta en unos minutos.';
+  }
   if (/credit balance|insufficient/i.test(t)) {
     return 'La cuenta de Anthropic se ha quedado sin saldo. Hay que recargarla; no es un fallo de los ficheros.';
   }
