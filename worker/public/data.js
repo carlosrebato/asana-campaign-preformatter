@@ -134,7 +134,10 @@ const CATALOGS = {
   palancaObjetivo: {
     'Desarrollo':                'Desarrollo',
     'Captación No Cliente':      'Captación',
-    'Fidelización/Dinamización': 'Fidelización'
+    'Fidelización/Dinamización': 'Fidelización',
+    // SUPUESTO, pendiente de que lo confirme Comercialización: retener a
+    // quien se iba a ir es fidelizar. Si dicen otra cosa, se cambia aquí.
+    'Prevención':                'Fidelización'
   },
 
   // Growth/Value/Servicing NO existe como campo en Asana. Se calcula
@@ -196,6 +199,10 @@ const EXCEL = {
     'Desarrollo':                'Growth',
     'Captación No Cliente':      'Growth',
     'Fidelización/Dinamización': 'Value',
+    // Prevención tiene algo de servicing, pero no es excluyente: como
+    // palanca pertenece a Value, no a Growth (dicho por Carlos, que es
+    // quien lo sabe, 29-sep-2026).
+    'Prevención':                'Value',
     'Legal':                     'Servicing'
   },
 
