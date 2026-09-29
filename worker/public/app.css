@@ -325,7 +325,10 @@ h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
   background: #FBE6E3; color: #7A241C;
   font-size: 13.5px; line-height: 1.55;
 }
-.aviso-fallo strong { display: block; margin-bottom: 2px; }
+/* Solo el titular va en su línea. Antes lo hacía CUALQUIER negrita del
+   recuadro, así que un "pero <strong>sin contexto</strong>." partía la
+   frase en tres y dejaba un punto suelto. */
+.aviso-fallo > strong:first-child { display: block; margin-bottom: 2px; }
 
 /* Lo que ha cambiado se cuenta junto a los filtros, que es donde se
    actúa, y no en otro cuadro de color arriba del todo. */
