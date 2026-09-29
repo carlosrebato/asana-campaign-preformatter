@@ -640,6 +640,20 @@ function viewConfirmar() {
 }
 
 /* ---------------- 5 · RESULTADO ---------------- */
+// Asana contesta en inglés y con un enlace a su documentación. Quien
+// usa esto no necesita leer la documentación de Asana: necesita saber si
+// tiene que hacer algo o solo volver a darle al botón.
+function motivoClaro(txt) {
+  const t = txt || '';
+  if (/too many requests|rate limit/i.test(t)) {
+    return 'Asana estaba saturado en ese momento. Reintenta: no hay nada que corregir.';
+  }
+  if (/not a valid value|enum/i.test(t)) {
+    return 'Asana no acepta alguno de los valores. Revisa producto, formato o estado.';
+  }
+  return t;
+}
+
 function viewResultado() {
   const r = S.result;
   return `
@@ -664,7 +678,7 @@ function viewResultado() {
       <div class="panel" style="margin-bottom:16px">
         ${r.failed.map(f => `
           <div class="result-item">${ICONS.fail}<span>${esc(f.name)}</span>
-            <span style="margin-left:auto;font-size:11.5px;color:#B83227">${esc(f.error)}</span></div>
+            <span style="margin-left:auto;font-size:11.5px;color:#B83227" title="${esc(f.error)}">${esc(motivoClaro(f.error))}</span></div>
         `).join('')}
       </div>
       <button class="btn-primary" id="btn-retry">Reintentar ${r.failed.length} fallidas</button>
