@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260930105931">
+<link rel="stylesheet" href="app.css?v=20260930122646">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260930105931"></script>
-<script src="excel.js?v=20260930105931"></script>
-<script src="estrategia.js?v=20260930105931"></script>
-<script src="api.js?v=20260930105931"></script>
+<script src="data.js?v=20260930122646"></script>
+<script src="excel.js?v=20260930122646"></script>
+<script src="estrategia.js?v=20260930122646"></script>
+<script src="api.js?v=20260930122646"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -544,7 +544,11 @@ function badgeHTML(t) {
 // ("Idea fuerza:", "Reason why:"…). Se resaltan para que se lea como el
 // brief que es y no como un párrafo corrido. El texto no se toca: la
 // etiqueta sale del propio contenido.
-const ETIQUETAS = /^(?:\d+(?:\.\d+)*\.?\s*)?(idea\s*fuerza(?:\s+por\s+colectivo)?|elevator\s*pitch(?:\s+de\s+comunicaci[óo]n)?|mensaje\s*principal|mensaje\s*secundario|jerarqu[ií]a|tono|reason\s*why|palancas|prioritario|secundario|restricciones|idea\s*dominante|principio|por\s*d[óo]nde\s*explorar|qu[ée]\s*evitar|verbalizaciones|mandatorios)\s*:?\s*/i;
+// Las etiquetas ya no se adivinan: las escribimos nosotros al componer
+// el texto desde los campos del brief (CAMPOS_BRIEF, en data.js). Antes
+// esto era una lista de sinónimos escrita a mano que había que ampliar
+// cada vez que Comercialización cambiaba una palabra.
+const ETIQUETAS = new RegExp('^(' + CAMPOS_BRIEF.map(([, e]) => e).join('|') + ')\\s*:\\s*', 'i');
 
 function briefHTML(texto) {
   if (!texto) return '<p class="brief-vacio">Sin contexto de estrategia vinculado</p>';
@@ -586,7 +590,7 @@ function cardHTML(t) {
     <div class="card-fields">
       <label class="field"><span class="field-label">Producto</span>${sel('product', D.productOptions, t.product)}</label>
       <label class="field"><span class="field-label">Formato</span>${sel('format', D.formatOptions, t.format)}</label>
-      <label class="field"><span class="field-label">Entrega</span>
+      <label class="field"><span class="field-label">Fecha</span>
         <input type="date" value="${esc(t.dueDate)}" data-set="dueDate" data-id="${t.id}">
       </label>
       <label class="field"><span class="field-label">Palanca</span>${sel('palanca', D.palancaOptions, t.palanca)}</label>
@@ -607,7 +611,7 @@ function cardHTML(t) {
         ${t.description || t.descEdit ? `
           <div class="bloque">
             <div class="bloque-cab">
-              <span class="bloque-lbl">Mensaje del mes</span>
+              <span class="bloque-lbl">Estrategia del mes</span>
               <span class="bloque-acciones">
                 <button class="desc-ampliar" data-descedit="${t.id}">${t.descEdit ? 'Hecho' : 'Editar'}</button>
                 <button class="desc-ampliar" data-desc="${t.id}">Ocultar</button>
@@ -623,7 +627,7 @@ function cardHTML(t) {
             </span>
           </div>` : `
           <div class="bloque vacio">
-            <span class="bloque-lbl">Mensaje del mes</span>
+            <span class="bloque-lbl">Estrategia del mes</span>
             <p class="bloque-txt">${t.sinContextoNota
               ? esc(t.sinContextoNota)
               : 'Ningún documento del mes habla de esta campaña.'} La tarea se crea igual.</p>

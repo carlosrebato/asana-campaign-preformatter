@@ -126,7 +126,7 @@ const API = {
     // El título de verdad suele estar en la portada, así que solo lo ve
     // el primer trozo. Los demás devuelven el nombre del fichero. Se
     // reparte el que sí se encontró a todos los briefs de ese fichero.
-    const titulos = new Map();
+    const titulos = new Map();  // fichero → título del documento
     for (const b of porTitulo.values()) {
       if (b.documento && b.documento !== b.fichero && !titulos.has(b.fichero)) {
         titulos.set(b.fichero, b.documento);
@@ -138,7 +138,71 @@ const API = {
     // Si no salió ni un brief Y hubo un fallo, no es que los documentos
     // no dijeran nada: es que no se pudieron leer. Son cosas distintas y
     // la pantalla tiene que poder distinguirlas.
-    return Object.assign([...porTitulo.values()], { fallo });
+    // El texto corrido se compone de los campos, en orden fijo y con sus
+    // etiquetas. Es lo que se numera para señalar líneas, así que tiene
+    // que salir igual siempre: una sola fuente, los campos.
+    const lista = [...porTitulo.values()].map(b => ({ ...b, texto: textoDeCampos(b) }));
+    return Object.assign(lista, { fallo });
+  },
+
+  /* ----------------------------------------------------------
+     0 bis · JUNTAR LO QUE ES EL MISMO TERRITORIO
+     ----------------------------------------------------------
+     Se leen por trozos y el mismo territorio sale con nombres
+     distintos en cada uno. Juntar por título exacto dejaba el
+     material partido; juntar por parecido del nombre confundiría
+     «Fútbol captación» con «Fútbol winback». Lo junta el modelo
+     leyendo lo que dicen dentro.
+  ---------------------------------------------------------- */
+  async unificarBriefs(briefs) {
+    if (briefs.length < 2) return briefs;
+    let grupos = [];
+    try {
+      const r = await fetch('/api/unificar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ briefs })
+      });
+      if (r.ok) grupos = (await r.json()).grupos || [];
+    } catch { /* si falla, se sigue con los briefs tal cual */ }
+    if (!grupos.length) return briefs;
+
+    const porTitulo = new Map(briefs.map(b => [b.titulo, b]));
+    const juntos = grupos.map(g => {
+      const ms = g.briefs.map(t => porTitulo.get(t)).filter(Boolean);
+      if (!ms.length) return null;
+      // Los campos se juntan campo a campo, sin repetir: son trozos del
+      // mismo territorio vistos en páginas distintas.
+      const campos = {};
+      for (const [clave] of CAMPOS_BRIEF) {
+        const trozos = ms.map(b => (b.campos?.[clave] || '').trim()).filter(Boolean);
+        const unicos = trozos.filter((t, i, a) => a.findIndex(x => x.includes(t) || t.includes(x)) === i);
+        if (unicos.length) campos[clave] = unicos.join('\n');
+      }
+      const texto = textoDeCampos({ campos, texto: ms.map(b => b.texto).filter((t, i, a) => a.indexOf(t) === i).join('\n') });
+      // De la clase manda la mejor: si uno venía de plantilla, el
+      // territorio es de plantilla.
+      const plantilla = ms.some(b => b.fuente === 'plantilla');
+      const conPagina = ms.find(b => b.pagina) || ms[0];
+      return {
+        titulo: g.nombre, campos, texto,
+        documento: conPagina.documento, fichero: conPagina.fichero,
+        pagina: conPagina.pagina || 0,
+        fuente: plantilla ? 'plantilla' : 'territorio',
+        // De dónde salió cada trozo: si el mismo mensaje está en dos
+        // documentos, la tarea los cita todos.
+        fuentes: [...new Set(ms.map(b => [b.documento, b.pagina].join('|')))]
+          .map(k => { const [documento, pagina] = k.split('|'); return { documento, pagina: +pagina || 0 }; })
+      };
+    }).filter(Boolean);
+
+    // Regla de oro: ningún brief desaparece al agrupar.
+    const dentro = new Set(grupos.flatMap(g => g.briefs));
+    for (const b of briefs) if (!dentro.has(b.titulo)) juntos.push(b);
+    if (juntos.length > briefs.length) {
+      console.error(`Unificar devolvió más briefs de los que había: ${briefs.length} → ${juntos.length}`);
+      return briefs;
+    }
+    return juntos;
   },
 
   /* ----------------------------------------------------------
@@ -366,11 +430,19 @@ const API = {
       // Los briefs se despliegan en entradas: qué oferta va a qué
       // colectivo. Se guarda con la propuesta, igual que los briefs, y
       // no se recalcula si los documentos son los mismos.
-      const entradas = opciones.entradas?.length
-        ? opciones.entradas
-        : await API.construirIndice(briefs, (hechas, total) =>
-            avisar({ paso: 2, hechas, total, cuenta: `${hechas} de ${total}`,
-                     detalle: `${briefs.length} briefs de ${docs.length} documentos` }));
+      // Primero se junta lo que es el mismo territorio con otro nombre, y
+      // después se despliega en entradas. En ese orden: desplegar antes
+      // de juntar produce entradas duplicadas del mismo material.
+      let entradas = opciones.entradas || [];
+      let territorios = briefs;
+      if (!entradas.length) {
+        avisar({ paso: 2, hechas: 0, total: briefs.length, cuenta: '',
+                 detalle: `Juntando lo que es el mismo territorio · ${briefs.length} briefs` });
+        territorios = await API.unificarBriefs(briefs);
+        entradas = await API.construirIndice(territorios, (hechas, total) =>
+          avisar({ paso: 2, hechas, total, cuenta: `${hechas} de ${total}`,
+                   detalle: `${territorios.length} territorios de ${docs.length} documentos` }));
+      }
 
       // Cuando esto es un Excel corregido, solo se busca contexto para
       // las campañas que no estaban antes. Las demás ya lo tienen, y
@@ -379,22 +451,22 @@ const API = {
       const pendientes = soloPacs
         ? tasks.filter(t => !t.pac || soloPacs.has(t.pac))
         : tasks;
-      if (!pendientes.length) return { tareas: tasks, briefs, entradas, fallo: '' };
+      if (!pendientes.length) return { tareas: tasks, briefs: territorios, entradas, fallo: '' };
 
-      const { vinculos, fallo } = await API.emparejarConModelo(pendientes, entradas, briefs,
+      const { vinculos, fallo } = await API.emparejarConModelo(pendientes, entradas, territorios,
         (hechas, total, nota) =>
           avisar({ paso: 3, hechas, total, cuenta: `${hechas} de ${total}`,
             detalle: nota || `${entradas.length} entradas en el índice del mes` }));
 
-      const emparejadas = aplicarVinculos(pendientes, entradas, briefs, vinculos);
+      const emparejadas = aplicarVinculos(pendientes, entradas, territorios, vinculos);
       // Regla de oro: toda fila del Excel acaba como tarea, con contexto
       // o sin él. Si esto no se cumple, hay un fallo que hay que ver.
       if (emparejadas.length !== pendientes.length) {
         console.error(`Se perdieron tareas: ${pendientes.length} a emparejar, ${emparejadas.length} al final`);
-        return { tareas: tasks, briefs, entradas, fallo };
+        return { tareas: tasks, briefs: territorios, entradas, fallo };
       }
       const porId = new Map(emparejadas.map(t => [t.id, t]));
-      return { tareas: tasks.map(t => porId.get(t.id) || t), briefs, entradas, fallo };
+      return { tareas: tasks.map(t => porId.get(t.id) || t), briefs: territorios, entradas, fallo };
     }
     return { tareas: JSON.parse(JSON.stringify(MOCK_TASKS)), briefs: [], entradas: [], fallo: '' };
   },
@@ -536,6 +608,22 @@ const API = {
 };
 
 
+// Los campos, en orden, como texto. Cada apartado abre línea con su
+// etiqueta; si trae varias líneas, las demás van tal cual y también se
+// pueden señalar. Si un brief no trajo campos, se queda su texto.
+function textoDeCampos(b) {
+  if (!b.campos || !Object.keys(b.campos).length) return b.texto || '';
+  const partes = [];
+  for (const [clave, etiqueta] of CAMPOS_BRIEF) {
+    const v = (b.campos[clave] || '').trim();
+    if (!v) continue;
+    const [primera, ...resto] = v.split('\n');
+    partes.push(`${etiqueta}: ${primera}`.trim());
+    resto.forEach(l => l.trim() && partes.push(l.trim()));
+  }
+  return partes.join('\n');
+}
+
 /* ------------------------------------------------------------
    TROCEAR
    El Worker tiene un techo de llamadas salientes por invocación,
@@ -566,7 +654,11 @@ function aPayloadAsana(t) {
 
   poner('producto', t.product);
   poner('formato', t.format);
-  poner('tipoCliente', t.clientType);
+  // Tipo de cliente: retirado. El Excel nunca lo traía relleno y
+  // Comercialización lo ha sacado del conjunto de datos que importan
+  // (29-sep-2026): quedan Palanca, Producto y Formato. Escribir un campo
+  // que siempre va vacío solo ensucia la tarea.
+
   poner('objetivo', CATALOGS.palancaObjetivo[t.palanca]);
   poner('estado', t.estado || CATALOGS.estadoInicial);
   poner('peticionario', t.excel?.responsable);
@@ -604,7 +696,7 @@ function notasDe(t) {
   const partes = [];
   if (objetivo) partes.push(`ESTA CAMPAÑA\n${objetivo}`);
   if (contexto) {
-    partes.push(`MENSAJE DEL MES${fuente ? ` · ${fuente}` : ''}\n${contexto}`);
+    partes.push(`ESTRATEGIA DEL MES${fuente ? ` · ${fuente}` : ''}\n${contexto}`);
   }
   return partes.join('\n\n');
 }

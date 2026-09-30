@@ -19,6 +19,29 @@
    Lo que NO puede venir de Asana es el mapeo del Excel (abajo):
    que "Fútbol+" sea "M+ Futbol" es una decisión de negocio.
 ------------------------------------------------------------ */
+/* ------------------------------------------------------------
+   LOS APARTADOS DE UN BRIEF
+   ------------------------------------------------------------
+   Los briefs de Comercialización vienen con estructura, aunque cada
+   equipo la nombre a su manera: "Territorio", "Territorio expresivo" y
+   "Territorio (frases)" son lo mismo. Medido sobre 44 briefs de octubre:
+   el tono aparece en 29, la idea fuerza en 23, qué evitar en 20. Solo 3
+   no traen ningún apartado, y son justo los que son una lista de precios
+   en vez de un brief.
+
+   El modelo pone cada cosa en su campo; esta lista dice cómo se llaman y
+   en qué orden se leen. Es vocabulario, no un mapeo: no decide nada.
+------------------------------------------------------------ */
+const CAMPOS_BRIEF = [
+  ['ideaFuerza', 'Idea fuerza'],
+  ['tono',       'Tono'],
+  ['ejes',       'Ejes de mensaje'],
+  ['reasonWhy',  'Reason why'],
+  ['evitar',     'Qué evitar'],
+  ['mandatorio', 'Mandatorio'],
+  ['otros',      'Otros']
+];
+
 const CATALOGS = {
   esCopia: true,   // pasa a false cuando los catálogos vienen de Asana
 
@@ -111,7 +134,7 @@ const CATALOGS = {
   // si no está en Asana, no se puede escribir.
   get productOptions()    { return Object.keys(this.fields.producto?.options || {}); },
   get formatOptions()     { return Object.keys(this.fields.formato?.options || {}); },
-  get clientTypeOptions() { return Object.keys(this.fields.tipoCliente?.options || {}); },
+  // clientTypeOptions se retiró con el campo: ver aPayloadAsana.
 
   // Producto → Sección. Determinista. Punto único de configuración.
   productSectionMap: {

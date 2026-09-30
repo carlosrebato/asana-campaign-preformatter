@@ -27,6 +27,7 @@
 ============================================================ */
 
 import PROMPT_LECTURA from './prompts/lectura.md';
+import PROMPT_UNIFICAR from './prompts/unificar.md';
 import PROMPT_INDICE from './prompts/indice.md';
 import PROMPT_VINCULACION from './prompts/vinculacion.md';
 import PROMPT_PRODUCTO from './prompts/producto.md';
@@ -103,6 +104,10 @@ export async function leerDocumento(env, { nombre, texto }) {
   const { texto: salida, uso } = await preguntar(env, PROMPT_LECTURA, contenido, 16000, true);
   const briefs = comoArray(salida).map(b => ({
     titulo: b.titulo || '',
+    // Los apartados del brief, tal y como los escribió Comercialización.
+    // El texto corrido se compone después, en el cliente, a partir de
+    // ellos: así hay una sola fuente y no dos que se desincronizan.
+    campos: limpiarCampos(b.campos),
     texto: b.texto || '',
     // El título que trae el documento en su portada; si no lo encontró,
     // el nombre del fichero, que al menos identifica algo.
@@ -110,8 +115,58 @@ export async function leerDocumento(env, { nombre, texto }) {
     fichero: nombre,
     pagina: Number(b.pagina) > 0 ? Number(b.pagina) : 0,
     fuente: b.clase === 'plantilla' ? 'plantilla' : 'territorio'
-  })).filter(b => b.titulo && b.texto);
+  })).filter(b => b.titulo && (b.texto || Object.keys(b.campos).length));
   return { briefs, uso };
+}
+
+// Solo los campos que el documento trae de verdad, y como texto.
+// Un campo vacío no viaja: así "no lo dice" y "lo dice vacío" no se
+// confunden más adelante.
+function limpiarCampos(c) {
+  const out = {};
+  for (const [k, v] of Object.entries(c || {})) {
+    const t = typeof v === 'string' ? v.trim() : Array.isArray(v) ? v.join('\n').trim() : '';
+    if (t) out[k] = t;
+  }
+  return out;
+}
+
+/* ---------- 1 · JUNTAR LO QUE ES LO MISMO ----------
+   Los documentos se leen por trozos y el mismo territorio sale en
+   varias páginas con nombres distintos: «Ficción», «Ficción /
+   Full Ficción», «Desarrollo Ficción». Medido sobre tres lecturas
+   del mismo mes: 64 títulos distintos para 38 territorios, y 26
+   aparecían en una sola pasada.
+
+   El código juntaba por título exacto, así que ese material
+   llegaba partido. De ahí salían las entradas duplicadas del
+   índice y que dos campañas gemelas citaran páginas distintas.
+
+   Juntar por parecido del nombre sería frágil: «Fútbol captación»
+   y «Fútbol winback» se parecen y son opuestos. Se junta leyendo
+   lo que dicen dentro.
+---------------------------------------------------------- */
+export async function unificar(env, { briefs }) {
+  if (!briefs?.length) return { grupos: [], uso: null };
+  const contenido = 'BRIEFS DEL MES:\n\n' + conLineas(briefs);
+  const { texto, uso } = await preguntar(env, PROMPT_UNIFICAR, contenido, 8000);
+  const porTitulo = new Map(briefs.map(b => [b.titulo.trim().toLowerCase(), b]));
+  const usados = new Set();
+  const grupos = [];
+  for (const g of comoArray(texto)) {
+    const miembros = (g.briefs || [])
+      .map(t => porTitulo.get(String(t).trim().toLowerCase()))
+      .filter(b => b && !usados.has(b.titulo));
+    if (!miembros.length) continue;
+    miembros.forEach(b => usados.add(b.titulo));
+    grupos.push({ nombre: (g.nombre || miembros[0].titulo).trim(), briefs: miembros.map(b => b.titulo) });
+  }
+  // Regla de oro también aquí: ningún brief se queda fuera por un fallo
+  // del agrupador. El que no salga en ningún grupo va solo.
+  for (const b of briefs) {
+    if (!usados.has(b.titulo)) grupos.push({ nombre: b.titulo, briefs: [b.titulo] });
+  }
+  return { grupos, uso };
 }
 
 /* ---------- 1 bis · ÍNDICE DEL MES ----------

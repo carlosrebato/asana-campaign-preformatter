@@ -15,7 +15,7 @@
    este fichero y nada más.
 ============================================================ */
 
-import { leerDocumento, indexar, resolverProductos, vincular } from './ia.js';
+import { leerDocumento, unificar, indexar, resolverProductos, vincular } from './ia.js';
 
 const ASANA = 'https://app.asana.com/api/1.0';
 
@@ -374,6 +374,12 @@ export default {
       if (url.pathname === '/api/productos' && request.method === 'POST') {
         if (!env.ANTHROPIC_API_KEY) return json({ resueltos: [], sinModelo: true });
         return json(await resolverProductos(env, await request.json()));
+      }
+      if (url.pathname === '/api/unificar' && request.method === 'POST') {
+        if (!env.ANTHROPIC_API_KEY) {
+          throw Object.assign(new Error('Falta la clave del modelo (ANTHROPIC_API_KEY) en este Worker.'), { status: 503 });
+        }
+        return json(await unificar(env, await request.json()));
       }
       if (url.pathname === '/api/indice' && request.method === 'POST') {
         if (!env.ANTHROPIC_API_KEY) {
