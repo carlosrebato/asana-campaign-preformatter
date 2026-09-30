@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260930163051">
+<link rel="stylesheet" href="app.css?v=20260930170557">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,11 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260930163051"></script>
-<script src="excel.js?v=20260930163051"></script>
-<script src="estrategia.js?v=20260930163051"></script>
-<script src="api.js?v=20260930163051"></script>
+<script src="data.js?v=20260930170557"></script>
+<script src="excel.js?v=20260930170557"></script>
+<script src="banners.js?v=20260930170557"></script>
+<script src="estrategia.js?v=20260930170557"></script>
+<script src="api.js?v=20260930170557"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -43,7 +44,7 @@ const S = {
   screen: 'entrada',          // entrada | procesando | revision | confirmar | resultado | error
   error: '',                  // por qué se paró el procesado, si se paró
   falloModelo: '',            // por qué no contestó el modelo, si no contestó
-  files: { excel: null, strategy: [] },   // varios documentos de estrategia
+  files: { excel: null, banners: null, strategy: [] },  // varios documentos de estrategia
   // Todo lo que la pantalla de proceso necesita para contar qué pasa.
   // Tarda minutos: sin detalle real parece colgada.
   proc: { paso: 0, detalle: '', cuenta: '', hechas: 0, total: 0, inicio: 0, seg: 0 },
@@ -132,6 +133,19 @@ function resumenExcel(p) {
       `<li>Fila ${w.fila}: ${esc(w.msg)}</li>`).join('')}${avisos.length > 6 ? `<li>… y ${avisos.length - 6} más</li>` : ''}</ul>` : ''}`;
 }
 
+// Lo mismo para el fichero de banners. Aquí interesa decir dos números
+// juntos: cuántas creatividades son nuevas (y por tanto tarea) y cuántas
+// se reutilizan. Ver solo el primero no deja comprobar nada; verlos
+// juntos sí, porque los dos suman las celdas escritas de la parrilla.
+function resumenBanners(p) {
+  const m = p.meta;
+  return `
+    <div class="drop-hint">${m.filas} banners nuevos${m.reutilizadas ? ` · ${m.reutilizadas} reutilizados` : ''}</div>
+    ${m.posiciones?.length ? `<div class="drop-hint">${m.posiciones.length} posiciones · ${esc((m.semanas || []).join(' '))}</div>` : ''}
+    ${p.warnings.length ? `<ul class="drop-avisos">${p.warnings.slice(0, 6).map(w =>
+      `<li>${esc(w.msg)}</li>`).join('')}${p.warnings.length > 6 ? `<li>… y ${p.warnings.length - 6} más</li>` : ''}</ul>` : ''}`;
+}
+
 // Cuántos briefs de mensaje se han encontrado. Si no hay ninguno, no se
 // dice nada: el documento no puede generar ruido (DECISIONES.md).
 function resumenEstrategia(p) {
@@ -165,6 +179,29 @@ function viewEntrada() {
     </div>`;
   };
 
+  // Los banners son el otro Excel del mes, y va por su cuenta: no
+  // necesita documentos de estrategia porque el propio fichero dice de
+  // qué es cada pieza. Es opcional: hay meses que solo se cargan
+  // campañas, y meses que solo se cargan banners.
+  const cajaBanners = () => {
+    const d = f.banners;
+    return `
+    <div class="drop-cell">
+      <div class="drop ${d ? 'loaded' : ''}" data-drop="banners">
+        <div class="drop-icon">${ICONS.fileBig}</div>
+        ${d ? `
+          <div class="drop-title">${esc(d.name)}</div>
+          ${d.parsed ? resumenBanners(d.parsed) : ''}
+          <button class="btn-ghost" data-clear="banners" style="font-size:12px">Quitar</button>
+        ` : `
+          <div class="drop-title">Excel de banners</div>
+          <div class="drop-hint">Arrastra el .xlsx o haz clic</div>
+          <span class="req opcional">Opcional</span>
+        `}
+      </div>
+    </div>`;
+  };
+
   // La estrategia puede venir repartida en varios documentos: uno por
   // equipo (Comercialización, Dispositivos…). Se leen todos y los briefs
   // se juntan. Ninguno es obligatorio.
@@ -192,7 +229,10 @@ function viewEntrada() {
     </div>`;
   };
 
-  const listo = f.excel && f.strategy.length;
+  // Las campañas necesitan documentos para tener contexto; los banners
+  // no necesitan nada más. Con cualquiera de las dos cosas se puede
+  // procesar.
+  const listo = (f.excel && f.strategy.length) || !!f.banners;
 
   return `
   <main class="main-narrow">
@@ -203,14 +243,16 @@ function viewEntrada() {
         <button class="btn-link-section" data-paso="revision">Volver a la revisión</button>
       </p>` : ''}
     <p style="font-size:14px;color:#605E5C;margin-top:8px;line-height:1.55">
-      Sube el Excel y los documentos de estrategia del mes. El Excel aporta los
-      datos operativos (PAC, fechas, producto); los documentos aportan el
-      contexto de mensaje. <strong style="color:#262423">Se necesita al menos uno de cada.</strong>
+      Sube el Excel de campañas y los documentos de estrategia del mes. El Excel
+      aporta los datos operativos (PAC, fechas, producto); los documentos aportan
+      el contexto de mensaje. <strong style="color:#262423">Se necesita al menos uno de cada.</strong>
+      El Excel de banners es aparte y va solo: no necesita documentos.
     </p>
 
     <div class="drop-grid">
       ${cajaExcel()}
       ${cajaEstrategia()}
+      ${cajaBanners()}
     </div>
 
     ${S.catalogos && !S.catalogos.ok ? `
@@ -223,7 +265,7 @@ function viewEntrada() {
       <button class="btn-primary" id="btn-procesar" ${listo ? '' : 'disabled'}>
         Procesar ${ICONS.arrow}
       </button>
-      ${!listo ? `<span style="font-size:12.5px;color:#9F9C99">Faltan documentos por subir</span>` : ''}
+      ${!listo ? `<span style="font-size:12.5px;color:#9F9C99">Sube el Excel de campañas con sus documentos, o el de banners</span>` : ''}
     </div>
   </main>`;
 }
@@ -314,6 +356,10 @@ function viewRevision() {
   const total = S.tasks.length;
   const okN = S.tasks.filter(t => t.linkConfidence === 'high').length;
   const revN = S.tasks.filter(t => t.linkConfidence === 'low').length;
+  // Los banners no se emparejan con ningún documento: su contexto lo
+  // trae la propia parrilla. Contarlos como "sin vincular" haría que un
+  // mes de solo banners se leyera como un fallo de principio a fin.
+  const banN = S.tasks.filter(t => t.banner).length;
   const appN = S.tasks.filter(t => t.approved).length;
   const pend = total - appN;
 
@@ -371,6 +417,7 @@ function viewRevision() {
         <div class="stats-cell"><span class="stats-n">${total}</span><span class="stats-lbl">tareas</span></div>
         <div class="stats-cell"><span class="dot green"></span><span class="stats-n">${okN}</span><span class="stats-lbl">vinculación clara</span></div>
         <div class="stats-cell"><span class="dot amber"></span><span class="stats-n">${revN}</span><span class="stats-lbl">vinculación probable</span></div>
+        ${banN ? `<div class="stats-cell"><span class="stats-n">${banN}</span><span class="stats-lbl">banners</span></div>` : ''}
         <div class="stats-cell"><span class="stats-n">${pend}/${total}</span><span class="stats-lbl">pendientes</span></div>
       </div>
       <button class="btn-primary" id="btn-confirmar" ${appN ? '' : 'disabled'}>
@@ -384,9 +431,11 @@ function viewRevision() {
         Estas son las tareas que se van a crear en Asana, con el contexto que
         les corresponde. <strong>Revisa las tuyas, corrige lo que haga falta y
         apruébalas.</strong> Nada llega a Asana hasta que alguien pulse
-        <em>Cargar en Asana</em>. El contexto lo ha propuesto un modelo de IA
-        leyendo los documentos del mes: las marcadas en ámbar son en las que
-        tiene dudas.
+        <em>Cargar en Asana</em>.${banN === total ? `
+        Los banners salen de la parrilla, tal cual: aquí no ha decidido nada un
+        modelo.` : `
+        El contexto lo ha propuesto un modelo de IA leyendo los documentos del
+        mes: las marcadas en ámbar son en las que tiene dudas.`}
       </p>
 
       ${fallosN && fallosN === total && S.falloModelo ? `
@@ -483,6 +532,31 @@ function avisosDe(t) {
   return av.map(x => `<p class="nota-revisar">${x}</p>`).join('') + asana;
 }
 
+// Un banner no se explica como una campaña. No tiene objetivo escrito
+// por nadie: tiene una posición del menú, una semana y una creatividad.
+// Y tiene una fecha que no está en el fichero —la de entrega al Plus—
+// así que hay que decir de dónde sale, o parece inventada.
+function bloqueBanner(t) {
+  const b = t.banner;
+  if (!b) return '';
+  const pie = [
+    b.posicion,
+    `${b.semana} · ${b.vigencia}`,
+    b.franjaTexto,
+    b.origen ? `Origen: ${b.origen}` : '',
+    b.publica ? `Publica el ${fechaCorta(b.publica)} · se entrega al Plus 3 laborables antes` : ''
+  ].filter(Boolean);
+  return `
+    <div class="bloque">
+      <span class="bloque-lbl">Creatividad del banner</span>
+      <p class="bloque-txt">${esc(b.creatividad)}</p>
+      <span class="bloque-pie">
+        <span class="pie-fuente">Parrilla de banners · celda ${esc(b.celda)}</span>
+        ${pie.map(x => `<span class="pie-linea">${esc(x)}</span>`).join('')}
+      </span>
+    </div>`;
+}
+
 function marcaCambio(t) {
   if (t.cambio === 'nueva') return '<span class="marca nueva">Nueva</span>';
   if (t.cambio === 'cambiada') return `<span class="marca cambiada" title="${esc((t.cambios || []).join(', '))}">Ha cambiado</span>`;
@@ -570,7 +644,14 @@ function cardHTML(t) {
       ${opts.map(o => `<option value="${esc(o)}" ${o === val ? 'selected' : ''}>${esc(o)}</option>`).join('')}
     </select>`;
 
-  const descPrev = t.description ? t.description.replace(/\n/g, ' · ').slice(0, 150) : 'Añadir a mano';
+  // Cerrada, la tarjeta tiene que decir de qué va sin abrirla. En un
+  // banner eso no es la descripción —no la tiene— sino dónde sale y qué
+  // pieza es.
+  const descPrev = t.description
+    ? t.description.replace(/\n/g, ' · ').slice(0, 150)
+    : t.banner
+      ? `${t.banner.posicion} · ${t.banner.semana} ${t.banner.franja} · ${t.banner.creatividad}`.slice(0, 150)
+      : 'Añadir a mano';
   const comparten = compartenContexto(t);
 
   return `
@@ -601,7 +682,7 @@ function cardHTML(t) {
       ${t.descOpen ? `
         ${avisosDe(t)}
 
-        ${t.excel?.objetivo ? `
+        ${t.banner ? bloqueBanner(t) : t.excel?.objetivo ? `
           <div class="bloque">
             <span class="bloque-lbl">Objetivo de la campaña</span>
             <p class="bloque-txt">${esc(t.excel.objetivo)}</p>
@@ -628,17 +709,19 @@ function cardHTML(t) {
           </div>` : `
           <div class="bloque vacio">
             <span class="bloque-lbl">Estrategia del mes</span>
-            <p class="bloque-txt">${t.sinContextoNota
-              ? esc(t.sinContextoNota)
-              : 'Ningún documento del mes habla de esta campaña.'} La tarea se crea igual.</p>
+            <p class="bloque-txt">${t.banner
+              ? 'Los banners no se cruzan con los documentos del mes: la parrilla ya dice de qué es cada pieza.'
+              : `${t.sinContextoNota
+                  ? esc(t.sinContextoNota)
+                  : 'Ningún documento del mes habla de esta campaña.'} La tarea se crea igual.`}</p>
             <span class="bloque-acciones"><button class="desc-ampliar" data-descedit="${t.id}">Escribirlo a mano</button></span>
           </div>`}
       ` : `
         <div class="field desc-cerrado" data-desc="${t.id}">
-          <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>
+          <span class="field-label">${t.description ? 'Contexto' : t.banner ? 'Banner' : 'Sin contexto'}</span>
           <p class="desc-preview">
             <span class="desc-txt">${esc(descPrev)}</span>
-            <button class="desc-ampliar" data-desc="${t.id}">${t.description ? 'Ampliar' : 'Añadir'}</button>
+            <button class="desc-ampliar" data-desc="${t.id}">${t.description || t.banner ? 'Ampliar' : 'Añadir'}</button>
           </p>
         </div>
       `}
@@ -834,14 +917,22 @@ async function procesar() {
     // Repintar solo cuando cambia algo visible: cada repintado corta el
     // giro del spinner.
     let firma = '';
-    const leido = await API.interpretarDocumentos(S.files.excel, S.files.strategy, info => {
-      Object.assign(S.proc, info);
-      const nueva = `${info.paso}|${info.cuenta || ''}|${info.detalle || ''}`;
-      if (nueva === firma) return;
-      firma = nueva;
-      render();
-    }, { briefs, entradas, soloPacs });
-    const tasks = leido.tareas;
+    const leido = S.files.excel
+      ? await API.interpretarDocumentos(S.files.excel, S.files.strategy, info => {
+          Object.assign(S.proc, info);
+          const nueva = `${info.paso}|${info.cuenta || ''}|${info.detalle || ''}`;
+          if (nueva === firma) return;
+          firma = nueva;
+          render();
+        }, { briefs, entradas, soloPacs })
+      : { tareas: [], briefs: [], entradas: [], fallo: '' };
+
+    // Los banners ya están leídos: se leyeron al soltar el fichero y son
+    // deterministas de principio a fin. No pasan por el modelo porque no
+    // hay nada que deducir —la celda dice de qué va la pieza— así que no
+    // cuestan ni una llamada ni un minuto de espera.
+    const deBanners = S.files.banners?.parsed?.tasks || [];
+    const tasks = [...leido.tareas, ...deBanners];
     S.falloModelo = leido.fallo || '';
     if (!tasks.length) { S.screen = 'entrada'; return; }
     const nuevas = tasks.map(t => Object.assign(
@@ -984,6 +1075,7 @@ function resumenCambios(tareas) {
 function ficherosDeLaPropuesta() {
   return {
     excel: S.files.excel ? { name: S.files.excel.name, ext: S.files.excel.ext } : null,
+    banners: S.files.banners ? { name: S.files.banners.name, ext: S.files.banners.ext } : null,
     estrategia: (S.files.strategy || []).map(d => ({ name: d.name, ext: d.ext, bytes: d.bytes || 0 }))
   };
 }
@@ -1055,6 +1147,7 @@ async function abrirDesdeEnlace() {
   S.propuestaId = doc.id;
   S.files = {
     excel: doc.ficheros?.excel || { name: '(cargado en otro momento)', ext: '' },
+    banners: doc.ficheros?.banners || null,
     strategy: doc.ficheros?.estrategia || []
   };
   S.propuestaVer = doc.version || 0;
@@ -1151,7 +1244,7 @@ document.addEventListener('click', async e => {
   }
   else if (el.dataset.drop) {
     const key = el.dataset.drop;
-    if (key === 'excel' && S.files.excel) return;
+    if (S.files[key] && key !== 'strategy') return;
     abrirSelector(key);
   }
   else if (el.id === 'btn-procesar') procesar();
@@ -1166,7 +1259,7 @@ document.addEventListener('click', async e => {
   else if (el.id === 'btn-reset') {
     Object.assign(S, {
       screen: 'entrada',
-      files: { excel: null, strategy: [] },   // lista vacía, no null: la entrada la recorre
+      files: { excel: null, banners: null, strategy: [] },  // lista vacía, no null: la entrada la recorre
       tasks: [], dupes: [], result: null, procStep: -1, procPasos: []
     });
     render();
@@ -1227,7 +1320,7 @@ document.addEventListener('dragleave', e => {
 function abrirSelector(key) {
   const inp = document.createElement('input');
   inp.type = 'file';
-  inp.accept = key === 'excel' ? '.xlsx' : '.pdf,.html,.htm';
+  inp.accept = (key === 'excel' || key === 'banners') ? '.xlsx' : '.pdf,.html,.htm';
   inp.multiple = key === 'strategy';
   inp.onchange = async () => {
     if (!inp.files.length) return;
@@ -1238,12 +1331,13 @@ function abrirSelector(key) {
 
 // El Excel es uno; los documentos de estrategia, los que hagan falta.
 async function añadirFicheros(files, key) {
-  if (key === 'excel') {
-    S.files.excel = await API.inspeccionarFichero(files[0], 'excel');
-  } else {
+  // De estrategia caben varios documentos; de cada Excel, uno.
+  if (key === 'strategy') {
     for (const file of files) {
       S.files.strategy.push(await API.inspeccionarFichero(file, 'strategy'));
     }
+  } else {
+    S.files[key] = await API.inspeccionarFichero(files[0], key);
   }
   render();
 }
@@ -1253,7 +1347,7 @@ document.addEventListener('drop', async e => {
   if (!d || S.dragId) return;
   e.preventDefault();
   const key = d.dataset.drop;
-  if (key === 'excel' && S.files.excel) return;
+  if (S.files[key] && key !== 'strategy') return;
   await añadirFicheros([...e.dataTransfer.files], key);
 });
 

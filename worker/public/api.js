@@ -486,6 +486,14 @@ const API = {
       const parsed = EXCEL_PARSER.parse(buf);
       return { name: file.name, ext: 'XLSX', parsed };
     }
+    // Banners: también entero en el navegador y también determinista,
+    // pero por otro camino (banners.js), porque aquí el dato es el color
+    // de la celda. No pasa por el modelo: no hay nada que deducir.
+    if (file && tipo === 'banners') {
+      const buf = await file.arrayBuffer();
+      const parsed = BANNERS_PARSER.parse(buf, file.name);
+      return { name: file.name, ext: 'XLSX', parsed };
+    }
     // Estrategia: aquí solo se saca el texto. Quién decide qué es
     // material de mensaje es el modelo, en el paso de lectura.
     if (file && tipo === 'strategy') {
@@ -690,11 +698,29 @@ function aPayloadAsana(t) {
    usaba para emparejar y luego se tiraba.
 ------------------------------------------------------------- */
 function notasDe(t) {
-  const objetivo = (t.excel?.objetivo || '').trim();
   const contexto = (t.description || '').trim();
   const fuente = (t.contextSource || '').trim();
   const partes = [];
-  if (objetivo) partes.push(`OBJETIVO DE LA CAMPAÑA\n${objetivo}`);
+
+  // Un banner no trae objetivo escrito: trae una posición del menú, una
+  // semana y una creatividad. Y su fecha —la entrega al Plus— no está en
+  // el fichero, se calcula. Quien abre la tarea tiene que poder
+  // comprobarla, así que se dice el día que publica y de dónde sale.
+  if (t.banner) {
+    const b = t.banner;
+    const lineas = [
+      `${b.posicion} · ${b.semana} (${b.vigencia}) · ${b.franjaTexto}`,
+      `Creatividad: ${b.creatividad}`,
+      b.origen ? `Origen cliente: ${b.origen}` : '',
+      b.publica ? `Publica el ${b.publica}. Entrega al Plus el ${t.dueDate} (3 días laborables antes).` : '',
+      `Sale de la parrilla de banners, celda ${b.celda}, marcada como creatividad nueva.`
+    ].filter(Boolean);
+    partes.push(`BANNER DE MOVISTAR PLUS+\n${lineas.join('\n')}`);
+  } else {
+    const objetivo = (t.excel?.objetivo || '').trim();
+    if (objetivo) partes.push(`OBJETIVO DE LA CAMPAÑA\n${objetivo}`);
+  }
+
   if (contexto) {
     partes.push(`ESTRATEGIA DEL MES${fuente ? ` · ${fuente}` : ''}\n${contexto}`);
   }

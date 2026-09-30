@@ -411,6 +411,59 @@ tabla. Si algún día hace falta distinguirlos en pantalla, el aviso del
 lector ya lleva el valor exacto del Excel: basta con que acompañe a la
 tarea hasta la revisión.
 
+## Los banners: el dato es el color de la celda
+
+El mes llega en dos Excel que no se parecen. El de Comercialización es
+una tabla —1 fila = 1 campaña— y el dato está escrito. El de banners de
+Movistar Plus+ es una parrilla: las filas son posiciones del menú, las
+columnas son semanas, y **lo que dice si hay tarea o no es el color de
+la celda**. Verde es una creatividad nueva, que hay que producir; blanco
+es una que se reutiliza y no pide nada a nadie.
+
+Por eso son dos lectores (`excel.js` y `banners.js`) y no uno con un
+`if`. Comparten la forma de salida —`Tarea[]` más avisos— y nada más.
+
+**El verde no es un verde.** En el fichero de octubre hay tres tonos
+distintos (`#DAF2D0`, `#DCEDD5`, `#D1E1D3`), porque cada quien pinta con
+el suyo y Excel guarda unos como rgb y otros como índice del tema del
+libro más un matiz. La primera versión comparaba contra una lista de
+colores y salían 39 tareas en vez de 42. Ahora se resuelve el color
+final —tema y matiz incluidos— y se pregunta por el **tono**: ¿esto es
+un verde? Da igual cuál.
+
+Lo que no es ni verde ni blanco no se adivina: se avisa. Una celda con
+texto y sin pintar, o pintada de un color que nadie ha explicado, sale
+como aviso al subir el fichero y no se convierte en tarea. Preferimos
+que falte una tarea y se sepa, a que aparezca una que nadie pidió.
+
+**La fecha no está en el fichero.** El Excel dice qué semana se publica
+cada pieza; la fecha que va a Asana es la de entrega al Plus, que son
+n-3 días **laborables** antes (Bárbara y Eduardo, 30-sep-2026). Se
+calcula, y por eso la tarea escribe en sus notas el día que publica y de
+dónde sale la cuenta: una fecha calculada que no se puede comprobar es
+una fecha en la que nadie confía.
+
+Los festivos están en `BANNERS.festivos` y **están incompletos a
+propósito**: son los nacionales de España. Los autonómicos y locales de
+Madrid no están porque nadie los ha confirmado. En octubre de 2026 no
+cambia nada —el único festivo del mes es el 12, que es nacional— pero en
+diciembre o en mayo sí cambiaría. Está pendiente cerrarlo.
+
+**Los banners no pasan por el modelo.** No hay nada que deducir: la
+celda dice de qué es la pieza. Así que un mes de solo banners no cuesta
+ni una llamada ni un minuto de espera, y funciona sin documentos de
+estrategia. Cruzarlos algún día con el índice del mes es posible, pero
+hoy no hace falta y no se paga por si acaso.
+
+**El identificador de un banner es su celda** (`BAN-K3`). No tiene PAC y
+no puede tenerlo. Que la identidad sea la coordenada es lo que hace que
+la segunda pasada funcione: cambiar el texto de una celda sale como
+"ha cambiado" y no como una tarea que desaparece y otra que nace.
+
+Cuando dos celdas dan la misma tarea —en octubre pasa dos veces, porque
+la hoja tiene bloques repetidos— salen las dos y se avisa. Decidir cuál
+sobra es de Comercialización, no del lector.
+
 ## El Worker es la única parte que necesita servidor
 
 El token de Asana no puede estar en el navegador, y Asana no acepta

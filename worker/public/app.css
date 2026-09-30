@@ -81,10 +81,14 @@ h1.page { font-size: 24px; font-weight: 800; letter-spacing: -.015em; }
 h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
 
 /* ============ ENTRADA ============ */
+/* Tres cajas: campañas, estrategia y banners. En pantalla ancha caben
+   en fila; por debajo de 900px se apilan, que es como se ve en un
+   portátil con la ventana a medias. */
 .drop-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px;
   align-items: stretch;
 }
+@media (max-width: 900px) { .drop-grid { grid-template-columns: 1fr; } }
 .drop-cell { display: flex; flex-direction: column; }
 .drop {
   border: 1.5px dashed #DFDBD6; border-radius: 16px;
@@ -108,6 +112,8 @@ h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
   color: #B83227; background: #FBE6E3; border-radius: 9999px; padding: 2px 8px;
 }
 .req.ok { color: #38552B; background: #CEF7BF; }
+/* Lo opcional se dice, pero sin el rojo de lo que falta. */
+.req.opcional { color: #605E5C; background: #F1EEEA; }
 .doclist {
   list-style: none; margin: 0; padding: 0; width: 100%;
   display: flex; flex-direction: column; gap: 2px;
