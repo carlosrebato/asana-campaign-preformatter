@@ -298,31 +298,93 @@ const EXCEL = {
 
   // PRODUCTO / KPI (Excel) → Producto (Asana). Los nombres de la derecha
   // son opciones reales del campo: lo que no esté ahí no se puede escribir.
+  // PRODUCTO / KPI (Excel) → Producto (Asana). Los nombres de la derecha
+  // son opciones reales del campo: lo que no esté ahí no se puede escribir.
+  //
+  // La lista de la izquierda la cerró Comercialización el 30-sep-2026
+  // ("Lista de Productos Palancas Medios v3"): son 56 valores y no hay
+  // más. Por eso esto puede ser una tabla y no una adivinanza — antes la
+  // lista era abierta y cada mes aparecía un valor nuevo.
   productoProduct: {
-    'Fibra Adicional':           'Fibra Adicional',
-    'FTTR':                      'FTTR',
-    'Alta BAF':                  'Fibra Adicional',
-    'R2R':                       'Dispositivos',
-    'Fútbol+':                   'M+ Futbol',
-    'Deportes Total':            'M+ Deporte',
-    'Ficción Total':             'M+ Ficción',
-    'Movistar Plus+ (Paquete)':  'Movistar Plus+',
-    'Atresplayer':               'Movistar Plus+',
-    'Enews contenidos':          'Movistar Plus+',
-    'Horecas /LLPP':             'Movistar Plus+',
-    'Helios':                    'Otros',
-    'Renting coche eléctrico':   'Otros',
-    'eSIMFlag':                  'Otros',
-    'Movistar Prosegur Alarmas': 'Movistar Prosegur Alarmas',
-    'Legal':                     'Otros',   // no se importa (palancasOmitidas)
-    'Marca':                     'Otros',
-    'Info':                      'Otros'    // se afina con productoPorNombre
+    // Conectividad
+    'Fibra Adicional':            'Fibra Adicional',
+    'Fibra Adicional Autónomos':  'Fibra Adicional',
+    'Activación Segunda Fibra':   'Segunda Fibra ON',
+    'FTTR':                       'FTTR',
+    'Alta BAF':                   'Fibra Adicional',
+    'Prepago':                    'Prepago',
+    // AFR5G es acceso fijo por radio. No existe como producto en Asana:
+    // va a Otros hasta que se cree la opción. Su sección sí es correcta.
+    'AFR5G':                      'Otros',
+    'Migración Tecnológica':      'Otros',
+
+    // miMovistar
+    'Alta miMovistar':            'MiMovistar',
+    'Alta Móvil':                 'MiMovistar',
+    'miMovistar Autónomos':       'MiMovistar',
+    'Upsell Fusión/miMovistar':   'MiMovistar',
+    'App Mi Movistar':            'MiMovistar',
+    'Conecta Max':                'MiMovistar',
+    'Movistar Conecta':           'MiMovistar',
+
+    // Dispositivos
+    'R2R':                        'Dispositivos',
+    'Equipamiento Hogar':         'Dispositivos',
+    'Router / Desco WiFi':        'Dispositivos',
+    'Enews dispositivos':         'Dispositivos',
+    'Libres':                     'Dispositivos',
+
+    // Televisión y contenidos
+    'Movistar Plus+ (Paquete)':   'Movistar Plus+',
+    'Movistar Plus+ (OTT)':       'Movistar Plus+',
+    'Contratación Paquetes TV':   'Movistar Plus+',
+    'Atresplayer':                'Movistar Plus+',
+    'Netflix':                    'Movistar Plus+',
+    'Disney+':                    'Movistar Plus+',
+    'Prime Video':                'Movistar Plus+',
+    'Enews contenidos':           'Movistar Plus+',
+    'Horecas /LLPP':              'Movistar Plus+',
+    'Fútbol+':                    'M+ Futbol',
+    'Champions':                  'M+ Futbol',
+    'LaLiga':                     'M+ Futbol',
+    'Deportes Total':             'M+ Deporte',
+    'Motor':                      'M+ Deporte',
+    'Baloncesto':                 'M+ Deporte',
+    'DAZN':                       'M+ Deporte',
+    'Ficción Total':              'M+ Ficción',
+    'Ficción con Disney+':        'M+ Ficción',
+
+    // Seguridad y servicios
+    'Protección Digital':         'Conexión Segura',
+    'Protección Digital Integral':'Conexión Segura',
+    'Movistar Prosegur Alarmas':  'Movistar Prosegur Alarmas',
+    'Solar360':                   'Solar360',
+    'Xbox Gamepass':              'Gaming',
+    'eSIMFlag':                   'Otros',
+    'Helios':                     'Otros',
+    'Renting coche eléctrico':    'Otros',
+    'Movistar Cloud':             'Otros',
+    'Servicios Digitales':        'Otros',
+    'Chat GPT':                   'Otros',
+    'Perplexity':                 'Otros',
+    'Nextory':                    'Otros',
+    'Seguro Hogar':               'Otros',
+    'Seguro Móvil':               'Otros',
+    'Eventos':                    'Otros',
+    'Tráfico a Tienda':           'Otros',
+
+    // Transversales
+    'Legal':                      'Otros',   // no se importa (palancasOmitidas)
+    'Marca':                      'Otros',
+    'Info':                       'Otros'    // se afina con productoPorNombre
   },
 
   // PRODUCTO del Excel → Sección, cuando el producto de Asana no basta
   // para decidirla. El proyecto real tiene sección propia para Horecas,
   // Enews Marca y Enews Entretenimiento, que no son productos.
   productoSection: {
+    'AFR5G':                   'conectividad',
+    'Migración Tecnológica':   'conectividad',
     'Horecas /LLPP':           'horecas',
     'Marca':                   'marca',
     'Enews contenidos':        'enewsM',
