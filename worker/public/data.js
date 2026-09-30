@@ -149,12 +149,17 @@ const CATALOGS = {
      Las dos Enews bajan aunque sumen 12: son newsletters recurrentes,
      casi idénticas cada semana, y son las que menos revisión piden.
 
+     El orden no es solo volumen: los tres de contenido —Plus+, Ficción y
+     Deportes— van juntos y por delante de Nuevos Negocios, que mueve
+     menos aunque tenga ocho campañas (Carlos, 30-sep-2026).
+
      Esto es una decisión de negocio, no técnica. Se cambia aquí, y una
      sección que no esté en la lista va al final sin romper nada.
   ---------------------------------------------------------- */
   ordenSecciones: [
-    'futbol', 'dispositivos', 'horecas', 'conectividad', 'nuevos',
-    'plus', 'deportes', 'ficcion', 'convergente', 'gaming', 'beneficios',
+    'futbol', 'dispositivos', 'horecas', 'conectividad',
+    'plus', 'ficcion', 'deportes', 'nuevos',
+    'convergente', 'gaming', 'beneficios',
     'enewsM', 'marca', 'priorizadas', 'entradas', 'otros'
   ],
 
