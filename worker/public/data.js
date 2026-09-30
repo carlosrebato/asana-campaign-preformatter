@@ -150,16 +150,16 @@ const CATALOGS = {
      casi idénticas cada semana, y son las que menos revisión piden.
 
      El orden no es solo volumen. Lo fijó Carlos el 30-sep-2026: Fútbol y
-     Dispositivos primero, Horecas después, y luego Ficción y Deportes
-     por delante de Conectividad y Plus+. Nuevos Negocios detrás de
-     todos ellos, que mueve menos aunque tenga ocho campañas.
+     Dispositivos primero; luego Ficción y Deportes; después Conectividad
+     y Plus+; y Horecas y Nuevos Negocios detrás, que mueven menos aunque
+     tengan nueve y ocho campañas.
 
      Esto es una decisión de negocio, no técnica. Se cambia aquí, y una
      sección que no esté en la lista va al final sin romper nada.
   ---------------------------------------------------------- */
   ordenSecciones: [
-    'futbol', 'dispositivos', 'horecas',
-    'ficcion', 'deportes', 'conectividad', 'plus', 'nuevos',
+    'futbol', 'dispositivos',
+    'ficcion', 'deportes', 'conectividad', 'plus', 'horecas', 'nuevos',
     'convergente', 'gaming', 'beneficios',
     'enewsM', 'marca', 'priorizadas', 'entradas', 'otros'
   ],
