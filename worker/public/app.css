@@ -283,12 +283,55 @@ h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
 }
 .btn-compartir:hover { background: #0052CC; }
 .btn-compartir.ok { background: #CEF7BF; color: #38552B; }
-.compartir-url {
-  flex-basis: 100%; margin-top: 4px;
-  font-size: 12.5px; color: #38552B; font-family: ui-monospace, monospace;
-  background: #F4FBF0; border-radius: 8px; padding: 8px 12px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+/* Los dos bloques de la tarjeta: lo que pide la campaña y el mensaje que
+   le toca. Mismo aspecto para que se lean como dos cosas del mismo tipo,
+   y la procedencia al pie, después del texto: primero lo que dice, luego
+   de dónde sale. */
+.bloque {
+  margin: 0 0 12px; padding: 12px 16px;
+  background: #F8F4F0; border-radius: 12px;
 }
+.bloque.vacio { background: #FBF9F7; border: 1px dashed #EFEAE5; }
+.bloque-cab { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.bloque-cab .bloque-lbl { flex: 1; }
+.bloque-acciones { display: flex; gap: 12px; }
+.bloque-lbl {
+  display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: #9F9C99;
+}
+.bloque-txt { margin: 4px 0 0; font-size: 13.5px; line-height: 1.55; color: #262423; }
+.bloque-pie {
+  display: block; margin-top: 10px; padding-top: 8px;
+  border-top: 1px solid #EFEAE5;
+  font-size: 11.5px; color: #9F9C99; line-height: 1.5;
+}
+/* Cada cosa en su renglón: de dónde sale, a quién va, y a cuántas más
+   les toca lo mismo. Todo seguido se leía como un churro. */
+.pie-fuente { display: block; font-weight: 700; color: #605E5C; }
+.pie-linea { display: block; }
+.bloque .brief { margin-top: 4px; }
+
+/* A qué colectivo y con qué oferta: el porqué de esta entrada y no otra. */
+.desc-entrada {
+  margin: 2px 0 8px; font-size: 12.5px; font-weight: 700; color: #0052CC;
+}
+
+/* Lo que diferencia esta campaña de las otras que comparten brief.
+   Sale del Excel, así que va literal y antes del mensaje del mes. */
+.desc-objetivo {
+  margin: 4px 0 12px; padding: 10px 14px;
+  background: #F8F4F0; border-radius: 10px;
+}
+.desc-objetivo p { margin: 3px 0 0; font-size: 13.5px; line-height: 1.55; color: #262423; }
+.desc-objetivo-lbl {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: #9F9C99;
+}
+
+.desc-compartido {
+  margin: 12px 0 0; font-size: 12.5px; color: #9F9C99; line-height: 1.5;
+}
+
 .guardado { margin-top: 8px; font-size: 12px; color: #9F9C99; }
 
 .barra-filtros {

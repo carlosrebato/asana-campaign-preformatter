@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260929161522">
+<link rel="stylesheet" href="app.css?v=20260930163051">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260929161522"></script>
-<script src="excel.js?v=20260929161522"></script>
-<script src="estrategia.js?v=20260929161522"></script>
-<script src="api.js?v=20260929161522"></script>
+<script src="data.js?v=20260930163051"></script>
+<script src="excel.js?v=20260930163051"></script>
+<script src="estrategia.js?v=20260930163051"></script>
+<script src="api.js?v=20260930163051"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -234,8 +234,10 @@ const PASOS_PROC = [
     sub: 'Campañas, fechas, productos y objetivos. Esto es mecánico y va rápido.' },
   { titulo: 'Leyendo los documentos de estrategia',
     sub: 'Buscando qué se quiere contar en cada campaña. Es la parte lenta: se leen enteros.' },
+  { titulo: 'Ordenando lo que dicen los documentos',
+    sub: 'Qué oferta va a qué colectivo, y en qué línea lo dice. Es lo que evita cambiar un mensaje por otro.' },
   { titulo: 'Emparejando cada campaña con su contexto',
-    sub: 'Decidiendo qué brief le toca a cada una, o si no le toca ninguno.' },
+    sub: 'Decidiendo qué le toca a cada una, o si no le toca nada.' },
   { titulo: 'Comprobando qué hay ya en Asana',
     sub: 'Buscando por PAC para no crear nada dos veces.' }
 ];
@@ -329,7 +331,7 @@ function viewRevision() {
   const revisarN = S.tasks.filter(t => t.linkConfidence === 'low').length;
   const sinN = S.tasks.filter(t => !t.description).length;
 
-  const secciones = D.sections.map(sec => {
+  const secciones = D.seccionesOrdenadas.map(sec => {
     const ts = S.tasks.filter(t => t.sectionId === sec.id && pasaFiltro(t));
     if (!ts.length) return '';
     const aprob = ts.filter(t => t.approved).length;
@@ -415,7 +417,6 @@ function viewRevision() {
         <button class="btn-compartir ${S.copiado ? 'ok' : ''}" data-compartir="1">
           ${S.copiado ? '✓ Enlace copiado' : 'Copiar enlace'}
         </button>
-        ${S.copiado ? `<div class="compartir-url">${esc(location.origin + location.pathname)}#${esc(S.propuestaId)}</div>` : ''}
       </div>` : ''}
 
       <div class="barra-filtros">
@@ -458,6 +459,30 @@ function viewRevision() {
 // Modo lectura: una fila por tarea, valores como texto. Es la vista por
 // defecto porque la mayoría de tareas se revisan, no se editan.
 // Qué le ha pasado a esta tarea en la última actualización del Excel.
+// Cuántas campañas llevan este mismo contexto. Seis tarjetas seguidas
+// con el mismo texto parecen un fallo, y no lo son: un brief de
+// territorio da para varios envíos del mes. Basta con decir cuántas son;
+// explicar POR QUÉ sobra, porque quien lo lee es quien escribió el brief.
+// Va DESPUÉS del texto: manda el contexto.
+function compartenContexto(t) {
+  const clave = (t.description || '').trim();
+  if (!clave) return 0;
+  return S.tasks.filter(x => (x.description || '').trim() === clave).length;
+}
+
+// Los avisos van juntos y primero: son lo único que pide algo de quien
+// mira. Después el contenido, en dos bloques que se leen en el orden en
+// que se piensa: qué pide esta campaña, y qué mensaje le toca.
+function avisosDe(t) {
+  const av = [];
+  if (t.sinRespuesta) av.push(`<strong>No se pudo emparejar</strong> · El modelo no llegó a responder sobre esta campaña, así que no sabemos si le tocaba algo. La tarea se crea igual.`);
+  if (t.cambio === 'cambiada' && t.cambios?.length) av.push(`<strong>Ha cambiado</strong> · ${esc(t.cambios.join(', '))}. Vuelve a aprobarla si te cuadra.`);
+  if (t.linkConfidence === 'low' && t.linkNote) av.push(`<strong>Revisar el mensaje</strong> · ${esc(t.linkNote)}`);
+  const asana = t.asanaUrl
+    ? `<p class="nota-asana">Ya está en Asana. Si el Excel dice ahora otra cosa, corrígelo allí: esta herramienta no reescribe lo cargado. <a href="${esc(t.asanaUrl)}" target="_blank" rel="noopener">Abrir la tarea</a></p>` : '';
+  return av.map(x => `<p class="nota-revisar">${x}</p>`).join('') + asana;
+}
+
 function marcaCambio(t) {
   if (t.cambio === 'nueva') return '<span class="marca nueva">Nueva</span>';
   if (t.cambio === 'cambiada') return `<span class="marca cambiada" title="${esc((t.cambios || []).join(', '))}">Ha cambiado</span>`;
@@ -519,7 +544,11 @@ function badgeHTML(t) {
 // ("Idea fuerza:", "Reason why:"…). Se resaltan para que se lea como el
 // brief que es y no como un párrafo corrido. El texto no se toca: la
 // etiqueta sale del propio contenido.
-const ETIQUETAS = /^(?:\d+(?:\.\d+)*\.?\s*)?(idea\s*fuerza(?:\s+por\s+colectivo)?|elevator\s*pitch(?:\s+de\s+comunicaci[óo]n)?|mensaje\s*principal|mensaje\s*secundario|jerarqu[ií]a|tono|reason\s*why|palancas|prioritario|secundario|restricciones|idea\s*dominante|principio|por\s*d[óo]nde\s*explorar|qu[ée]\s*evitar|verbalizaciones|mandatorios)\s*:?\s*/i;
+// Las etiquetas ya no se adivinan: las escribimos nosotros al componer
+// el texto desde los campos del brief (CAMPOS_BRIEF, en data.js). Antes
+// esto era una lista de sinónimos escrita a mano que había que ampliar
+// cada vez que Comercialización cambiaba una palabra.
+const ETIQUETAS = new RegExp('^(' + CAMPOS_BRIEF.map(([, e]) => e).join('|') + ')\\s*:\\s*', 'i');
 
 function briefHTML(texto) {
   if (!texto) return '<p class="brief-vacio">Sin contexto de estrategia vinculado</p>';
@@ -542,6 +571,7 @@ function cardHTML(t) {
     </select>`;
 
   const descPrev = t.description ? t.description.replace(/\n/g, ' · ').slice(0, 150) : 'Añadir a mano';
+  const comparten = compartenContexto(t);
 
   return `
   <article class="card ${t.approved ? 'approved' : ''} ${t.flash ? 'flash' : ''}" data-card="${t.id}"
@@ -560,7 +590,7 @@ function cardHTML(t) {
     <div class="card-fields">
       <label class="field"><span class="field-label">Producto</span>${sel('product', D.productOptions, t.product)}</label>
       <label class="field"><span class="field-label">Formato</span>${sel('format', D.formatOptions, t.format)}</label>
-      <label class="field"><span class="field-label">Entrega</span>
+      <label class="field"><span class="field-label">Fecha</span>
         <input type="date" value="${esc(t.dueDate)}" data-set="dueDate" data-id="${t.id}">
       </label>
       <label class="field"><span class="field-label">Palanca</span>${sel('palanca', D.palancaOptions, t.palanca)}</label>
@@ -569,23 +599,40 @@ function cardHTML(t) {
 
     <div class="card-desc field">
       ${t.descOpen ? `
-        <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>
-        ${t.sinRespuesta
-          ? `<p class="nota-revisar"><strong>No se pudo emparejar</strong> · El modelo no llegó a responder sobre esta campaña, así que no sabemos si le tocaba algún brief. La tarea se crea igual. Si quieres, vuelve a procesar.</p>` : ''}
-        ${t.cambio === 'cambiada' && t.cambios?.length
-          ? `<p class="nota-revisar"><strong>Ha cambiado</strong> · ${esc(t.cambios.join(', '))}. Vuelve a aprobarla si te cuadra.</p>` : ''}
-        ${t.asanaUrl
-          ? `<p class="nota-asana">Ya está en Asana. Si el Excel dice ahora otra cosa, corrígelo allí: esta herramienta no reescribe lo cargado. <a href="${esc(t.asanaUrl)}" target="_blank" rel="noopener">Abrir la tarea</a></p>` : ''}
-        ${t.linkConfidence === 'low' && t.linkNote
-          ? `<p class="nota-revisar"><strong>Revisar</strong> · ${esc(t.linkNote)}</p>` : ''}
-        <div class="desc-head">
-          ${t.contextSource ? `<span class="desc-fuente">${esc(t.contextSource)}</span>` : '<span class="desc-fuente"></span>'}
-          <button class="desc-ampliar" data-descedit="${t.id}">${t.descEdit ? 'Hecho' : 'Editar'}</button>
-          <button class="desc-ampliar" data-desc="${t.id}">Ocultar</button>
-        </div>
-        ${t.descEdit
-          ? `<textarea class="desc-ta" rows="10" data-set="description" data-id="${t.id}">${esc(t.description)}</textarea>`
-          : briefHTML(t.description)}
+        ${avisosDe(t)}
+
+        ${t.excel?.objetivo ? `
+          <div class="bloque">
+            <span class="bloque-lbl">Objetivo de la campaña</span>
+            <p class="bloque-txt">${esc(t.excel.objetivo)}</p>
+            <span class="bloque-pie">Del Excel de planificación</span>
+          </div>` : ''}
+
+        ${t.description || t.descEdit ? `
+          <div class="bloque">
+            <div class="bloque-cab">
+              <span class="bloque-lbl">Estrategia del mes</span>
+              <span class="bloque-acciones">
+                <button class="desc-ampliar" data-descedit="${t.id}">${t.descEdit ? 'Hecho' : 'Editar'}</button>
+                <button class="desc-ampliar" data-desc="${t.id}">Ocultar</button>
+              </span>
+            </div>
+            ${t.descEdit
+              ? `<textarea class="desc-ta" rows="10" data-set="description" data-id="${t.id}">${esc(t.description)}</textarea>`
+              : briefHTML(t.description)}
+            <span class="bloque-pie">
+              <span class="pie-fuente">${t.contextSource ? esc(t.contextSource) : 'Escrito a mano'}</span>
+              ${t.contextEntrada ? `<span class="pie-linea">Para: ${esc(t.contextEntrada)}</span>` : ''}
+              ${comparten > 1 ? `<span class="pie-linea">Lo comparten ${comparten} campañas</span>` : ''}
+            </span>
+          </div>` : `
+          <div class="bloque vacio">
+            <span class="bloque-lbl">Estrategia del mes</span>
+            <p class="bloque-txt">${t.sinContextoNota
+              ? esc(t.sinContextoNota)
+              : 'Ningún documento del mes habla de esta campaña.'} La tarea se crea igual.</p>
+            <span class="bloque-acciones"><button class="desc-ampliar" data-descedit="${t.id}">Escribirlo a mano</button></span>
+          </div>`}
       ` : `
         <div class="field desc-cerrado" data-desc="${t.id}">
           <span class="field-label">${t.description ? 'Contexto' : 'Sin contexto'}</span>
@@ -604,7 +651,7 @@ function viewConfirmar() {
   const app = S.tasks.filter(t => t.approved);
   const pend = S.tasks.length - app.length;
 
-  const porSec = D.sections.map(s => ({
+  const porSec = D.seccionesOrdenadas.map(s => ({
     name: s.name,
     n: app.filter(t => t.sectionId === s.id).length
   })).filter(x => x.n);
@@ -662,6 +709,10 @@ function motivoClaro(txt) {
   // Un 503 de Anthropic dice "credential validation failed", que suena a
   // clave mala y no lo es: pasó el 29-sep-2026 y lo primero que se hizo
   // fue sospechar de la clave. Rotarla habría empeorado las cosas.
+  if (/ANTHROPIC_API_KEY|clave del modelo/i.test(t)) {
+    return 'A este Worker le falta la clave del modelo. Sin ella no se pueden '
+      + 'leer los documentos: se pone con «npx wrangler secret put ANTHROPIC_API_KEY».';
+  }
   if (/\b503\b|overloaded|service unavailable/i.test(t)) {
     return 'Anthropic está teniendo problemas en este momento. No es tu fichero '
       + 'ni tu clave: se puede comprobar en status.claude.com. Reintenta en unos minutos.';
@@ -767,6 +818,7 @@ async function procesar() {
     // Solo se buscará para las campañas que no estaban en la propuesta.
     const seguimos = previas.length && mismosDocumentos(guardada?.ficheros?.estrategia, S.files.strategy);
     const briefs = seguimos ? (guardada?.briefs || []) : [];
+    const entradas = seguimos ? (guardada?.entradas || []) : [];
     // "Ya la conocemos" solo vale si el modelo llegó a contestar sobre
     // ella. Si se quedó sin respuesta —se cayó el modelo, se agotó la
     // cuenta— no es una decisión, es una pregunta sin hacer: se vuelve a
@@ -788,7 +840,7 @@ async function procesar() {
       if (nueva === firma) return;
       firma = nueva;
       render();
-    }, { briefs, soloPacs });
+    }, { briefs, entradas, soloPacs });
     const tasks = leido.tareas;
     S.falloModelo = leido.fallo || '';
     if (!tasks.length) { S.screen = 'entrada'; return; }
@@ -796,16 +848,16 @@ async function procesar() {
       { approved: false, descOpen: false, flash: false, editing: false, typology: 'Growth' }, t));
 
     S.tasks = previas.length ? fusionarConPropuesta(previas, nuevas) : nuevas;
-    Object.assign(S.proc, { paso: 3, detalle: '', cuenta: '', hechas: 0, total: 0 });
+    Object.assign(S.proc, { paso: 4, detalle: '', cuenta: '', hechas: 0, total: 0 });
     render();
     S.dupes = await API.comprobarDuplicados(S.tasks, info => {
-      Object.assign(S.proc, info, { paso: 3 });
+      Object.assign(S.proc, info, { paso: 4 });
       render();
     });
     // El enlace se conserva si ya existía: es el que ha circulado.
     const doc = S.propuestaId
-      ? await API.guardarPropuesta(S.propuestaId, ficherosDeLaPropuesta(), S.tasks, leido.briefs)
-      : await API.crearPropuesta(ficherosDeLaPropuesta(), S.tasks, leido.briefs);
+      ? await API.guardarPropuesta(S.propuestaId, ficherosDeLaPropuesta(), S.tasks, leido.briefs, leido.entradas)
+      : await API.crearPropuesta(ficherosDeLaPropuesta(), S.tasks, leido.briefs, leido.entradas);
     if (doc) {
       S.propuestaId = doc.id;
       S.propuestaVer = doc.version || 1;

@@ -15,7 +15,7 @@
    este fichero y nada más.
 ============================================================ */
 
-import { leerDocumento, resolverProductos, vincular } from './ia.js';
+import { leerDocumento, unificar, indexar, resolverProductos, vincular } from './ia.js';
 
 const ASANA = 'https://app.asana.com/api/1.0';
 
@@ -274,6 +274,9 @@ async function guardarPropuesta(env, id, datos) {
     // guarda con la propuesta. Si vuelve el mismo Excel corregido, no
     // hay que releer nada: los documentos son los de siempre.
     briefs: datos.briefs || previa?.briefs || [],
+    // El índice del mes: qué oferta va a qué colectivo. Se guarda con la
+    // propuesta para no rehacerlo si vuelve el mismo Excel corregido.
+    entradas: datos.entradas || previa?.entradas || [],
     tareas
   };
   // 90 días: una planificación mensual no se revisa más allá de eso.
@@ -357,15 +360,37 @@ export default {
         return json(doc);
       }
       if (url.pathname === '/api/leer' && request.method === 'POST') {
-        if (!env.ANTHROPIC_API_KEY) return json({ briefs: [], sinModelo: true });
+        // Sin clave no hay herramienta: leer los documentos ES el
+        // producto. Devolver una lista vacía y seguir haría creer que
+        // los documentos no tenían nada, que es lo contrario de lo que
+        // pasa. Un 503 se ve en pantalla y dice qué falta.
+        if (!env.ANTHROPIC_API_KEY) {
+          throw Object.assign(new Error(
+            'Falta la clave del modelo (ANTHROPIC_API_KEY) en este Worker. ' +
+            'Sin ella no se pueden leer los documentos.'), { status: 503 });
+        }
         return json(await leerDocumento(env, await request.json()));
       }
       if (url.pathname === '/api/productos' && request.method === 'POST') {
         if (!env.ANTHROPIC_API_KEY) return json({ resueltos: [], sinModelo: true });
         return json(await resolverProductos(env, await request.json()));
       }
+      if (url.pathname === '/api/unificar' && request.method === 'POST') {
+        if (!env.ANTHROPIC_API_KEY) {
+          throw Object.assign(new Error('Falta la clave del modelo (ANTHROPIC_API_KEY) en este Worker.'), { status: 503 });
+        }
+        return json(await unificar(env, await request.json()));
+      }
+      if (url.pathname === '/api/indice' && request.method === 'POST') {
+        if (!env.ANTHROPIC_API_KEY) {
+          throw Object.assign(new Error('Falta la clave del modelo (ANTHROPIC_API_KEY) en este Worker.'), { status: 503 });
+        }
+        return json(await indexar(env, await request.json()));
+      }
       if (url.pathname === '/api/vincular' && request.method === 'POST') {
-        if (!env.ANTHROPIC_API_KEY) return json({ vinculos: [], sinModelo: true });
+        if (!env.ANTHROPIC_API_KEY) {
+          throw Object.assign(new Error('Falta la clave del modelo (ANTHROPIC_API_KEY) en este Worker.'), { status: 503 });
+        }
         const cuerpo = await request.json();
         const res = await vincular(env, cuerpo);
         // ?crudo=1 devuelve además el texto tal cual, para depurar.

@@ -27,6 +27,8 @@
 ============================================================ */
 
 import PROMPT_LECTURA from './prompts/lectura.md';
+import PROMPT_UNIFICAR from './prompts/unificar.md';
+import PROMPT_INDICE from './prompts/indice.md';
 import PROMPT_VINCULACION from './prompts/vinculacion.md';
 import PROMPT_PRODUCTO from './prompts/producto.md';
 
@@ -102,11 +104,107 @@ export async function leerDocumento(env, { nombre, texto }) {
   const { texto: salida, uso } = await preguntar(env, PROMPT_LECTURA, contenido, 16000, true);
   const briefs = comoArray(salida).map(b => ({
     titulo: b.titulo || '',
+    // Los apartados del brief, tal y como los escribió Comercialización.
+    // El texto corrido se compone después, en el cliente, a partir de
+    // ellos: así hay una sola fuente y no dos que se desincronizan.
+    campos: limpiarCampos(b.campos),
     texto: b.texto || '',
-    documento: b.documento || nombre,
+    // El título que trae el documento en su portada; si no lo encontró,
+    // el nombre del fichero, que al menos identifica algo.
+    documento: (b.documento || '').trim() || nombre,
+    fichero: nombre,
+    pagina: Number(b.pagina) > 0 ? Number(b.pagina) : 0,
     fuente: b.clase === 'plantilla' ? 'plantilla' : 'territorio'
-  })).filter(b => b.titulo && b.texto);
+  })).filter(b => b.titulo && (b.texto || Object.keys(b.campos).length));
   return { briefs, uso };
+}
+
+// Solo los campos que el documento trae de verdad, y como texto.
+// Un campo vacío no viaja: así "no lo dice" y "lo dice vacío" no se
+// confunden más adelante.
+function limpiarCampos(c) {
+  const out = {};
+  for (const [k, v] of Object.entries(c || {})) {
+    const t = typeof v === 'string' ? v.trim() : Array.isArray(v) ? v.join('\n').trim() : '';
+    if (t) out[k] = t;
+  }
+  return out;
+}
+
+/* ---------- 1 · JUNTAR LO QUE ES LO MISMO ----------
+   Los documentos se leen por trozos y el mismo territorio sale en
+   varias páginas con nombres distintos: «Ficción», «Ficción /
+   Full Ficción», «Desarrollo Ficción». Medido sobre tres lecturas
+   del mismo mes: 64 títulos distintos para 38 territorios, y 26
+   aparecían en una sola pasada.
+
+   El código juntaba por título exacto, así que ese material
+   llegaba partido. De ahí salían las entradas duplicadas del
+   índice y que dos campañas gemelas citaran páginas distintas.
+
+   Juntar por parecido del nombre sería frágil: «Fútbol captación»
+   y «Fútbol winback» se parecen y son opuestos. Se junta leyendo
+   lo que dicen dentro.
+---------------------------------------------------------- */
+export async function unificar(env, { briefs }) {
+  if (!briefs?.length) return { grupos: [], uso: null };
+  const contenido = 'BRIEFS DEL MES:\n\n' + conLineas(briefs);
+  const { texto, uso } = await preguntar(env, PROMPT_UNIFICAR, contenido, 8000);
+  const porTitulo = new Map(briefs.map(b => [b.titulo.trim().toLowerCase(), b]));
+  const usados = new Set();
+  const grupos = [];
+  for (const g of comoArray(texto)) {
+    const miembros = (g.briefs || [])
+      .map(t => porTitulo.get(String(t).trim().toLowerCase()))
+      .filter(b => b && !usados.has(b.titulo));
+    if (!miembros.length) continue;
+    miembros.forEach(b => usados.add(b.titulo));
+    grupos.push({ nombre: (g.nombre || miembros[0].titulo).trim(), briefs: miembros.map(b => b.titulo) });
+  }
+  // Regla de oro también aquí: ningún brief se queda fuera por un fallo
+  // del agrupador. El que no salga en ningún grupo va solo.
+  for (const b of briefs) {
+    if (!usados.has(b.titulo)) grupos.push({ nombre: b.titulo, briefs: [b.titulo] });
+  }
+  return { grupos, uso };
+}
+
+/* ---------- 1 bis · ÍNDICE DEL MES ----------
+   Los briefs son prosa: un bloque que habla de fútbol puede
+   contener tres ofertas para tres colectivos distintos. Mientras
+   eso siga dentro del párrafo, quien decida después solo ve "un
+   brief de fútbol", y dos campañas que van a colectivos distintos
+   acaban con el mismo mensaje o con uno cambiado.
+
+   Este paso saca esas distinciones a una lista. No es una tabla
+   escrita a mano: la construye el modelo leyendo, y habla con las
+   palabras del documento, no con las de Asana. Normalizar aquí
+   sería volver al mapeo manual que se rompe cada mes.
+
+   Si un brief no distingue nada, es una entrada y ya. Eso es
+   correcto: hay meses en que el documento no reparte.
+---------------------------------------------------------- */
+export async function indexar(env, { briefs }) {
+  if (!briefs?.length) return { entradas: [], uso: null };
+  const contenido = 'BRIEFS DEL MES:\n\n' + conLineas(briefs);
+  const { texto, uso } = await preguntar(env, PROMPT_INDICE, contenido, 16000);
+  const titulos = new Map(briefs.map(b => [b.titulo.trim().toLowerCase(), b]));
+  const entradas = comoArray(texto).map(e => {
+    const b = titulos.get(String(e.brief || '').trim().toLowerCase());
+    if (!b) return null;   // una entrada que no apunta a un brief real no vale
+    return {
+      brief: b.titulo,
+      documento: b.documento || '',
+      pagina: b.pagina || 0,
+      fuente: b.fuente || 'territorio',
+      producto: (e.producto || '').trim(),
+      colectivo: (e.colectivo || '').trim(),
+      oferta: (e.oferta || '').trim(),
+      distingue: (e.distingue || '').trim(),
+      lineas: (e.lineas || '').trim()
+    };
+  }).filter(Boolean);
+  return { entradas, uso };
 }
 
 /* ---------- 1 · PRODUCTOS ----------
@@ -131,13 +229,27 @@ export async function resolverProductos(env, { valores, productos, secciones }) 
    que varias campañas compartan brief, y eso no se ve de una en
    una.
 ---------------------------------------------------------- */
-export async function vincular(env, { campanas, briefs }) {
-  if (!campanas.length || !briefs.length) return { vinculos: [], uso: null };
+export async function vincular(env, { campanas, entradas }) {
+  if (!campanas.length || !entradas?.length) return { vinculos: [], uso: null };
+
+  // El índice, no los briefs en bruto. La pregunta deja de ser "¿qué
+  // párrafo de estos encaja?" y pasa a ser "¿cuál de estas entradas
+  // corresponde a estos datos?". Cada entrada lleva un extracto de su
+  // propio texto para que se pueda comprobar, pero el texto definitivo
+  // se recupera después de las líneas: aquí no se copia nada.
   const bloqueBriefs =
-    `BRIEFS DISPONIBLES (${briefs.length}):\n\n` +
-    briefs.map(b => `### ${b.titulo}\n[clase: ${b.fuente || 'plantilla'}]\n` +
-      // Numeradas para que el modelo pueda señalar sin copiar.
-      b.texto.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n')).join('\n\n');
+    `ÍNDICE DEL MES (${entradas.length} entradas):\n\n` +
+    entradas.map((e, i) => {
+      const donde = [e.documento, e.pagina ? `p.${e.pagina}` : ''].filter(Boolean).join(' · ');
+      return [
+        `E${i + 1} · producto: ${e.producto || '(no lo dice)'}`,
+        `   a quién: ${e.colectivo || '(no distingue colectivo)'}`,
+        e.oferta ? `   oferta: ${e.oferta}` : '',
+        e.distingue ? `   distingue: ${e.distingue}` : '',
+        `   brief: ${e.brief} [${e.fuente}]${donde ? ` · ${donde}` : ''}`,
+        `   dice: «${(e.extracto || '').slice(0, 260)}»`
+      ].filter(Boolean).join('\n');
+    }).join('\n\n');
 
   const bloqueCampanas =
     `CAMPAÑAS A VINCULAR (${campanas.length}):\n\n` +
@@ -160,6 +272,28 @@ export async function vincular(env, { campanas, briefs }) {
     { type: 'text', text: bloqueBriefs, cache_control: { type: 'ephemeral' } },
     { type: 'text', text: bloqueCampanas }
   ];
-  const { texto, uso } = await preguntar(env, PROMPT_VINCULACION, contenido, 16000);
-  return { vinculos: comoArray(texto), uso, crudo: texto.slice(0, 1200) };
+  // La respuesta es una entrada por campaña, y ahora va de una en una:
+  // con 2.000 sobra y se corta antes cualquier divagación.
+  const { texto, uso } = await preguntar(env, PROMPT_VINCULACION, contenido,
+    Math.min(16000, 600 + campanas.length * 200));
+  // La entrada viaja como "E7": aquí se traduce a su posición, que es lo
+  // que el cliente necesita para recuperar el texto de sus líneas.
+  const vinculos = comoArray(texto).map(v => {
+    const n = parseInt(String(v.entrada || '').replace(/[^0-9]/g, ''), 10);
+    return {
+      pac: v.pac,
+      entrada: Number.isInteger(n) && n >= 1 && n <= entradas.length ? n - 1 : -1,
+      confianza: v.confianza,
+      motivo: v.motivo || ''
+    };
+  }).filter(v => v.pac);
+  return { vinculos, uso, crudo: texto.slice(0, 1200) };
+}
+
+// Los briefs con sus líneas numeradas. Numerar es lo que permite señalar
+// en vez de copiar, y es lo que impide que se cambie ni una coma.
+function conLineas(briefs) {
+  return briefs.map(b =>
+    `### ${b.titulo}\n[clase: ${b.fuente || 'plantilla'}]\n` +
+    b.texto.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n')).join('\n\n');
 }

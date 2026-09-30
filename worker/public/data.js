@@ -19,6 +19,29 @@
    Lo que NO puede venir de Asana es el mapeo del Excel (abajo):
    que "Fútbol+" sea "M+ Futbol" es una decisión de negocio.
 ------------------------------------------------------------ */
+/* ------------------------------------------------------------
+   LOS APARTADOS DE UN BRIEF
+   ------------------------------------------------------------
+   Los briefs de Comercialización vienen con estructura, aunque cada
+   equipo la nombre a su manera: "Territorio", "Territorio expresivo" y
+   "Territorio (frases)" son lo mismo. Medido sobre 44 briefs de octubre:
+   el tono aparece en 29, la idea fuerza en 23, qué evitar en 20. Solo 3
+   no traen ningún apartado, y son justo los que son una lista de precios
+   en vez de un brief.
+
+   El modelo pone cada cosa en su campo; esta lista dice cómo se llaman y
+   en qué orden se leen. Es vocabulario, no un mapeo: no decide nada.
+------------------------------------------------------------ */
+const CAMPOS_BRIEF = [
+  ['ideaFuerza', 'Idea fuerza'],
+  ['tono',       'Tono'],
+  ['ejes',       'Ejes de mensaje'],
+  ['reasonWhy',  'Reason why'],
+  ['evitar',     'Qué evitar'],
+  ['mandatorio', 'Mandatorio'],
+  ['otros',      'Otros']
+];
+
 const CATALOGS = {
   esCopia: true,   // pasa a false cuando los catálogos vienen de Asana
 
@@ -111,7 +134,45 @@ const CATALOGS = {
   // si no está en Asana, no se puede escribir.
   get productOptions()    { return Object.keys(this.fields.producto?.options || {}); },
   get formatOptions()     { return Object.keys(this.fields.formato?.options || {}); },
-  get clientTypeOptions() { return Object.keys(this.fields.tipoCliente?.options || {}); },
+  // clientTypeOptions se retiró con el campo: ver aPayloadAsana.
+
+  /* ----------------------------------------------------------
+     EN QUÉ ORDEN SE REVISAN LAS SECCIONES
+     ----------------------------------------------------------
+     Asana las devuelve en el orden en que alguien las creó hace años,
+     que no es el orden en que se miran. Arriba lo que más volumen tiene
+     y más hay que revisar; abajo lo recurrente.
+
+     Octubre 2026, de 73 campañas: Fútbol 14, Dispositivos 10, Horecas 9,
+     Conectividad 8, Nuevos Negocios 8, Enews 6+6, Plus+ 5, Deportes 5.
+
+     Las dos Enews bajan aunque sumen 12: son newsletters recurrentes,
+     casi idénticas cada semana, y son las que menos revisión piden.
+
+     El orden no es solo volumen. Lo fijó Carlos el 30-sep-2026: Fútbol y
+     Dispositivos primero; luego Ficción y Deportes; después Conectividad
+     y Plus+; y Horecas y Nuevos Negocios detrás, que mueven menos aunque
+     tengan nueve y ocho campañas.
+
+     Esto es una decisión de negocio, no técnica. Se cambia aquí, y una
+     sección que no esté en la lista va al final sin romper nada.
+  ---------------------------------------------------------- */
+  ordenSecciones: [
+    'futbol', 'dispositivos',
+    'ficcion', 'deportes', 'conectividad', 'plus', 'horecas', 'nuevos',
+    'convergente', 'gaming', 'beneficios',
+    'enewsM', 'marca', 'priorizadas', 'entradas', 'otros'
+  ],
+
+  // Las secciones tal y como se revisan. El catálogo llega de Asana con
+  // su orden; aquí se pone el nuestro.
+  get seccionesOrdenadas() {
+    const pos = id => {
+      const i = this.ordenSecciones.indexOf(id);
+      return i === -1 ? this.ordenSecciones.length : i;
+    };
+    return [...this.sections].sort((a, b) => pos(a.id) - pos(b.id));
+  },
 
   // Producto → Sección. Determinista. Punto único de configuración.
   productSectionMap: {
@@ -206,11 +267,7 @@ const EXCEL = {
     'Legal':                     'Servicing'
   },
 
-  // VIABILIDAD → estado de la tarea. Pendiente de acordar el set.
-  viabilidadEstado: {
-    'Aprobada':    'Aprobada',
-    'Planificada': 'Pdte Comercialización'
-  },
+
 
   // MEDIO (Excel) → Formato (Asana).
   //
@@ -241,31 +298,93 @@ const EXCEL = {
 
   // PRODUCTO / KPI (Excel) → Producto (Asana). Los nombres de la derecha
   // son opciones reales del campo: lo que no esté ahí no se puede escribir.
+  // PRODUCTO / KPI (Excel) → Producto (Asana). Los nombres de la derecha
+  // son opciones reales del campo: lo que no esté ahí no se puede escribir.
+  //
+  // La lista de la izquierda la cerró Comercialización el 30-sep-2026
+  // ("Lista de Productos Palancas Medios v3"): son 56 valores y no hay
+  // más. Por eso esto puede ser una tabla y no una adivinanza — antes la
+  // lista era abierta y cada mes aparecía un valor nuevo.
   productoProduct: {
-    'Fibra Adicional':           'Fibra Adicional',
-    'FTTR':                      'FTTR',
-    'Alta BAF':                  'Fibra Adicional',
-    'R2R':                       'Dispositivos',
-    'Fútbol+':                   'M+ Futbol',
-    'Deportes Total':            'M+ Deporte',
-    'Ficción Total':             'M+ Ficción',
-    'Movistar Plus+ (Paquete)':  'Movistar Plus+',
-    'Atresplayer':               'Movistar Plus+',
-    'Enews contenidos':          'Movistar Plus+',
-    'Horecas /LLPP':             'Movistar Plus+',
-    'Helios':                    'Otros',
-    'Renting coche eléctrico':   'Otros',
-    'eSIMFlag':                  'Otros',
-    'Movistar Prosegur Alarmas': 'Movistar Prosegur Alarmas',
-    'Legal':                     'Otros',   // no se importa (palancasOmitidas)
-    'Marca':                     'Otros',
-    'Info':                      'Otros'    // se afina con productoPorNombre
+    // Conectividad
+    'Fibra Adicional':            'Fibra Adicional',
+    'Fibra Adicional Autónomos':  'Fibra Adicional',
+    'Activación Segunda Fibra':   'Segunda Fibra ON',
+    'FTTR':                       'FTTR',
+    'Alta BAF':                   'Fibra Adicional',
+    'Prepago':                    'Prepago',
+    // AFR5G es acceso fijo por radio. No existe como producto en Asana:
+    // va a Otros hasta que se cree la opción. Su sección sí es correcta.
+    'AFR5G':                      'Otros',
+    'Migración Tecnológica':      'Otros',
+
+    // miMovistar
+    'Alta miMovistar':            'MiMovistar',
+    'Alta Móvil':                 'MiMovistar',
+    'miMovistar Autónomos':       'MiMovistar',
+    'Upsell Fusión/miMovistar':   'MiMovistar',
+    'App Mi Movistar':            'MiMovistar',
+    'Conecta Max':                'MiMovistar',
+    'Movistar Conecta':           'MiMovistar',
+
+    // Dispositivos
+    'R2R':                        'Dispositivos',
+    'Equipamiento Hogar':         'Dispositivos',
+    'Router / Desco WiFi':        'Dispositivos',
+    'Enews dispositivos':         'Dispositivos',
+    'Libres':                     'Dispositivos',
+
+    // Televisión y contenidos
+    'Movistar Plus+ (Paquete)':   'Movistar Plus+',
+    'Movistar Plus+ (OTT)':       'Movistar Plus+',
+    'Contratación Paquetes TV':   'Movistar Plus+',
+    'Atresplayer':                'Movistar Plus+',
+    'Netflix':                    'Movistar Plus+',
+    'Disney+':                    'Movistar Plus+',
+    'Prime Video':                'Movistar Plus+',
+    'Enews contenidos':           'Movistar Plus+',
+    'Horecas /LLPP':              'Movistar Plus+',
+    'Fútbol+':                    'M+ Futbol',
+    'Champions':                  'M+ Futbol',
+    'LaLiga':                     'M+ Futbol',
+    'Deportes Total':             'M+ Deporte',
+    'Motor':                      'M+ Deporte',
+    'Baloncesto':                 'M+ Deporte',
+    'DAZN':                       'M+ Deporte',
+    'Ficción Total':              'M+ Ficción',
+    'Ficción con Disney+':        'M+ Ficción',
+
+    // Seguridad y servicios
+    'Protección Digital':         'Conexión Segura',
+    'Protección Digital Integral':'Conexión Segura',
+    'Movistar Prosegur Alarmas':  'Movistar Prosegur Alarmas',
+    'Solar360':                   'Solar360',
+    'Xbox Gamepass':              'Gaming',
+    'eSIMFlag':                   'Otros',
+    'Helios':                     'Otros',
+    'Renting coche eléctrico':    'Otros',
+    'Movistar Cloud':             'Otros',
+    'Servicios Digitales':        'Otros',
+    'Chat GPT':                   'Otros',
+    'Perplexity':                 'Otros',
+    'Nextory':                    'Otros',
+    'Seguro Hogar':               'Otros',
+    'Seguro Móvil':               'Otros',
+    'Eventos':                    'Otros',
+    'Tráfico a Tienda':           'Otros',
+
+    // Transversales
+    'Legal':                      'Otros',   // no se importa (palancasOmitidas)
+    'Marca':                      'Otros',
+    'Info':                       'Otros'    // se afina con productoPorNombre
   },
 
   // PRODUCTO del Excel → Sección, cuando el producto de Asana no basta
   // para decidirla. El proyecto real tiene sección propia para Horecas,
   // Enews Marca y Enews Entretenimiento, que no son productos.
   productoSection: {
+    'AFR5G':                   'conectividad',
+    'Migración Tecnológica':   'conectividad',
     'Horecas /LLPP':           'horecas',
     'Marca':                   'marca',
     'Enews contenidos':        'enewsM',
@@ -283,26 +402,11 @@ const EXCEL = {
     { pattern: /APP_MIMOVISTAR.*CONTENIDOS/i, product: 'Movistar Plus+',  section: 'plus' }
   ],
 
-  // PRODUCTO del Excel → título del brief en el documento de estrategia.
-  // Tabla explícita a propósito: vincular por parecido es justo lo que
-  // DECISIONES.md prohíbe (umbral alto, mejor no encontrar que encontrar
-  // mal). Un producto sin entrada aquí sale sin contexto, que es normal.
-  productoBrief: {
-    'Fútbol+':                   'Desarrollo y winback clientes sin Futbol',
-    'Horecas /LLPP':             'Captación y desarrollo fútbol (Horecas)',
-    'Deportes Total':            'Estrategia desarrollo Deportes, Motor y Baloncesto',
-    'Ficción Total':             'Estrategia desarrollo Ficción',
-    'Fibra Adicional':           'Estrategia Fibra Adicional',
-    'FTTR':                      'Estrategia FTTR',
-    // Dos briefs hablan de captación BAF y el Excel no desambigua:
-    // se vincula al primero pero la tarea sale en amarillo.
-    'Alta BAF':                  ['Estrategia GN BAF SA',
-                                  'Captación nuevos clientes BAF con fútbol'],
-    'eSIMFlag':                  'eSimFLAG',
-    'Renting coche eléctrico':   'Movistar Renting Coches',
-    'Helios':                    'Helios',
-    'Movistar Prosegur Alarmas': 'MPA'
-  },
+  // Aquí vivía `productoBrief`: una tabla escrita a mano que decía qué
+  // brief le tocaba a cada producto. Se quedó muerta cuando el modelo
+  // pasó a decidirlo leyendo, y muerta se quedó meses. Se borra:
+  // mantener una tabla que nadie usa es prometer un mapeo que no existe.
+
 
   // PRODUCTO del Excel → territorio del documento de orientación.
   // Solo se usa cuando no hay brief de Comercialización: es material

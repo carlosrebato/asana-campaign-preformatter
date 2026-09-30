@@ -19,6 +19,15 @@ const EXCEL_PARSER = (() => {
 
   const clean = v => (v == null ? '' : String(v)).replace(/ /g, ' ').trim();
 
+  // Texto libre del Excel. Hay celdas que traen un "0" de relleno, de
+  // arrastrar una fórmula o de un desplegable sin tocar. Un cero no es un
+  // objetivo de campaña: acababa impreso en la tarea como
+  // "ESTA CAMPAÑA: 0", que no dice nada y encima parece un fallo.
+  const libre = v => {
+    const t = clean(v);
+    return /^(0|-|n\/?a)$/i.test(t) ? '' : t;
+  };
+
   // '21-sep.-2026' | '21/9/26' | Date → 'YYYY-MM-DD'. '' si no se entiende.
   function parseFecha(v) {
     // Ojo: NO usar toISOString(). Cuando la celda es una fecha de verdad,
@@ -159,8 +168,8 @@ const EXCEL_PARSER = (() => {
         excel: {
           fila, medio, palanca, producto, viabilidad,
           subpalanca,
-          objetivo: clean(col(r, 'objetivo')),
-          nombreTarea: clean(col(r, 'nombreTarea')),
+          objetivo: libre(col(r, 'objetivo')),
+          nombreTarea: libre(col(r, 'nombreTarea')),
           responsable: clean(col(r, 'responsable')),
           po: clean(col(r, 'po')),            // unidad sin confirmar; solo texto
           mes: col(r, 'mes'),

@@ -44,7 +44,10 @@ const ESTRATEGIA = (() => {
           return acc + (hueco && !pegado ? ' ' : '') + f.s;
         }, '').trim())
         .filter(Boolean);
-      paginas.push(lineas.join('\n'));
+      // La página va marcada en el propio texto. Es lo que luego permite
+      // citar "SLIDE 12" en la tarea: sin esto, el modelo puede decirte
+      // de qué documento sale un mensaje, pero no de dónde.
+      paginas.push(`[PÁGINA ${n}]\n${lineas.join('\n')}`);
     }
     return paginas.join('\n\f\n');
   }
