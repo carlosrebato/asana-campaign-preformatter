@@ -2,15 +2,17 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "campaign-loader-static",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "worker"],
-      "port": 8765
-    },
-    {
-      "name": "campaign-loader-pruebas",
+      "name": "campaign-loader",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["wrangler", "dev", "--env", "pruebas", "--remote", "--port", "8787", "--cwd", "worker"],
+      "runtimeArgs": [
+        "wrangler",
+        "dev",
+        "--remote",
+        "--port",
+        "8787",
+        "--cwd",
+        "worker"
+      ],
       "port": 8787
     }
   ]

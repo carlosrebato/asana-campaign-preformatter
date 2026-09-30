@@ -17,21 +17,22 @@ Comercialización. Lo único que falta es la carga en Asana.
 
 ## Dónde vive
 
-| Entorno | URL | Worker |
-|---|---|---|
-| Pruebas (el que se usa) | https://campaign-loader-pruebas.carlos-rebato.workers.dev | `campaign-loader-pruebas` |
-| Principal | https://campaign-loader.carlos-rebato.workers.dev | `campaign-loader` |
+Un solo Worker: `campaign-loader`, en
+https://campaign-loader.carlos-rebato.workers.dev
 
-Los dos escriben en el **sandbox** de Asana (`1218744348845656`). El proyecto
-de producción está en `SOLO_LECTURA` (`src/index.js`) y devuelve 403 antes de
-escribir. Desde la red corporativa `*.workers.dev` está bloqueado; se entra por
-el otro dominio.
+Escribe en el **sandbox** de Asana (`1218744348845656`). El proyecto de
+producción está en `SOLO_LECTURA` (`src/index.js`) y devuelve 403 antes de
+escribir. Desde la red corporativa `*.workers.dev` está bloqueado; se entra
+por el otro dominio.
+
+> Hubo un segundo Worker, `campaign-loader-pruebas`, para probar el
+> emparejamiento con modelo sin tocar el que usaba la gente. Fue temporal y
+> se retiró el 29-sep-2026.
 
 ## Desplegar
 
 ```bash
-npx wrangler deploy --env pruebas   # el que usa la gente
-npx wrangler deploy                 # el principal
+npx wrangler deploy
 ```
 
 Sin build step, sin dependencias. Todo es HTML/CSS/JS estático.

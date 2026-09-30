@@ -78,6 +78,24 @@ resultado legítimo: devuelve la lista vacía para ese documento. **No
 fuerces material de mensaje donde no lo hay**, porque acabaría pegado en
 una tarea y alguien se lo creería.
 
+## De dónde sale cada cosa
+
+El texto viene con marcas `[PÁGINA n]`. Son las páginas o slides del
+documento original.
+
+Para cada brief, dime **en qué página estaba el material**. Si viene de
+varias, la primera. Quien revise la tarea va a querer abrir el documento
+por esa página y comprobarlo: es la diferencia entre creerse la
+herramienta y verificarla.
+
+Si el texto no trae marcas de página (documentos web, por ejemplo), deja
+`pagina` en `0`.
+
+Dime también **cómo se llama el documento de verdad**: el título que
+aparece en su portada o en su cabecera, no el nombre del fichero.
+`Planes Comerciales Growth y Value Oct 2026` sirve; `plan-oct-2026.pdf`
+no. Si no encuentras título, deja `documento` vacío.
+
 ## Formato de salida
 
 Solo un array JSON, sin texto alrededor y sin ```:
@@ -86,7 +104,8 @@ Solo un array JSON, sin texto alrededor y sin ```:
 [
   {
     "titulo": "Desarrollo y winback de fútbol",
-    "documento": "Planes Comerciales Oct.pdf",
+    "documento": "Planes Comerciales Growth y Value Oct 2026",
+    "pagina": 12,
     "clase": "plantilla",
     "texto": "Idea fuerza: «Vuelve el fútbol de verdad: liga, Champions y el Clásico, todo en un mismo paquete, a 39€/mes x 12m.»\nWinback: «vuelve con nosotros con una oferta especial.»\nTono: de reencuentro en la primera quincena y de grandes citas en la segunda."
   }
@@ -95,6 +114,9 @@ Solo un array JSON, sin texto alrededor y sin ```:
 
 - `titulo`: cómo lo llama el documento, o cómo lo llamarías tú si no tiene
   nombre. Es lo que se verá en la tarea.
+- `documento`: el título real del documento. Vacío si no lo encuentras.
+- `pagina`: el número de la marca `[PÁGINA n]` donde está el material. `0`
+  si el texto no trae marcas.
 - `clase`: `plantilla` si lo escribió el equipo comercial con su formato
   habitual; `derivado` si es un resumen o una relectura de otro material.
   Ante la duda, `derivado`.

@@ -31,26 +31,9 @@ id = "7cf5033bb3c645abb171aebb6c15fac3"
 type = "Text"
 globs = ["**/*.md"]
 
-# ── ENTORNO DE PRUEBAS ───────────────────────────────────────
-# Worker aparte, con su propia URL y sus propios secretos, para
-# probar el emparejamiento con modelo sin tocar el que usa la
-# gente. Escribe en el mismo sandbox de Asana.
+# El entorno `pruebas` (campaign-loader-pruebas) fue un fork temporal para
+# probar el emparejamiento con modelo sin tocar el Worker que usa la
+# gente. Cumplió, y se retira: a partir de aquí solo hay un Worker.
 #
-#   npx wrangler deploy --env pruebas
-#   npx wrangler secret put ASANA_TOKEN --env pruebas
-#   npx wrangler secret put ANTHROPIC_API_KEY --env pruebas
-[env.pruebas]
-name = "campaign-loader-pruebas"
-
-[env.pruebas.vars]
-ASANA_PROJECT_GID = "1218744348845656"
-ASANA_WORKSPACE_GID = "8485243267402"
-
-[env.pruebas.assets]
-directory = "./public"
-binding = "ASSETS"
-
-# Las propuestas se guardan aquí para poder compartirlas por enlace.
-[[env.pruebas.kv_namespaces]]
-binding = "PROPUESTAS"
-id = "7cf5033bb3c645abb171aebb6c15fac3"
+# El proyecto de Asana NO cambia: se sigue escribiendo en el SANDBOX.
+# El de producción (BTL - Run) está en SOLO_LECTURA en src/index.js.

@@ -206,11 +206,7 @@ const EXCEL = {
     'Legal':                     'Servicing'
   },
 
-  // VIABILIDAD → estado de la tarea. Pendiente de acordar el set.
-  viabilidadEstado: {
-    'Aprobada':    'Aprobada',
-    'Planificada': 'Pdte Comercialización'
-  },
+
 
   // MEDIO (Excel) → Formato (Asana).
   //
@@ -283,26 +279,11 @@ const EXCEL = {
     { pattern: /APP_MIMOVISTAR.*CONTENIDOS/i, product: 'Movistar Plus+',  section: 'plus' }
   ],
 
-  // PRODUCTO del Excel → título del brief en el documento de estrategia.
-  // Tabla explícita a propósito: vincular por parecido es justo lo que
-  // DECISIONES.md prohíbe (umbral alto, mejor no encontrar que encontrar
-  // mal). Un producto sin entrada aquí sale sin contexto, que es normal.
-  productoBrief: {
-    'Fútbol+':                   'Desarrollo y winback clientes sin Futbol',
-    'Horecas /LLPP':             'Captación y desarrollo fútbol (Horecas)',
-    'Deportes Total':            'Estrategia desarrollo Deportes, Motor y Baloncesto',
-    'Ficción Total':             'Estrategia desarrollo Ficción',
-    'Fibra Adicional':           'Estrategia Fibra Adicional',
-    'FTTR':                      'Estrategia FTTR',
-    // Dos briefs hablan de captación BAF y el Excel no desambigua:
-    // se vincula al primero pero la tarea sale en amarillo.
-    'Alta BAF':                  ['Estrategia GN BAF SA',
-                                  'Captación nuevos clientes BAF con fútbol'],
-    'eSIMFlag':                  'eSimFLAG',
-    'Renting coche eléctrico':   'Movistar Renting Coches',
-    'Helios':                    'Helios',
-    'Movistar Prosegur Alarmas': 'MPA'
-  },
+  // Aquí vivía `productoBrief`: una tabla escrita a mano que decía qué
+  // brief le tocaba a cada producto. Se quedó muerta cuando el modelo
+  // pasó a decidirlo leyendo, y muerta se quedó meses. Se borra:
+  // mantener una tabla que nadie usa es prometer un mapeo que no existe.
+
 
   // PRODUCTO del Excel → territorio del documento de orientación.
   // Solo se usa cuando no hay brief de Comercialización: es material
