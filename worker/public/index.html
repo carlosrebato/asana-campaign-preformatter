@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260930123035">
+<link rel="stylesheet" href="app.css?v=20260930135156">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260930123035"></script>
-<script src="excel.js?v=20260930123035"></script>
-<script src="estrategia.js?v=20260930123035"></script>
-<script src="api.js?v=20260930123035"></script>
+<script src="data.js?v=20260930135156"></script>
+<script src="excel.js?v=20260930135156"></script>
+<script src="estrategia.js?v=20260930135156"></script>
+<script src="api.js?v=20260930135156"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -331,7 +331,7 @@ function viewRevision() {
   const revisarN = S.tasks.filter(t => t.linkConfidence === 'low').length;
   const sinN = S.tasks.filter(t => !t.description).length;
 
-  const secciones = D.sections.map(sec => {
+  const secciones = D.seccionesOrdenadas.map(sec => {
     const ts = S.tasks.filter(t => t.sectionId === sec.id && pasaFiltro(t));
     if (!ts.length) return '';
     const aprob = ts.filter(t => t.approved).length;
@@ -651,7 +651,7 @@ function viewConfirmar() {
   const app = S.tasks.filter(t => t.approved);
   const pend = S.tasks.length - app.length;
 
-  const porSec = D.sections.map(s => ({
+  const porSec = D.seccionesOrdenadas.map(s => ({
     name: s.name,
     n: app.filter(t => t.sectionId === s.id).length
   })).filter(x => x.n);

@@ -136,6 +136,38 @@ const CATALOGS = {
   get formatOptions()     { return Object.keys(this.fields.formato?.options || {}); },
   // clientTypeOptions se retiró con el campo: ver aPayloadAsana.
 
+  /* ----------------------------------------------------------
+     EN QUÉ ORDEN SE REVISAN LAS SECCIONES
+     ----------------------------------------------------------
+     Asana las devuelve en el orden en que alguien las creó hace años,
+     que no es el orden en que se miran. Arriba lo que más volumen tiene
+     y más hay que revisar; abajo lo recurrente.
+
+     Octubre 2026, de 73 campañas: Fútbol 14, Dispositivos 10, Horecas 9,
+     Conectividad 8, Nuevos Negocios 8, Enews 6+6, Plus+ 5, Deportes 5.
+
+     Las dos Enews bajan aunque sumen 12: son newsletters recurrentes,
+     casi idénticas cada semana, y son las que menos revisión piden.
+
+     Esto es una decisión de negocio, no técnica. Se cambia aquí, y una
+     sección que no esté en la lista va al final sin romper nada.
+  ---------------------------------------------------------- */
+  ordenSecciones: [
+    'futbol', 'dispositivos', 'horecas', 'conectividad', 'nuevos',
+    'plus', 'deportes', 'ficcion', 'convergente', 'gaming', 'beneficios',
+    'enewsM', 'marca', 'priorizadas', 'entradas', 'otros'
+  ],
+
+  // Las secciones tal y como se revisan. El catálogo llega de Asana con
+  // su orden; aquí se pone el nuestro.
+  get seccionesOrdenadas() {
+    const pos = id => {
+      const i = this.ordenSecciones.indexOf(id);
+      return i === -1 ? this.ordenSecciones.length : i;
+    };
+    return [...this.sections].sort((a, b) => pos(a.id) - pos(b.id));
+  },
+
   // Producto → Sección. Determinista. Punto único de configuración.
   productSectionMap: {
     'MiMovistar': 'convergente', 'Conexión Segura': 'convergente',
