@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260930093714">
+<link rel="stylesheet" href="app.css?v=20260930105931">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,10 +26,10 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260930093714"></script>
-<script src="excel.js?v=20260930093714"></script>
-<script src="estrategia.js?v=20260930093714"></script>
-<script src="api.js?v=20260930093714"></script>
+<script src="data.js?v=20260930105931"></script>
+<script src="excel.js?v=20260930105931"></script>
+<script src="estrategia.js?v=20260930105931"></script>
+<script src="api.js?v=20260930105931"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -617,7 +617,9 @@ function cardHTML(t) {
               ? `<textarea class="desc-ta" rows="10" data-set="description" data-id="${t.id}">${esc(t.description)}</textarea>`
               : briefHTML(t.description)}
             <span class="bloque-pie">
-              ${t.contextSource ? esc(t.contextSource) : 'Escrito a mano'}${t.contextEntrada ? ` · ${esc(t.contextEntrada)}` : ''}${comparten > 1 ? ` · lo comparten ${comparten} campañas` : ''}
+              <span class="pie-fuente">${t.contextSource ? esc(t.contextSource) : 'Escrito a mano'}</span>
+              ${t.contextEntrada ? `<span class="pie-linea">Para: ${esc(t.contextEntrada)}</span>` : ''}
+              ${comparten > 1 ? `<span class="pie-linea">Lo comparten ${comparten} campañas</span>` : ''}
             </span>
           </div>` : `
           <div class="bloque vacio">
