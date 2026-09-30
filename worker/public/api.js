@@ -694,7 +694,7 @@ function notasDe(t) {
   const contexto = (t.description || '').trim();
   const fuente = (t.contextSource || '').trim();
   const partes = [];
-  if (objetivo) partes.push(`ESTA CAMPAÑA\n${objetivo}`);
+  if (objetivo) partes.push(`OBJETIVO DE LA CAMPAÑA\n${objetivo}`);
   if (contexto) {
     partes.push(`ESTRATEGIA DEL MES${fuente ? ` · ${fuente}` : ''}\n${contexto}`);
   }
