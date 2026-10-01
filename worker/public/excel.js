@@ -170,7 +170,16 @@ const EXCEL_PARSER = (() => {
       const porNombre = producto === 'Info'
         && EXCEL.productoPorNombre.find(x => x.pattern.test(nombre));
       const product = porNombre ? porNombre.product : EXCEL.productoProduct[producto];
-      if (!product) warn('producto', fila, `Producto sin mapear: "${producto}"`);
+      // Dos cosas distintas que acababan en el mismo aviso. Una celda
+      // vacía es un hueco del Excel y lo arregla Comercialización en el
+      // fichero; un valor que no conocemos lo arreglamos nosotros en la
+      // tabla. Decir "Producto sin mapear: """ no servía para ninguna
+      // de las dos, porque no decía ni de qué campaña hablaba.
+      if (!product) {
+        warn('producto', fila, producto
+          ? `Producto sin mapear: "${producto}" (${pac || nombre.slice(0, 30)}). Va a OTROS.`
+          : `${pac || nombre.slice(0, 30)} no trae producto en el Excel. Va a OTROS; hay que rellenarlo en origen.`);
+      }
       const sectionId = (porNombre && porNombre.section)
         || EXCEL.productoSection[producto]
         || CATALOGS.productSectionMap[product || 'Otros']
@@ -243,5 +252,8 @@ const EXCEL_PARSER = (() => {
     };
   }
 
-  return { parse, parseFecha };
+  // correoDe se expone para poder probarlo: es la regla que decide qué
+  // peticionario lleva cada tarea, y se comprueba contra los correos
+  // reales de Asana en pruebas.js.
+  return { parse, parseFecha, correo: correoDe };
 })();

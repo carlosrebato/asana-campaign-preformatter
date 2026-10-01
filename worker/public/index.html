@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=20260930170557">
+<link rel="stylesheet" href="app.css?v=5280fb41b7">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,11 +26,11 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=20260930170557"></script>
-<script src="excel.js?v=20260930170557"></script>
-<script src="banners.js?v=20260930170557"></script>
-<script src="estrategia.js?v=20260930170557"></script>
-<script src="api.js?v=20260930170557"></script>
+<script src="data.js?v=d791730ad0"></script>
+<script src="excel.js?v=7decedeb33"></script>
+<script src="banners.js?v=05817b9544"></script>
+<script src="estrategia.js?v=e4035e3db2"></script>
+<script src="api.js?v=06cf14b01a"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -365,7 +365,7 @@ function viewRevision() {
 
   const pasaFiltro = t => {
     if (S.filtro === 'revisar') return t.linkConfidence === 'low';
-    if (S.filtro === 'sin') return !t.description;
+    if (S.filtro === 'sin') return !t.description && !t.banner;
     if (S.filtro === 'pendientes') return !t.approved;
     if (S.filtro === 'cambios') return t.cambio && t.cambio !== 'igual';
     if (S.filtro === 'fallo') return !!t.sinRespuesta;
@@ -375,7 +375,11 @@ function viewRevision() {
   const cambiosN = cambios.nuevas + cambios.cambiadas + cambios.idas;
   const fallosN = S.tasks.filter(t => t.sinRespuesta).length;
   const revisarN = S.tasks.filter(t => t.linkConfidence === 'low').length;
-  const sinN = S.tasks.filter(t => !t.description).length;
+  // "Sin contexto" sirve para encontrar lo que se ha quedado a medias.
+  // Los banners no se quedan a medias: su contexto es la parrilla. Si
+  // se contasen aquí, el filtro de los agujeros estaría lleno de cosas
+  // que están bien y dejaría de servir para lo que sirve.
+  const sinN = S.tasks.filter(t => !t.description && !t.banner).length;
 
   const secciones = D.seccionesOrdenadas.map(sec => {
     const ts = S.tasks.filter(t => t.sectionId === sec.id && pasaFiltro(t));
@@ -494,6 +498,7 @@ function viewRevision() {
       <div class="legend">
         <span class="legend-item"><span class="bola ok"></span> Vinculación clara</span>
         <span class="legend-item"><span class="bola review"></span> Vinculación probable — revisar</span>
+        <span class="legend-item"><span class="bola banner"></span> Banner — contexto propio</span>
         <span class="legend-item"><span class="bola"></span> Sin vinculación</span>
         <span class="legend-item"><span class="bola manual"></span> Creada a mano</span>
       </div>
@@ -595,6 +600,12 @@ function fechaCorta(iso) {
 // El texto completo va en la tarjeta abierta y en la leyenda.
 function bolaHTML(t) {
   if (t.manual) return `<span class="bola manual" title="Creada a mano"></span>`;
+  // Un banner no se vincula con ningún documento y nunca lo hará: su
+  // contexto se lo da la parrilla. Pintarlo gris lo ponía en el mismo
+  // saco que una campaña a la que le falta algo, y no le falta nada.
+  if (t.banner) {
+    return `<span class="bola banner" title="Banner · ${esc(t.banner.posicion)} · ${esc(t.banner.semana)}. El contexto lo trae la parrilla, no hace falta buscarlo en los documentos."></span>`;
+  }
   if (t.linkConfidence === 'high')
     return `<span class="bola ok" title="Vinculación clara${t.contextSource ? ' · ' + esc(t.contextSource) : ''}"></span>`;
   if (t.linkConfidence === 'low')
@@ -605,6 +616,7 @@ function bolaHTML(t) {
 function badgeHTML(t) {
   // El badge mide la VINCULACIÓN con el PDF, no la fiabilidad del dato
   // (el Excel es fiable por definición). Sin badge = estado normal.
+  if (t.banner) return `<span class="badge banner" title="El contexto lo trae la parrilla de banners">Banner</span>`;
   return t.manual
     ? `<span class="badge manual" title="Tarea creada manualmente">Manual</span>`
     : t.linkConfidence === 'high'

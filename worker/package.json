@@ -1,0 +1,11 @@
+{
+  "name": "campaign-loader",
+  "private": true,
+  "description": "Une el Excel de Comercialización con la estrategia del mes y deja las tareas listas en Asana.",
+  "scripts": {
+    "test": "node pruebas.js",
+    "sellar": "node sellar.js",
+    "dev": "wrangler dev --remote --port 8787",
+    "deploy": "node pruebas.js && node sellar.js && wrangler deploy"
+  }
+}

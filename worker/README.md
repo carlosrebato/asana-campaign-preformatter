@@ -37,6 +37,17 @@ npx wrangler deploy
 
 Sin build step, sin dependencias. Todo es HTML/CSS/JS estático.
 
+## Comandos
+
+```
+npm test       # 35 pruebas contra los ficheros reales. 2 segundos, 0 €.
+npm run dev    # levanta el Worker en local (wrangler dev --remote)
+npm run deploy # prueba, sella y despliega. Si algo falla, no despliega.
+```
+
+`npm run sellar` reescribe los `?v=` de index.html con un resumen del
+contenido de cada fichero. Lo hace `deploy` solo; no hay que acordarse.
+
 ## Probar en local
 
 ```bash
