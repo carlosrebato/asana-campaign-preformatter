@@ -88,7 +88,7 @@ const CATALOGS = {
   },
 
   fields: {
-    // Las 26 opciones tal y como están en Asana (1-oct-2026). Esta copia
+    // Las 27 opciones tal y como están en Asana (1-oct-2026). Esta copia
     // solo se usa cuando Asana no contesta; el catálogo bueno se lee del
     // proyecto. Llevaba meses con 17 y faltaban nueve, así que un mes sin
     // conexión habría mandado a Otros productos que sí existen.
@@ -109,6 +109,7 @@ const CATALOGS = {
         'Ms Money': '1204870126999120', 'Ms. Nextory': '1204870126999129',
         '5G/5G+': '1204878941839145', 'Conexión Segura': '1204878941839146',
         'Ms Cloud': '1204878941839147', 'ISR': '1207037193025204',
+        'AFR5G': '1219070457904968',
         'Otros': '1204878941839148'
       }
     },
