@@ -536,9 +536,41 @@ botón solo ofrece crear las que faltan. Lo que no se dice es cuáles
 "fallaron pero sí habían llegado": si llegaron, llegaron, y de dónde
 venga el dato no le importa a nadie.
 
-Y una cosa que no cambia: una tarea que ya está en Asana **no se
-reescribe** aunque el Excel diga ahora otra cosa. Se avisa y lo corrige
-una persona. Esto es una carretilla de volcado.
+### El nombre sí se reescribe. Lo demás no
+
+Una tarea que ya está en Asana no se reescribe: si cambia su fecha, su
+producto o su descripción, se avisa y lo corrige una persona.
+
+**El nombre es la excepción**, y por una razón concreta: antes, cambiar
+el nombre en el Excel creaba una tarea nueva y dejaba la vieja huérfana
+con el nombre antiguo. Eso no es "no reescribir", es ensuciar.
+
+Así que si el Excel cambia el nombre de algo que ya existe, se renombra.
+Solo el nombre, nunca otro campo. Y si alguien lo había renombrado en
+Asana, se pisa: manda el Excel (decisión de Carlos, 1-oct-2026).
+
+Para poder hacerlo hay que recordar tres cosas de cada tarea cargada —el
+enlace, el identificador y el nombre con el que quedó— y arrastrarlas de
+una propuesta a la siguiente. Arrastrar solo el enlace, como se hacía,
+dejaba la tarea reconocida pero intocable: sin identificador no se puede
+renombrar, y sin el nombre anterior no se sabe siquiera que ha cambiado.
+
+Donde esto no llega: un banner renombrado en una propuesta nueva, sin
+memoria. El nombre viejo no lo tenemos y el nuevo no existe en Asana, así
+que se crea una nueva y la vieja queda suelta. No tiene arreglo sin un
+identificador estable en Asana, porque la celda del Excel no existe allí.
+
+### El buscador de Asana va con retraso
+
+Vaciar el sandbox y volver a cargar inmediatamente creó 13 tareas de 42:
+el buscador seguía devolviendo las 29 que acababan de borrarse, así que
+la comprobación creyó que existían.
+
+En uso normal da igual —nadie borra el proyecto— pero conviene saberlo:
+si alguien borra una tarea en Asana, la herramienta tardará un rato en
+volver a crearla. Si algún día molesta, se arregla comprobando cada
+coincidencia con una lectura directa en vez de fiarse del buscador; son
+más llamadas y hoy no compensa.
 
 ## El Worker es la única parte que necesita servidor
 

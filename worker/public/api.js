@@ -559,6 +559,33 @@ const API = {
   },
 
   /* ----------------------------------------------------------
+     3bis · RENOMBRAR LO QUE YA ESTÁ
+     ----------------------------------------------------------
+     Si el Excel cambia el nombre de una campaña, la tarea de Asana
+     es la misma: se renombra, no se crea otra. Solo el nombre.
+  ---------------------------------------------------------- */
+  async renombrarEnAsana(tasks) {
+    const tareas = tasks
+      .filter(t => t.asanaGid && t.name && t.asanaName !== t.name)
+      .map(t => ({ id: t.id, gid: t.asanaGid, name: t.name }));
+    if (!tareas.length) return { renamed: [], failed: [] };
+    try {
+      const r = await fetch('/api/renombrar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tareas })
+      });
+      if (!r.ok) {
+        const { error } = await r.json().catch(() => ({}));
+        return { renamed: [], failed: tareas.map(t => ({ ...t, error: error || 'El Worker no respondió' })) };
+      }
+      return await r.json();
+    } catch (e) {
+      return { renamed: [], failed: tareas.map(t => ({ ...t, error: e.message })) };
+    }
+  },
+
+  /* ----------------------------------------------------------
      4 · CARGAR EN ASANA
      ----------------------------------------------------------
      REAL: POST /api/cargar → el Worker crea las tareas vía MCP

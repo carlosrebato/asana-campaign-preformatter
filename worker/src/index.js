@@ -171,6 +171,41 @@ async function duplicados(env, workspaceGid, projectGid, busquedas) {
   return resultados.filter(Boolean);
 }
 
+/* ---------------- RENOMBRAR LO QUE YA EXISTE ----------------
+   Cuando el Excel cambia el nombre de una campaña, la tarea de Asana es
+   la misma tarea. Crear otra dejaba la vieja huérfana, con el nombre
+   antiguo, y a alguien limpiándolo a mano.
+
+   Manda el Excel: si alguien la renombró en Asana, se pisa. Es el único
+   campo que se reescribe —nunca fecha, producto ni descripción— porque
+   es el único del que el Excel es la fuente.
+------------------------------------------------------------ */
+async function renombrar(env, projectGid, tareas) {
+  exigirEscribible(projectGid);
+  const lote = (tareas || []).filter(t => t && t.gid && t.name).slice(0, MAX_CARGA);
+  const resultados = new Array(lote.length);
+  let siguiente = 0;
+  const turno = async () => {
+    while (siguiente < lote.length) {
+      const i = siguiente++;
+      const t = lote[i];
+      try {
+        await asana(env, `/tasks/${t.gid}`, {
+          method: 'PUT', body: JSON.stringify({ data: { name: t.name } })
+        });
+        resultados[i] = { ok: true, dato: { id: t.id, gid: t.gid, name: t.name } };
+      } catch (e) {
+        resultados[i] = { ok: false, dato: { id: t.id, name: t.name, error: e.message } };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(A_LA_VEZ, lote.length) }, turno));
+  return {
+    renamed: resultados.filter(r => r.ok).map(r => r.dato),
+    failed: resultados.filter(r => !r.ok).map(r => r.dato)
+  };
+}
+
 /* ---------------- CREAR TAREAS ----------------
    De una en una y a prueba de fallos parciales: si una falla, se
    informa de cuál y las demás siguen. El reporte permite
@@ -349,6 +384,10 @@ export default {
         const c = await catalogos(env, projectGid);
         // La UI enseña si el destino admite escritura o no.
         return json({ ...c, soloLectura: !!SOLO_LECTURA[projectGid] });
+      }
+      if (url.pathname === '/api/renombrar' && request.method === 'POST') {
+        const { tareas } = await request.json();
+        return json(await renombrar(env, projectGid, tareas));
       }
       if (url.pathname === '/api/duplicados' && request.method === 'POST') {
         // `busquedas` es la forma nueva: {id, texto} por tarea, que
