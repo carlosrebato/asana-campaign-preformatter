@@ -81,19 +81,22 @@ h1.page { font-size: 24px; font-weight: 800; letter-spacing: -.015em; }
 h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
 
 /* ============ ENTRADA ============ */
-/* Tres cajas: campañas, estrategia y banners. En pantalla ancha caben
-   en fila; por debajo de 900px se apilan, que es como se ve en un
-   portátil con la ventana a medias. */
+/* Dos cajas: los Excel del mes y los documentos. Se apilan en pantalla
+   estrecha, que es como se ve en un portátil con la ventana a medias. */
 .drop-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 28px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px;
   align-items: stretch;
 }
-@media (max-width: 900px) { .drop-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .drop-grid { grid-template-columns: 1fr; } }
 .drop-cell { display: flex; flex-direction: column; }
 .drop {
   border: 1.5px dashed #DFDBD6; border-radius: 16px;
   background: #fff; padding: 24px 22px;
   text-align: center; transition: .16s; cursor: pointer;
+  /* Todo centrado y a la misma altura: dos cajas una al lado de la otra
+     que no se alinean parecen rotas aunque funcionen. */
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; min-height: 190px;
   flex: 1; min-height: 210px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px;
 }
@@ -114,6 +117,17 @@ h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
 .req.ok { color: #38552B; background: #CEF7BF; }
 /* Lo opcional se dice, pero sin el rojo de lo que falta. */
 .req.opcional { color: #605E5C; background: #F1EEEA; }
+
+/* El botón de cada caja. Antes había una etiqueta explicando cuál era
+   obligatoria y cuál no, y eran dos reglas distintas que había que leer
+   para empezar. Un botón que dice lo que hace y ya. */
+.btn-anadir {
+  border: 1px solid #DFDBD6; background: #fff; color: #0066FF;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  padding: 7px 18px; border-radius: 9999px; cursor: pointer;
+  transition: .14s; margin-top: 2px;
+}
+.btn-anadir:hover { border-color: #0066FF; background: #F2F7FF; }
 .doclist {
   list-style: none; margin: 0; padding: 0; width: 100%;
   display: flex; flex-direction: column; gap: 2px;

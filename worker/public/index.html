@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=c0bb9dc27c">
+<link rel="stylesheet" href="app.css?v=cae0e96a69">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -185,12 +185,12 @@ function viewEntrada() {
         ${puestos.length ? `
           <ul class="doclist">${puestos.map(([k, d]) => fichaExcel(k, d)).join('')}</ul>
           ${puestos.length < 2 ? `
-            <button class="btn-ghost" data-drop="excel" style="font-size:12px">＋ Añadir el otro Excel</button>` : ''}
+            <button class="btn-anadir" data-drop="excel">Añadir</button>` : ''}
         ` : `
           <div class="drop-icon">${ICONS.fileBig}</div>
           <div class="drop-title">Excel del mes</div>
-          <div class="drop-hint">El de campañas y el de banners · puedes soltar los dos a la vez</div>
-          <span class="req">Al menos uno</span>
+          <div class="drop-hint">Campañas y banners · puedes soltar los dos a la vez</div>
+          <button class="btn-anadir" data-drop="excel">Añadir</button>
         `}
       </div>
     </div>`;
@@ -212,12 +212,12 @@ function viewEntrada() {
                 <button class="btn-del" data-quitar-doc="${i}" title="Quitar">${ICONS.trash}</button>
               </li>`).join('')}
           </ul>
-          <button class="btn-ghost" data-drop="strategy" style="font-size:12px">＋ Añadir otro documento</button>
+          <button class="btn-anadir" data-drop="strategy">Añadir</button>
         ` : `
           <div class="drop-icon">${ICONS.fileBig}</div>
           <div class="drop-title">Documentos de estrategia</div>
-          <div class="drop-hint">Arrastra los .pdf o .html · puedes subir varios</div>
-          <span class="req ${f.excel ? '' : 'opcional'}">${f.excel ? 'Para las campañas' : 'Si hay campañas'}</span>
+          <div class="drop-hint">.pdf o .html · puedes subir varios</div>
+          <button class="btn-anadir" data-drop="strategy">Añadir</button>
         `}
       </div>
     </div>`;
@@ -237,11 +237,8 @@ function viewEntrada() {
         <button class="btn-link-section" data-paso="revision">Volver a la revisión</button>
       </p>` : ''}
     <p style="font-size:14px;color:#605E5C;margin-top:8px;line-height:1.55">
-      Suelta los Excel del mes —el de campañas, el de banners, o los dos— y los
-      documentos de estrategia. No hace falta que aciertes con el orden: la
-      herramienta mira dentro de cada uno y sabe cuál es cuál.
-      Las campañas necesitan documentos para tener contexto;
-      <strong style="color:#262423">los banners van solos</strong>.
+      Suelta los Excel del mes y los documentos de estrategia. No hace falta
+      acertar con la caja: la herramienta mira dentro y sabe cuál es cuál.
     </p>
 
     <div class="drop-grid">
