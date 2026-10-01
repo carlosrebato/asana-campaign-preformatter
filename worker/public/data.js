@@ -487,8 +487,18 @@ const EXCEL = {
 
   // "Info" es cajón de sastre: producto y sección se reconocen por el
   // nombre. Primer patrón que casa, gana.
+  // Se mira SIEMPRE, no solo cuando el producto es "Info". El Excel
+  // trae a veces un producto que no es el de la campaña: "Encendido red
+  // 5G" viene como R2R —que es renovación de dispositivos— y acababa en
+  // Dispositivos hablando de encender la red. Carlos lo confirmó el
+  // 1-oct-2026: no es dispositivos.
+  //
+  // Esto es una puerta de atrás, y las puertas de atrás se usan poco y
+  // con patrones estrechos: el primero que casa gana y se come lo que
+  // diga la tabla de productos.
   productoPorNombre: [
-    { pattern: /RED_SEGURA|RED SEGURA/i,      product: 'Conexión Segura', section: 'convergente' },
+    { pattern: /RED_SEGURA|RED SEGURA/i,      product: 'Conexión Segura', section: 'conectividad' },
+    { pattern: /ENCENDIDO\s+RED\s*5G/i,       product: '5G/5G+',          section: 'conectividad' },
     { pattern: /SORTEO|CAMISETA|MUNDIAL/i,    product: 'M+ Futbol',       section: 'futbol' },
     { pattern: /APP_MIMOVISTAR.*CONTENIDOS/i, product: 'Movistar Plus+',  section: 'plus' }
   ],

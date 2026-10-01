@@ -155,8 +155,11 @@ const EXCEL_PARSER = (() => {
       // Producto y sección. El caso normal es el catálogo; "Info" se
       // reconoce por el nombre, y unos pocos productos tienen sección
       // propia en Asana (Horecas, Enews Marca, Enews Entretenimiento).
-      const porNombre = producto === 'Info'
-        && EXCEL.productoPorNombre.find(x => x.pattern.test(nombre));
+      // Antes esto solo se miraba cuando el producto era "Info". Pero el
+      // Excel trae a veces un producto que no es el de la campaña, y
+      // entonces no había forma de corregirlo sin tocar la tabla de
+      // productos entera. Ahora se mira siempre: el patrón manda.
+      const porNombre = EXCEL.productoPorNombre.find(x => x.pattern.test(nombre));
       let product = porNombre ? porNombre.product : EXCEL.productoProduct[producto];
 
       // La tabla puede nombrar un producto que todavía no existe en
