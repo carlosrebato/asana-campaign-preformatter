@@ -362,6 +362,12 @@ const BANNERS_PARSER = (() => {
           palanca: '',                  // el fichero de banners no trae palanca
           estado: CATALOGS.estadoInicial,
           description: '',
+          // Vinculación clara, como cualquier otra. El semáforo no mide
+          // "lo ha leído el modelo en un PDF": mide si sabemos de qué va
+          // esta tarea y sin dudas. En un banner lo sabemos, y encima de
+          // la fuente más fiable que hay, que es el propio fichero.
+          linkConfidence: 'high',
+          contextSource: `Parrilla de banners · celda ${ref}`,
           banner: {
             celda: ref,
             posicion: bloque.posicion,
