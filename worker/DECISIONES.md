@@ -499,6 +499,47 @@ Octubre lo estrenó: **Arancha Ortiz Torres** firma `PAC37421` y no está
 en la lista. Su tarea sale sin peticionario y el lector la nombra al
 subir el fichero. Cuando se confirme su correo, se añade una línea.
 
+## Lo que ya está en Asana se le pregunta a Asana
+
+Antes de esto, el botón de cargar mandaba todo lo aprobado. Mirase o no
+si ya existía. Así que cargar, cerrar, abrir el enlace al día siguiente
+y volver a pulsar creaba el mes entero por segunda vez. Nada lo impedía,
+ni en la página ni en el Worker.
+
+La tentación era llevar un registro: apuntar qué se creó y qué falló, y
+fiarse de él. **Un registro miente.** Si Asana crea la tarea y se pierde
+la respuesta —un corte, un 500 después de escribir— nosotros apuntamos
+"falló" y al reintentar duplicamos. La única fuente fiable de qué hay en
+Asana es Asana.
+
+Y la consulta ya existía: es el paso de duplicados, que buscaba cada PAC
+en el proyecto. Lo que pasaba es que su resultado **se tiraba**. Setenta
+búsquedas por pasada, para nada.
+
+Ahora ese resultado marca las tareas que ya existen, y esas no se vuelven
+a crear. Da igual quién las creara. Tres cosas que costó aprender:
+
+- **Buscar por PAC no basta.** Los banners no tienen PAC, así que 42 de
+  111 tareas quedaban sin comprobar. Se busca por nombre cuando no hay
+  PAC.
+- **Quedarse con la primera coincidencia tampoco.** Dos tareas pueden
+  llamarse igual: en la parrilla de octubre hay dos bloques repetidos. Se
+  marcaba una y la otra se creaba de nuevo. Se devuelven todas las
+  coincidencias y se reparten una a una.
+- **Se vuelve a preguntar antes de escribir**, salvo que se acabe de
+  preguntar hace menos de cinco minutos. Quien llega por el enlace
+  compartido no ha pasado por el procesado, y es justo quien más riesgo
+  tiene de duplicar.
+
+El paso 4 lo dice en dos líneas —cuántas ya están y cuántas faltan— y el
+botón solo ofrece crear las que faltan. Lo que no se dice es cuáles
+"fallaron pero sí habían llegado": si llegaron, llegaron, y de dónde
+venga el dato no le importa a nadie.
+
+Y una cosa que no cambia: una tarea que ya está en Asana **no se
+reescribe** aunque el Excel diga ahora otra cosa. Se avisa y lo corrige
+una persona. Esto es una carretilla de volcado.
+
 ## El Worker es la única parte que necesita servidor
 
 El token de Asana no puede estar en el navegador, y Asana no acepta

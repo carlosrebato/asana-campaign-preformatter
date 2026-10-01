@@ -30,7 +30,7 @@ const ASANA = 'https://app.asana.com/api/1.0';
    Por eso el cliente trocea y llama varias veces. Estos números
    son el tamaño máximo de cada trozo, con margen.
 ------------------------------------------------------------ */
-const MAX_DUPLICADOS = 40;   // 1 búsqueda por PAC
+const MAX_DUPLICADOS = 40;   // 1 búsqueda por tarea
 const MAX_CARGA = 20;        // 2 llamadas por tarea
 
 // Asana no deja escribir más de ~15 cosas a la vez, contando TODAS las
@@ -140,16 +140,30 @@ async function catalogos(env, projectGid) {
    Búsqueda DIRIGIDA por PAC. El proyecto real tiene miles de
    tareas: traerlas todas no es una opción.
 ------------------------------------------------------------ */
-async function duplicados(env, workspaceGid, projectGid, pacs) {
-  const lote = pacs.filter(Boolean).slice(0, MAX_DUPLICADOS);
-  const resultados = await Promise.all(lote.map(async pac => {
+async function duplicados(env, workspaceGid, projectGid, busquedas) {
+  const lote = busquedas
+    .map(b => (typeof b === 'string' ? { id: b, texto: b } : b))
+    .filter(b => b && b.texto)
+    .slice(0, MAX_DUPLICADOS);
+
+  const resultados = await Promise.all(lote.map(async b => {
     try {
       const r = await asana(env,
         `/workspaces/${workspaceGid}/tasks/search` +
-        `?projects.any=${projectGid}&text=${encodeURIComponent(pac)}` +
+        `?projects.any=${projectGid}&text=${encodeURIComponent(b.texto)}` +
         `&opt_fields=name,permalink_url&limit=5`);
-      const ya = (r || []).find(t => t.name && t.name.includes(pac));
-      return ya ? { pac, gid: ya.gid, name: ya.name, url: ya.permalink_url } : null;
+      // El buscador de Asana es generoso: devuelve parecidos. Valen las
+      // que de verdad contienen lo que buscábamos, no las que se parecen.
+      //
+      // Y se devuelven TODAS, no la primera. Dos tareas pueden llamarse
+      // igual —en octubre pasa dos veces, porque la parrilla de banners
+      // tiene bloques repetidos— y quedarse con una dejaba a la otra sin
+      // marcar: en la carga siguiente se creaba otra vez.
+      const ya = (r || []).filter(t => t.name && t.name.includes(b.texto));
+      return ya.length
+        ? { id: b.id, pac: b.pac || '', texto: b.texto,
+            encontradas: ya.map(t => ({ gid: t.gid, name: t.name, url: t.permalink_url })) }
+        : null;
     } catch {
       return null;   // no poder comprobar no puede bloquear la carga
     }
@@ -337,8 +351,13 @@ export default {
         return json({ ...c, soloLectura: !!SOLO_LECTURA[projectGid] });
       }
       if (url.pathname === '/api/duplicados' && request.method === 'POST') {
-        const { pacs } = await request.json();
-        return json({ duplicados: await duplicados(env, env.ASANA_WORKSPACE_GID, projectGid, pacs) });
+        // `busquedas` es la forma nueva: {id, texto} por tarea, que
+        // permite buscar también lo que no tiene PAC —los banners— por su
+        // nombre. `pacs` se sigue aceptando para no romper una propuesta
+        // guardada con la versión anterior.
+        const { busquedas, pacs } = await request.json();
+        const lista = busquedas || (pacs || []).map(p => ({ id: p, pac: p, texto: p }));
+        return json({ duplicados: await duplicados(env, env.ASANA_WORKSPACE_GID, projectGid, lista) });
       }
       // El modelo solo se usa para elegir entre opciones cerradas.
       // Si no hay clave, se responde vacío y el flujo sigue sin él.

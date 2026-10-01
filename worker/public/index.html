@@ -30,7 +30,7 @@
 <script src="excel.js?v=fdb94985f5"></script>
 <script src="banners.js?v=c3f4afc339"></script>
 <script src="estrategia.js?v=e4035e3db2"></script>
-<script src="api.js?v=70f0475612"></script>
+<script src="api.js?v=32ce94f1f1"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -55,6 +55,8 @@ const S = {
   loadProgress: [0, 0],
   result: null,
   dupes: [],
+  dupesCuando: 0,          // cuándo se preguntó a Asana por última vez
+  comprobando: false,
   filtro: 'todas',        // todas | revisar | sin | pendientes
   propuestaId: '',        // identificador del enlace compartido
   propuestaVer: 0,        // versión que tenemos de la propuesta
@@ -741,11 +743,26 @@ function cardHTML(t) {
 function viewConfirmar() {
   const app = S.tasks.filter(t => t.approved);
   const pend = S.tasks.length - app.length;
+  // Lo que ya está en Asana no se vuelve a crear. Antes se mandaba todo
+  // lo aprobado, mirase o no si existía: abrir el enlace después de una
+  // carga y volver a pulsar duplicaba el mes entero.
+  const yaEstan = app.filter(t => t.asanaUrl);
+  const faltan  = app.filter(t => !t.asanaUrl);
 
   const porSec = D.seccionesOrdenadas.map(s => ({
     name: s.name,
-    n: app.filter(t => t.sectionId === s.id).length
+    n: faltan.filter(t => t.sectionId === s.id).length
   })).filter(x => x.n);
+
+  if (S.comprobando) {
+    return `
+    <main class="main-narrow">
+      <h1 class="page">Mirando qué hay ya en Asana…</h1>
+      <p style="font-size:14px;color:#605E5C;margin-top:8px">
+        Para no crear dos veces lo que ya se creó.
+      </p>
+    </main>`;
+  }
 
   if (S.loading) {
     const [i, tot] = S.loadProgress;
@@ -762,14 +779,28 @@ function viewConfirmar() {
   return `
   <main class="main-narrow">
     <button class="btn-ghost" id="btn-back" style="margin:0 0 18px -12px">← Volver a la revisión</button>
-    <h1 class="page">Vas a crear ${app.length} tareas en Asana</h1>
+    <h1 class="page">${faltan.length
+      ? `Vas a crear ${faltan.length} tarea${faltan.length > 1 ? 's' : ''} en Asana`
+      : 'No hay nada que crear'}</h1>
     <p style="font-size:14px;color:#605E5C;margin:8px 0 24px">
       Proyecto de destino: <strong style="color:#262423">${esc(D.asanaProject?.name || '')}</strong>
     </p>
 
-    <div class="panel" style="margin-bottom:16px">
+    ${yaEstan.length ? `
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-row">
+          <span><strong>${yaEstan.length}</strong> ya están en Asana</span>
+          <span style="color:#605E5C">no se vuelven a crear</span>
+        </div>
+        <div class="panel-row">
+          <span><strong>${faltan.length}</strong> falta${faltan.length === 1 ? '' : 'n'}</span>
+          <span style="color:#605E5C">${faltan.length ? 'se crean ahora' : '—'}</span>
+        </div>
+      </div>` : ''}
+
+    ${faltan.length ? `<div class="panel" style="margin-bottom:16px">` : '<div style="display:none">'}
       ${porSec.map(x => `
-        <div class="panel-row"><span>${esc(x.name)}</span><strong>${x.n} tareas</strong></div>
+        <div class="panel-row"><span>${esc(x.name)}</span><strong>${x.n} tarea${x.n > 1 ? 's' : ''}</strong></div>
       `).join('')}
       <div class="panel-row" style="border-top:1px solid #DFDBD6">
         <span style="font-weight:700">Estado inicial</span>
@@ -781,7 +812,11 @@ function viewConfirmar() {
       <span><strong>${pend} tarea${pend > 1 ? 's' : ''} sin aprobar</strong> no se cargará${pend > 1 ? 'n' : ''}.
       Puedes volver atrás para aprobarlas o cargarlas en otro momento.</span></div>` : ''}
 
-    <button class="btn-primary" id="btn-cargar">Crear ${app.length} tareas en Asana ${ICONS.arrow}</button>
+    <button class="btn-primary" id="btn-cargar" ${faltan.length ? '' : 'disabled'}>
+      ${faltan.length
+        ? `Crear ${faltan.length} tarea${faltan.length > 1 ? 's' : ''} en Asana ${ICONS.arrow}`
+        : 'Todo lo aprobado ya está en Asana'}
+    </button>
   </main>`;
 }
 
@@ -953,6 +988,8 @@ async function procesar() {
       Object.assign(S.proc, info, { paso: 4 });
       render();
     });
+    anotarLoQueYaEsta(S.dupes);
+    S.dupesCuando = Date.now();
     // El enlace se conserva si ya existía: es el que ha circulado.
     const doc = S.propuestaId
       ? await API.guardarPropuesta(S.propuestaId, ficherosDeLaPropuesta(), S.tasks, leido.briefs, leido.entradas)
@@ -987,7 +1024,11 @@ function mismosDocumentos(antes, ahora) {
 
 async function cargar() {
   S.loading = true; render();
-  const app = S.tasks.filter(t => t.approved);
+  // Solo lo aprobado que NO esté ya en Asana. Antes iba todo lo
+  // aprobado: pulsar dos veces, o abrir el enlace y pulsar, creaba otra
+  // vez lo que ya existía.
+  const app = S.tasks.filter(t => t.approved && !t.asanaUrl);
+  if (!app.length) { S.loading = false; render(); return; }
   S.result = await API.cargarEnAsana(app, {
     onCreada: creadas => creadas.forEach(c => {
       const t = S.tasks.find(x => x.id === c.id);
@@ -1077,6 +1118,55 @@ function fusionarConPropuesta(previas, nuevas) {
 function resumenCambios(tareas) {
   const cuenta = t => tareas.filter(x => x.cambio === t).length;
   return { nuevas: cuenta('nueva'), cambiadas: cuenta('cambiada'), idas: cuenta('desaparecida') };
+}
+
+/* ---------------- QUÉ HAY YA EN ASANA ----------------
+   Un registro de lo que pasó la vez anterior puede mentir: si Asana
+   crea la tarea y se pierde la respuesta, nosotros apuntamos "falló" y
+   al reintentar duplicamos. La única fuente fiable es Asana.
+
+   La búsqueda ya se hacía —es el paso de duplicados— pero su resultado
+   se tiraba. Ahora marca las tareas que ya existen, y esas no se vuelven
+   a crear. Da igual si las creamos nosotros o alguien a mano: si están,
+   están.
+---------------------------------------------------------- */
+function anotarLoQueYaEsta(encontrados) {
+  for (const d of encontrados || []) {
+    // Una búsqueda vale para todas las tareas que se llaman igual, y
+    // Asana puede devolver varias con ese nombre. Se reparten una a una:
+    // si hay dos tareas repetidas y en Asana ya existen las dos, se
+    // marcan las dos. Si solo existe una, la otra sigue pendiente y se
+    // creará, que es lo correcto.
+    const mismas = S.tasks.filter(t => (t.pac || t.name) === d.texto && !t.asanaUrl);
+    const libres = (d.encontradas || []).slice();
+    for (const t of mismas) {
+      const sitio = libres.shift();
+      if (!sitio) break;
+      t.asanaUrl = sitio.url;
+      guardar(t.id, { asanaUrl: sitio.url });
+    }
+  }
+}
+
+// Antes de escribir se vuelve a preguntar, salvo que se acabe de
+// preguntar. Quien llega por el enlace compartido no ha pasado por el
+// paso 2, y es justo quien más riesgo tiene de duplicar.
+const FRESCURA = 5 * 60 * 1000;
+async function refrescarLoQueYaEsta() {
+  if (S.dupesCuando && Date.now() - S.dupesCuando < FRESCURA) return;
+  const candidatas = S.tasks.filter(t => t.approved && !t.asanaUrl);
+  if (!candidatas.length) { S.dupesCuando = Date.now(); return; }
+  S.comprobando = true; render();
+  try {
+    anotarLoQueYaEsta(await API.comprobarDuplicados(candidatas));
+    S.dupesCuando = Date.now();
+  } catch (e) {
+    // No poder comprobar no bloquea: se avisa en la propia pantalla.
+    console.error(e);
+    S.dupesCuando = 0;
+  } finally {
+    S.comprobando = false; render();
+  }
 }
 
 /* ---------------- PROPUESTA COMPARTIDA ---------------- */
@@ -1256,7 +1346,10 @@ document.addEventListener('click', async e => {
     abrirSelector(key);
   }
   else if (el.id === 'btn-procesar') procesar();
-  else if (el.id === 'btn-confirmar') { S.screen = 'confirmar'; render(); }
+  else if (el.id === 'btn-confirmar') {
+    S.screen = 'confirmar'; render();
+    await refrescarLoQueYaEsta();
+  }
   else if (el.id === 'btn-back') { S.screen = 'revision'; render(); }
   else if (el.id === 'btn-cargar') { el.disabled = true; cargar(); }
   else if (el.id === 'btn-retry') {

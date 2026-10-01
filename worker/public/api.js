@@ -523,25 +523,37 @@ const API = {
      Esta es la idempotencia real: la clave de negocio es el PAC.
   ---------------------------------------------------------- */
   async comprobarDuplicados(tasks, onProgress) {
-    const pacs = [...new Set(tasks.map(t => t.pac).filter(Boolean))];
-    if (!pacs.length) return [];
+    // Una tarea se busca por su PAC si lo tiene; si no —los banners no
+    // lo tienen— por su nombre, que también es único. Buscar solo por
+    // PAC dejaba 42 de 111 tareas sin comprobar, justo las que más se
+    // repiten de un mes al siguiente.
+    const vistos = new Set();
+    const busquedas = [];
+    for (const t of tasks) {
+      const texto = t.pac || t.name;
+      if (!texto || vistos.has(texto)) continue;
+      vistos.add(texto);
+      busquedas.push({ id: t.id, pac: t.pac || '', texto });
+    }
+    if (!busquedas.length) return [];
+
     const encontrados = [];
     // Por lotes: un Worker no puede hacer más de 50 llamadas salientes
-    // por invocación, y cada PAC es una búsqueda.
+    // por invocación, y cada búsqueda es una.
     let mirados = 0;
-    for (const lote of enLotes(pacs, 40)) {
+    for (const lote of enLotes(busquedas, 40)) {
       try {
         const r = await fetch('/api/duplicados', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pacs: lote })
+          body: JSON.stringify({ busquedas: lote })
         });
         if (r.ok) encontrados.push(...((await r.json()).duplicados || []));
       } catch {
         /* sin backend no se puede comprobar: no se bloquea la carga */
       }
       mirados += lote.length;
-      onProgress?.({ hechas: mirados, total: pacs.length, cuenta: `${mirados} de ${pacs.length}` });
+      onProgress?.({ hechas: mirados, total: busquedas.length, cuenta: `${mirados} de ${busquedas.length}` });
     }
     return encontrados;
   },
