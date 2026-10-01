@@ -149,19 +149,33 @@ const CATALOGS = {
      Las dos Enews bajan aunque sumen 12: son newsletters recurrentes,
      casi idénticas cada semana, y son las que menos revisión piden.
 
-     El orden no es solo volumen. Lo fijó Carlos el 30-sep-2026: Fútbol y
-     Dispositivos primero; luego Ficción y Deportes; después Conectividad
-     y Plus+; y Horecas y Nuevos Negocios detrás, que mueven menos aunque
-     tengan nueve y ocho campañas.
+     El orden no es solo volumen. Lo fijó Carlos el 30-sep-2026 y lo
+     aprobó el equipo el 1-oct-2026: Fútbol y Dispositivos primero; luego
+     Ficción y Deportes; después Conectividad y Plus+; y Horecas y
+     Nuevos Negocios detrás, que mueven menos aunque tengan nueve y ocho
+     campañas. Las dos Enews cierran el bloque aprobado.
+
+     MIMOVISTAR estaba en esa lista y el equipo lo sacó: "ya no es
+     necesario". Sale del bloque aprobado, pero NO se borra de aquí.
+     La sección sigue existiendo en Asana y hay nueve productos de la
+     lista de Comercialización que siguen apuntando ahí (Alta móvil,
+     Alta miMovistar, Protección Digital…). En octubre no le toca
+     ninguna campaña, pero el mes que caiga una tiene que ir a algún
+     sitio, y que ese sitio sea el final de la lista es mejor que un
+     silencio. Si MIMOVISTAR se retira de verdad, lo que hay que decidir
+     es a qué sección van esos nueve productos, y eso lo dice
+     Comercialización, no este fichero.
 
      Esto es una decisión de negocio, no técnica. Se cambia aquí, y una
      sección que no esté en la lista va al final sin romper nada.
   ---------------------------------------------------------- */
   ordenSecciones: [
+    // Lo aprobado por el equipo, en su orden.
     'futbol', 'dispositivos',
     'ficcion', 'deportes', 'conectividad', 'plus', 'horecas', 'nuevos',
-    'convergente', 'gaming', 'beneficios',
-    'enewsM', 'marca', 'priorizadas', 'entradas', 'otros'
+    'enewsM', 'marca',
+    // Lo que no entró en la lista: va detrás, por orden de cuánto se mira.
+    'convergente', 'gaming', 'beneficios', 'priorizadas', 'entradas', 'otros'
   ],
 
   // Las secciones tal y como se revisan. El catálogo llega de Asana con
