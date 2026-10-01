@@ -80,17 +80,27 @@ const CATALOGS = {
   },
 
   fields: {
+    // Las 26 opciones tal y como están en Asana (1-oct-2026). Esta copia
+    // solo se usa cuando Asana no contesta; el catálogo bueno se lee del
+    // proyecto. Llevaba meses con 17 y faltaban nueve, así que un mes sin
+    // conexión habría mandado a Otros productos que sí existen.
     producto: {
       gid: '1204870126999103', tipo: 'multi_enum',
       options: {
         'MiMovistar': '1204870126999104', 'Fibra Adicional': '1204870126999145',
         'Segunda Fibra ON': '1207075465845739', 'FTTR': '1209013973166418',
-        'Dispositivos': '1204870126999105', 'Movistar Plus+': '1204870126999107',
+        'Dispositivos': '1204870126999105',
+        'Servicios Añadidos (Cloud, Conex. Segura,..)': '1204870126999106',
+        'Movistar Plus+': '1204870126999107',
         'M+ Deporte': '1204870126999108', 'M+ Futbol': '1204870126999109',
         'M+ Ficción': '1204870126999110', 'M+ Originales': '1204870126999111',
         'Prepago': '1204870126999112', 'Líneas Móviles Extra': '1204870126999113',
         'Solar360': '1204870126999114', 'Movistar Prosegur Alarmas': '1204870126999115',
-        'Gaming': '1204870126999118', 'Conexión Segura': '1204878941839146',
+        'Ms. Salud': '1204870126999116', 'Ms. Car': '1204870126999117',
+        'Gaming': '1204870126999118', 'Seguro Hogar': '1204870126999119',
+        'Ms Money': '1204870126999120', 'Ms. Nextory': '1204870126999129',
+        '5G/5G+': '1204878941839145', 'Conexión Segura': '1204878941839146',
+        'Ms Cloud': '1204878941839147', 'ISR': '1207037193025204',
         'Otros': '1204878941839148'
       }
     },
@@ -381,9 +391,14 @@ const EXCEL = {
     'FTTR':                       'FTTR',
     'Alta BAF':                   'Fibra Adicional',
     'Prepago':                    'Prepago',
-    // AFR5G es acceso fijo por radio. No existe como producto en Asana:
-    // va a Otros hasta que se cree la opción. Su sección sí es correcta.
-    'AFR5G':                      'Otros',
+    // AFR5G es acceso fijo por radio, y es su propio producto: no es
+    // "5G/5G+", que es móvil. Carlos pidió añadirlo el 1-oct-2026.
+    //
+    // Se pone ya aunque la opción todavía no exista en Asana: el lector
+    // comprueba contra el catálogo de verdad y, mientras no esté, manda
+    // la campaña a Otros y lo dice. El día que alguien cree la opción
+    // en Asana, esto empieza a funcionar sin tocar una línea.
+    'AFR5G':                      'AFR5G',
     'Migración Tecnológica':      'Otros',
 
     // miMovistar

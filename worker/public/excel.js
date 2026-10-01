@@ -157,7 +157,21 @@ const EXCEL_PARSER = (() => {
       // propia en Asana (Horecas, Enews Marca, Enews Entretenimiento).
       const porNombre = producto === 'Info'
         && EXCEL.productoPorNombre.find(x => x.pattern.test(nombre));
-      const product = porNombre ? porNombre.product : EXCEL.productoProduct[producto];
+      let product = porNombre ? porNombre.product : EXCEL.productoProduct[producto];
+
+      // La tabla puede nombrar un producto que todavía no existe en
+      // Asana: es lo que pasa cuando Comercialización cierra la lista
+      // antes de que alguien cree la opción. Escribirlo tal cual no
+      // fallaba, hacía algo peor: Asana ignoraba el campo y la tarea
+      // salía sin producto, sin que nadie lo notara. Así que se
+      // comprueba contra el catálogo de verdad, se manda a Otros, y se
+      // dice. El día que la opción exista, esto funciona solo.
+      if (product && !CATALOGS.productOptions.includes(product)) {
+        warn('producto', fila,
+          `"${product}" todavía no existe como producto en Asana, así que ` +
+          `${pac || nombre.slice(0, 30)} va a OTROS. Hay que crear la opción en el campo Producto.`);
+        product = 'Otros';
+      }
       // Dos cosas distintas que acababan en el mismo aviso. Una celda
       // vacía es un hueco del Excel y lo arregla Comercialización en el
       // fichero; un valor que no conocemos lo arreglamos nosotros en la

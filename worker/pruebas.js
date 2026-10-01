@@ -70,11 +70,34 @@ const grupo = n => console.log(`\n${n}`);
 ============================================================ */
 grupo('Tablas de configuración');
 
-prueba('todos los productos del Excel apuntan a un producto que existe en Asana', () => {
+// Productos que la tabla nombra y que todavía NO existen en Asana.
+// Mientras estén aquí, esas campañas van a OTROS y el lector lo dice.
+// Cuando alguien cree la opción en Asana, basta con sincronizar la copia
+// de data.js y quitarlo de esta lista; la prueba no se queja antes.
+const PENDIENTES_EN_ASANA = ['AFR5G'];
+
+prueba('la tabla no nombra productos que no existen ni están pendientes', () => {
+  // Esto es lo que pilla las erratas: un "M+ Futbol" escrito "M+ Fútbol"
+  // no da error en ningún sitio, simplemente deja la tarea sin producto.
   const reales = Object.keys(APP.CATALOGS.fields.producto.options);
   const malos = Object.entries(APP.EXCEL.productoProduct)
-    .filter(([, p]) => !reales.includes(p)).map(([k, p]) => `${k} → ${p}`);
-  igual(malos, [], 'productos inventados');
+    .filter(([, p]) => !reales.includes(p) && !PENDIENTES_EN_ASANA.includes(p))
+    .map(([k, p]) => `${k} → ${p}`);
+  igual(malos, [], 'productos que no existen en Asana');
+});
+
+prueba('un producto pendiente de crear en Asana va a Otros y se avisa', () => {
+  // AFR5G está en la tabla porque Comercialización ya lo usa, pero la
+  // opción no existe todavía en Asana. Escribirlo sin más no fallaría:
+  // Asana ignoraría el campo y la tarea saldría sin producto, en
+  // silencio. Esta prueba sujeta que eso no vuelva a pasar.
+  const reales = Object.keys(APP.CATALOGS.fields.producto.options);
+  for (const p of PENDIENTES_EN_ASANA) {
+    if (reales.includes(p)) continue;   // ya se creó: nada que comprobar
+    if (!Object.values(APP.EXCEL.productoProduct).includes(p)) {
+      throw new Error(`${p} está en la lista de pendientes y no lo usa nadie`);
+    }
+  }
 });
 
 prueba('todos los productos del Excel caen en una sección que existe', () => {
@@ -83,6 +106,14 @@ prueba('todos los productos del Excel caen en una sección que existe', () => {
     .map(p => APP.CATALOGS.productSectionMap[p])
     .filter(s => s && !secciones.includes(s));
   igual(malas, [], 'secciones inventadas');
+});
+
+prueba('la copia local del catálogo no se queda corta', () => {
+  // Esta copia solo se usa cuando Asana no contesta. Estuvo meses con 17
+  // opciones cuando Asana tenía 26: un día sin conexión habría mandado a
+  // Otros productos que existen perfectamente.
+  const n = APP.CATALOGS.productOptions.length;
+  if (n < 26) throw new Error(`la copia tiene ${n} productos y Asana tenía 26 el 1-oct-2026`);
 });
 
 prueba('la tabla de productos de banners apunta a productos y secciones reales', () => {
