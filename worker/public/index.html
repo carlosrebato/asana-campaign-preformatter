@@ -376,6 +376,12 @@ function viewRevision() {
   };
   const cambios = resumenCambios(S.tasks);
   const cambiosN = cambios.nuevas + cambios.cambiadas + cambios.idas;
+  // Cuántas se quedaron sin que el modelo llegara a mirarlas. Solo se
+  // dice en voz alta cuando fallaron TODAS, que es cuando significa algo
+  // —no hubo modelo en esta pasada— y hay que explicarlo. Si falla una
+  // suelta después de tres intentos, se marca en su fila y ya: un cartel
+  // arriba por una de setenta era complicarle la vida a quien revisa
+  // para contarle un caso que no entiende ni le toca arreglar.
   const fallosN = S.tasks.filter(t => t.sinRespuesta).length;
   const revisarN = S.tasks.filter(t => t.linkConfidence === 'low').length;
   // "Sin contexto" sirve para encontrar lo que se ha quedado a medias.
@@ -452,14 +458,6 @@ function viewRevision() {
         Las ${total} tareas salen del Excel enteras, pero <strong>sin contexto</strong>.
         Cuando se resuelva, vuelve a procesar el mismo Excel: solo se buscará
         el contexto que falta, no se repite nada de lo hecho.
-      </div>` : fallosN ? `
-      <div class="aviso-fallo">
-        <strong>${fallosN === 1
-          ? 'Una campaña se ha quedado sin mirar.'
-          : `${fallosN} campañas se han quedado sin mirar.`}</strong>
-        Falló la llamada y nadie buscó su contexto. Vuelve a procesar el mismo
-        Excel y se ${fallosN === 1 ? 'mira solo esa' : 'miran solo esas'}.
-        <button class="btn-link-section" data-filtro="fallo">${fallosN === 1 ? 'Verla' : 'Verlas'}</button>
       </div>` : ''}
 
 
@@ -533,7 +531,6 @@ function compartenContexto(t) {
 // que se piensa: qué pide esta campaña, y qué mensaje le toca.
 function avisosDe(t) {
   const av = [];
-  if (t.sinRespuesta) av.push(`<strong>Se quedó sin mirar</strong> · Falló la llamada al buscar su contexto, así que no sabemos si había alguno. Vuelve a procesar el Excel y se mira otra vez.`);
   if (t.cambio === 'cambiada' && t.cambios?.length) av.push(`<strong>Ha cambiado</strong> · ${esc(t.cambios.join(', '))}. Vuelve a aprobarla si te cuadra.`);
   if (t.linkConfidence === 'low' && t.linkNote) av.push(`<strong>Revisar el mensaje</strong> · ${esc(t.linkNote)}`);
   const asana = t.asanaUrl
