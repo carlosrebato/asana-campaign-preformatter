@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=5eb067d4f3">
+<link rel="stylesheet" href="app.css?v=c0bb9dc27c">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -26,11 +26,11 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=9703a3f750"></script>
+<script src="data.js?v=f72b0a1042"></script>
 <script src="excel.js?v=c3685e933f"></script>
 <script src="banners.js?v=c3f4afc339"></script>
 <script src="estrategia.js?v=e4035e3db2"></script>
-<script src="api.js?v=cfd7db3722"></script>
+<script src="api.js?v=4b8dba6868"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -57,6 +57,7 @@ const S = {
   dupes: [],
   dupesCuando: 0,          // cuándo se preguntó a Asana por última vez
   comprobando: false,
+  avisoExcel: '',          // un .xlsx que no es ninguno de los dos del mes
   renombradas: null,       // resultado del renombrado de la última carga
   filtro: 'todas',        // todas | revisar | sin | pendientes
   propuestaId: '',        // identificador del enlace compartido
@@ -163,43 +164,33 @@ function resumenEstrategia(p) {
 function viewEntrada() {
   const f = S.files;
 
-  const cajaExcel = () => {
-    const d = f.excel;
-    return `
-    <div class="drop-cell">
-      <div class="drop ${d ? 'loaded' : ''}" data-drop="excel">
-        <div class="drop-icon">${ICONS.fileBig}</div>
-        ${d ? `
-          <div class="drop-title">${esc(d.name)}</div>
-          ${d.parsed ? resumenExcel(d.parsed) : ''}
-          <button class="btn-ghost" data-clear="excel" style="font-size:12px">Quitar</button>
-        ` : `
-          <div class="drop-title">Excel de campañas</div>
-          <div class="drop-hint">Arrastra el .xlsx o haz clic</div>
-          <span class="req">Obligatorio</span>
-        `}
-      </div>
-    </div>`;
-  };
+  // Una sola caja para los dos Excel del mes. Antes había una para cada
+  // uno y era pedir un error: nadie tiene por qué saber cuál va dónde, y
+  // el que se equivoque de caja recibe cien avisos que no significan
+  // nada. Se sueltan los dos juntos y la herramienta mira por dentro
+  // cuál es cuál.
+  const fichaExcel = (clave, d) => `
+    <li>
+      <span class="doc-nombre">${esc(d.name)}</span>
+      <span class="doc-que">${clave === 'banners' ? 'banners' : 'campañas'}</span>
+      <button class="btn-del" data-clear="${clave}" title="Quitar">${ICONS.trash}</button>
+    </li>
+    ${d.parsed ? `<li class="doc-detalle">${clave === 'banners' ? resumenBanners(d.parsed) : resumenExcel(d.parsed)}</li>` : ''}`;
 
-  // Los banners son el otro Excel del mes, y va por su cuenta: no
-  // necesita documentos de estrategia porque el propio fichero dice de
-  // qué es cada pieza. Es opcional: hay meses que solo se cargan
-  // campañas, y meses que solo se cargan banners.
-  const cajaBanners = () => {
-    const d = f.banners;
+  const cajaExcel = () => {
+    const puestos = [['excel', f.excel], ['banners', f.banners]].filter(([, d]) => d);
     return `
     <div class="drop-cell">
-      <div class="drop ${d ? 'loaded' : ''}" data-drop="banners">
-        <div class="drop-icon">${ICONS.fileBig}</div>
-        ${d ? `
-          <div class="drop-title">${esc(d.name)}</div>
-          ${d.parsed ? resumenBanners(d.parsed) : ''}
-          <button class="btn-ghost" data-clear="banners" style="font-size:12px">Quitar</button>
+      <div class="drop ${puestos.length ? 'loaded' : ''}" data-drop="excel">
+        ${puestos.length ? `
+          <ul class="doclist">${puestos.map(([k, d]) => fichaExcel(k, d)).join('')}</ul>
+          ${puestos.length < 2 ? `
+            <button class="btn-ghost" data-drop="excel" style="font-size:12px">＋ Añadir el otro Excel</button>` : ''}
         ` : `
-          <div class="drop-title">Excel de banners</div>
-          <div class="drop-hint">Arrastra el .xlsx o haz clic</div>
-          <span class="req opcional">Opcional</span>
+          <div class="drop-icon">${ICONS.fileBig}</div>
+          <div class="drop-title">Excel del mes</div>
+          <div class="drop-hint">El de campañas y el de banners · puedes soltar los dos a la vez</div>
+          <span class="req">Al menos uno</span>
         `}
       </div>
     </div>`;
@@ -226,7 +217,7 @@ function viewEntrada() {
           <div class="drop-icon">${ICONS.fileBig}</div>
           <div class="drop-title">Documentos de estrategia</div>
           <div class="drop-hint">Arrastra los .pdf o .html · puedes subir varios</div>
-          <span class="req">Obligatorio</span>
+          <span class="req ${f.excel ? '' : 'opcional'}">${f.excel ? 'Para las campañas' : 'Si hay campañas'}</span>
         `}
       </div>
     </div>`;
@@ -246,17 +237,25 @@ function viewEntrada() {
         <button class="btn-link-section" data-paso="revision">Volver a la revisión</button>
       </p>` : ''}
     <p style="font-size:14px;color:#605E5C;margin-top:8px;line-height:1.55">
-      Sube el Excel de campañas y los documentos de estrategia del mes. El Excel
-      aporta los datos operativos (PAC, fechas, producto); los documentos aportan
-      el contexto de mensaje. <strong style="color:#262423">Se necesita al menos uno de cada.</strong>
-      El Excel de banners es aparte y va solo: no necesita documentos.
+      Suelta los Excel del mes —el de campañas, el de banners, o los dos— y los
+      documentos de estrategia. No hace falta que aciertes con el orden: la
+      herramienta mira dentro de cada uno y sabe cuál es cuál.
+      Las campañas necesitan documentos para tener contexto;
+      <strong style="color:#262423">los banners van solos</strong>.
     </p>
 
     <div class="drop-grid">
       ${cajaExcel()}
       ${cajaEstrategia()}
-      ${cajaBanners()}
     </div>
+
+    ${S.avisoExcel ? `<div class="warn" style="margin-top:16px">${ICONS.warn}
+      <span>${esc(S.avisoExcel)}</span></div>` : ''}
+
+    ${f.excel && !f.strategy.length ? `<div class="warn" style="margin-top:16px">${ICONS.warn}
+      <span><strong>Sin documentos de estrategia, las campañas saldrán sin contexto.</strong>
+      Las tareas se crean igual, con sus fechas y sus productos, pero nadie
+      sabrá qué contar en ellas. Los banners no lo necesitan.</span></div>` : ''}
 
     ${S.catalogos && !S.catalogos.ok ? `
       <p class="aviso-catalogos">
@@ -1399,7 +1398,8 @@ document.addEventListener('click', async e => {
   }
   else if (el.dataset.drop) {
     const key = el.dataset.drop;
-    if (S.files[key] && key !== 'strategy') return;
+    // La caja de Excel sigue abierta mientras falte alguno de los dos.
+    if (key === 'excel' && S.files.excel && S.files.banners) return;
     abrirSelector(key);
   }
   else if (el.id === 'btn-procesar') procesar();
@@ -1478,7 +1478,8 @@ document.addEventListener('dragleave', e => {
 function abrirSelector(key) {
   const inp = document.createElement('input');
   inp.type = 'file';
-  inp.accept = (key === 'excel' || key === 'banners') ? '.xlsx' : '.pdf,.html,.htm';
+  inp.accept = key === 'excel' ? '.xlsx' : '.pdf,.html,.htm';
+  inp.multiple = true;   // los dos Excel del mes pueden ir juntos
   inp.multiple = key === 'strategy';
   inp.onchange = async () => {
     if (!inp.files.length) return;
@@ -1489,13 +1490,27 @@ function abrirSelector(key) {
 
 // El Excel es uno; los documentos de estrategia, los que hagan falta.
 async function añadirFicheros(files, key) {
-  // De estrategia caben varios documentos; de cada Excel, uno.
   if (key === 'strategy') {
     for (const file of files) {
       S.files.strategy.push(await API.inspeccionarFichero(file, 'strategy'));
     }
-  } else {
-    S.files[key] = await API.inspeccionarFichero(files[0], key);
+    render();
+    return;
+  }
+
+  // La caja de Excel acepta los dos del mes a la vez y mira dentro de
+  // cada uno para saber cuál es. Nadie tiene por qué acordarse de cuál
+  // va dónde, y el que se equivocara recibía cien avisos sin sentido.
+  S.avisoExcel = '';
+  for (const file of files) {
+    const buf = await file.arrayBuffer();
+    const cual = API.queExcelEs(buf);
+    if (!cual) {
+      S.avisoExcel = `"${file.name}" no se parece ni al Excel de campañas ni al de ` +
+        `banners. Si es uno de los dos, mira que no le falte la hoja de siempre.`;
+      continue;
+    }
+    S.files[cual] = await API.inspeccionarFichero(file, cual);
   }
   render();
 }
@@ -1505,7 +1520,7 @@ document.addEventListener('drop', async e => {
   if (!d || S.dragId) return;
   e.preventDefault();
   const key = d.dataset.drop;
-  if (S.files[key] && key !== 'strategy') return;
+  if (key === 'excel' && S.files.excel && S.files.banners) return;
   await añadirFicheros([...e.dataTransfer.files], key);
 });
 
