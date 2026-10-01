@@ -48,7 +48,10 @@ const CATALOGS = {
   sections: [
     { id: 'entradas',     gid: '1204962417752693', name: '➡️ENTRADAS' },
     { id: 'priorizadas',  gid: '1209498548935703', name: '🔴 Campañas priorizadas y Creatividades' },
-    { id: 'conectividad', gid: '1204996811344449', name: '⚙️ Conectividad: FTTR, BAF, LME, Prepago' },
+    // Renombrada el 1-oct-2026: ahora recoge también lo que iba a
+    // MIMOVISTAR. El nombre de verdad lo pone Asana; esto es la copia que
+    // se usa cuando Asana no contesta, y tiene que decir lo mismo.
+    { id: 'conectividad', gid: '1204996811344449', name: '⚙️ Conectividad y equipamiento' },
     { id: 'convergente',  gid: '1205311722361417', name: '📺📡📱 MIMOVISTAR (Convergente)' },
     { id: 'plus',         gid: '1204915090620356', name: '📺 Movistar Plus+' },
     { id: 'ficcion',      gid: '1204925632923532', name: '🎬 Ficción' },
@@ -189,8 +192,12 @@ const CATALOGS = {
   },
 
   // Producto → Sección. Determinista. Punto único de configuración.
+  // MiMovistar y Conexión Segura apuntaban a la sección MIMOVISTAR
+  // (Convergente). El equipo la retiró el 1-oct-2026 y Carlos decidió
+  // que todo lo que iba ahí pasa a Conectividad. La sección sigue
+  // existiendo en Asana, pero ya no le llega nada desde aquí.
   productSectionMap: {
-    'MiMovistar': 'convergente', 'Conexión Segura': 'convergente',
+    'MiMovistar': 'conectividad', 'Conexión Segura': 'conectividad',
     'Fibra Adicional': 'conectividad', 'Segunda Fibra ON': 'conectividad',
     'FTTR': 'conectividad', 'Prepago': 'conectividad',
     'Líneas Móviles Extra': 'conectividad',
@@ -550,16 +557,31 @@ const BANNERS = {
   // Días laborables de antelación con los que se entrega al Plus.
   entregaLaborables: 3,
 
-  // Festivos nacionales de España 2026. Un "día laborable" no es un día
-  // entre semana: si cae festivo, la entrega se adelanta.
+  // Festivos de 2026 en Madrid capital, que es donde se entrega. Un
+  // "día laborable" no es un día entre semana: si cae festivo, la
+  // entrega se adelanta.
   //
-  // OJO, esto está incompleto a propósito: son los NACIONALES. Los
-  // autonómicos y locales de Madrid no están porque nadie los ha
-  // confirmado todavía. En octubre de 2026 no hay ninguno, así que el
-  // mes sale bien; para otros meses hay que cerrarlo con Bárbara.
+  // Son los catorce: los nacionales, los dos de la Comunidad (Decreto
+  // 75/2025, BOCM de 25-sep-2025) y los dos locales de la ciudad de
+  // Madrid. Dos van trasladados porque caían en domingo.
+  //
+  // Esto caduca cada año. En diciembre hay que poner los de 2027, y si
+  // no se ponen, las entregas de enero saldrán un día tarde.
   festivos: [
-    '2026-01-01', '2026-01-06', '2026-04-03', '2026-05-01',
-    '2026-08-15', '2026-10-12', '2026-12-08', '2026-12-25'
+    '2026-01-01',   // Año Nuevo
+    '2026-01-06',   // Reyes
+    '2026-04-02',   // Jueves Santo · Comunidad de Madrid
+    '2026-04-03',   // Viernes Santo
+    '2026-05-01',   // Fiesta del Trabajo
+    '2026-05-02',   // Día de la Comunidad de Madrid (cae sábado)
+    '2026-05-15',   // San Isidro · ciudad de Madrid
+    '2026-08-15',   // Asunción (cae sábado)
+    '2026-10-12',   // Fiesta Nacional
+    '2026-11-02',   // Todos los Santos, trasladado del domingo 1
+    '2026-11-09',   // La Almudena · ciudad de Madrid
+    '2026-12-07',   // Constitución, trasladado del domingo 6
+    '2026-12-08',   // Inmaculada
+    '2026-12-25'    // Navidad
   ],
 
   // Todos los banners son banners.

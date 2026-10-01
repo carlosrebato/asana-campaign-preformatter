@@ -238,6 +238,24 @@ prueba('dos celdas que dan la misma tarea se avisan', conBanners(() => {
   if (repes.length < 2) throw new Error(`esperaba al menos 2 avisos de repetida y hay ${repes.length}`);
 }));
 
+prueba('los festivos están puestos para el año que estamos', conBanners(() => {
+  // Esta lista caduca cada año. Si llega 2027 y nadie la ha tocado, las
+  // entregas de enero saldrán un día tarde y nadie sabrá por qué.
+  const anio = banners.meta.anio;
+  const deEsteAnio = APP.BANNERS.festivos.filter(f => f.startsWith(anio + '-'));
+  if (deEsteAnio.length < 10) {
+    throw new Error(`el fichero es de ${anio} y solo hay ${deEsteAnio.length} festivos de ese año en data.js`);
+  }
+}));
+
+prueba('los festivos de Madrid están, no solo los nacionales', conBanners(() => {
+  // Los dos locales de la ciudad y el Jueves Santo de la Comunidad son
+  // los que se olvidan, y los tres caen en día laborable.
+  const deMadrid = ['2026-04-02', '2026-05-15', '2026-11-09'];
+  const faltan = deMadrid.filter(f => !APP.BANNERS.festivos.includes(f));
+  igual(faltan, [], 'festivos de Madrid que faltan');
+}));
+
 prueba('todos los banners van al formato de banners', conBanners(() => {
   const otros = [...new Set(banners.tasks.map(t => t.format))].filter(f => f !== APP.BANNERS.formato);
   igual(otros, [], 'formatos que no tocan');
@@ -307,6 +325,14 @@ prueba('todos los correos salen de la lista, ninguno inventado', conExcel(() => 
   const raros = [...new Set(campanas.tasks.map(t => t.excel.peticionario).filter(Boolean))]
     .filter(c => !conocidos.includes(c));
   igual(raros, [], 'correos que no están en la lista');
+}));
+
+prueba('MIMOVISTAR ya no recibe nada', conExcel(() => {
+  // El equipo la retiró: todo lo que iba ahí va a Conectividad. Si algún
+  // producto vuelve a apuntar a convergente, esto lo canta.
+  const siguen = Object.entries(APP.CATALOGS.productSectionMap)
+    .filter(([, s]) => s === 'convergente').map(([p]) => p);
+  igual(siguen, [], 'productos que siguen apuntando a MIMOVISTAR');
 }));
 
 prueba('ninguna campaña cae en una sección que no existe', conExcel(() => {
