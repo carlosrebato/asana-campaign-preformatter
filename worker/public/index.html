@@ -454,10 +454,12 @@ function viewRevision() {
         el contexto que falta, no se repite nada de lo hecho.
       </div>` : fallosN ? `
       <div class="aviso-fallo">
-        <strong>${fallosN} campaña${fallosN > 1 ? 's' : ''} sin emparejar.</strong>
-        El modelo no llegó a responder sobre ${fallosN > 1 ? 'ellas' : 'ella'}: no es que no
-        tuvieran brief, es que no se comprobó. La tarea se crea igual, sin contexto.
-        <button class="btn-link-section" data-filtro="fallo">Verlas</button>
+        <strong>${fallosN === 1
+          ? 'Una campaña se ha quedado sin mirar.'
+          : `${fallosN} campañas se han quedado sin mirar.`}</strong>
+        Falló la llamada y nadie buscó su contexto. Vuelve a procesar el mismo
+        Excel y se ${fallosN === 1 ? 'mira solo esa' : 'miran solo esas'}.
+        <button class="btn-link-section" data-filtro="fallo">${fallosN === 1 ? 'Verla' : 'Verlas'}</button>
       </div>` : ''}
 
 
@@ -531,7 +533,7 @@ function compartenContexto(t) {
 // que se piensa: qué pide esta campaña, y qué mensaje le toca.
 function avisosDe(t) {
   const av = [];
-  if (t.sinRespuesta) av.push(`<strong>No se pudo emparejar</strong> · El modelo no llegó a responder sobre esta campaña, así que no sabemos si le tocaba algo. La tarea se crea igual.`);
+  if (t.sinRespuesta) av.push(`<strong>Se quedó sin mirar</strong> · Falló la llamada al buscar su contexto, así que no sabemos si había alguno. Vuelve a procesar el Excel y se mira otra vez.`);
   if (t.cambio === 'cambiada' && t.cambios?.length) av.push(`<strong>Ha cambiado</strong> · ${esc(t.cambios.join(', '))}. Vuelve a aprobarla si te cuadra.`);
   if (t.linkConfidence === 'low' && t.linkNote) av.push(`<strong>Revisar el mensaje</strong> · ${esc(t.linkNote)}`);
   const asana = t.asanaUrl
@@ -578,7 +580,7 @@ function rowHTML(t) {
            draggable="true" data-drag="${t.id}">
     <button class="row-body" data-toggle="${t.id}" title="Abrir">
       <span class="chev">${ICONS.chev}</span>
-      <span class="row-name">${bolaHTML(t)}<span class="row-nombre">${esc(t.name) || '<em>Sin nombre</em>'}</span>${marcaCambio(t)}${t.sinRespuesta ? '<span class="marca fallo" title="El modelo no llegó a responder sobre esta campaña. La tarea se crea igual, pero sin contexto.">No se pudo emparejar</span>' : ''}${t.asanaUrl ? '<span class="marca asana">En Asana</span>' : ''}</span>
+      <span class="row-name">${bolaHTML(t)}<span class="row-nombre">${esc(t.name) || '<em>Sin nombre</em>'}</span>${marcaCambio(t)}${t.sinRespuesta ? '<span class="marca fallo" title="Falló la llamada al buscar su contexto. Vuelve a procesar el Excel y se mira otra vez.">Sin mirar</span>' : ''}${t.asanaUrl ? '<span class="marca asana">En Asana</span>' : ''}</span>
       <span class="row-val">${esc(t.product)}</span>
       <span class="row-val">${esc(t.format)}</span>
       <span class="row-val">${fechaCorta(t.dueDate)}</span>
