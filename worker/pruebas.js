@@ -72,9 +72,9 @@ grupo('Tablas de configuración');
 
 // Productos que la tabla nombra y que todavía NO existen en Asana.
 // Mientras estén aquí, esas campañas van a OTROS y el lector lo dice.
-// Cuando alguien cree la opción en Asana, basta con sincronizar la copia
-// de data.js y quitarlo de esta lista; la prueba no se queja antes.
-const PENDIENTES_EN_ASANA = ['AFR5G'];
+// Cuando alguien cree la opción, se sincroniza la copia de data.js y se
+// quita de esta lista. AFR5G estuvo aquí y lo creó Carlos el 1-oct-2026.
+const PENDIENTES_EN_ASANA = [];
 
 prueba('la tabla no nombra productos que no existen ni están pendientes', () => {
   // Esto es lo que pilla las erratas: un "M+ Futbol" escrito "M+ Fútbol"
@@ -86,18 +86,13 @@ prueba('la tabla no nombra productos que no existen ni están pendientes', () =>
   igual(malos, [], 'productos que no existen en Asana');
 });
 
-prueba('un producto pendiente de crear en Asana va a Otros y se avisa', () => {
-  // AFR5G está en la tabla porque Comercialización ya lo usa, pero la
-  // opción no existe todavía en Asana. Escribirlo sin más no fallaría:
-  // Asana ignoraría el campo y la tarea saldría sin producto, en
-  // silencio. Esta prueba sujeta que eso no vuelva a pasar.
+prueba('AFR5G ya es un producto de verdad, no un Otros', () => {
+  // Estuvo semanas cayendo en OTROS porque la opción no existía en Asana.
+  // Si alguien la borra allí y sincroniza esta copia, esto lo canta.
   const reales = Object.keys(APP.CATALOGS.fields.producto.options);
-  for (const p of PENDIENTES_EN_ASANA) {
-    if (reales.includes(p)) continue;   // ya se creó: nada que comprobar
-    if (!Object.values(APP.EXCEL.productoProduct).includes(p)) {
-      throw new Error(`${p} está en la lista de pendientes y no lo usa nadie`);
-    }
-  }
+  if (!reales.includes('AFR5G')) throw new Error('AFR5G ha desaparecido del catálogo');
+  igual(APP.EXCEL.productoProduct['AFR5G'], 'AFR5G', 'a qué producto apunta AFR5G');
+  igual(APP.EXCEL.productoSection['AFR5G'], 'conectividad', 'en qué sección se revisa');
 });
 
 prueba('todos los productos del Excel caen en una sección que existe', () => {
