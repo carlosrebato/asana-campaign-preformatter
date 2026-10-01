@@ -27,9 +27,16 @@ id = "7cf5033bb3c645abb171aebb6c15fac3"
 #   npx wrangler secret put ANTHROPIC_API_KEY
 
 # Los prompts se importan como texto desde src/prompts/*.md
+#
+# `fallthrough = false` solo calla un aviso. Wrangler trae una regla suya
+# que hace esto mismo con .txt, .html y .sql; al declarar la nuestra,
+# deja de usar la suya y lo avisa en cada despliegue. Aquí no se importa
+# ninguno de esos tres, así que no se pierde nada, pero el aviso salía en
+# rojo y asusta sin motivo a quien solo quiere desplegar.
 [[rules]]
 type = "Text"
 globs = ["**/*.md"]
+fallthrough = false
 
 # El entorno `pruebas` (campaign-loader-pruebas) fue un fork temporal para
 # probar el emparejamiento con modelo sin tocar el Worker que usa la
