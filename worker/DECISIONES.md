@@ -499,6 +499,101 @@ Octubre lo estrenó: **Arancha Ortiz Torres** firma `PAC37421` y no está
 en la lista. Su tarea sale sin peticionario y el lector la nombra al
 subir el fichero. Cuando se confirme su correo, se añade una línea.
 
+## Lo que ya está en Asana se le pregunta a Asana
+
+Antes de esto, el botón de cargar mandaba todo lo aprobado. Mirase o no
+si ya existía. Así que cargar, cerrar, abrir el enlace al día siguiente
+y volver a pulsar creaba el mes entero por segunda vez. Nada lo impedía,
+ni en la página ni en el Worker.
+
+La tentación era llevar un registro: apuntar qué se creó y qué falló, y
+fiarse de él. **Un registro miente.** Si Asana crea la tarea y se pierde
+la respuesta —un corte, un 500 después de escribir— nosotros apuntamos
+"falló" y al reintentar duplicamos. La única fuente fiable de qué hay en
+Asana es Asana.
+
+Y la consulta ya existía: es el paso de duplicados, que buscaba cada PAC
+en el proyecto. Lo que pasaba es que su resultado **se tiraba**. Setenta
+búsquedas por pasada, para nada.
+
+Ahora ese resultado marca las tareas que ya existen, y esas no se vuelven
+a crear. Da igual quién las creara. Tres cosas que costó aprender:
+
+- **Buscar por PAC no basta.** Los banners no tienen PAC, así que 42 de
+  111 tareas quedaban sin comprobar. Se busca por nombre cuando no hay
+  PAC.
+- **Quedarse con la primera coincidencia tampoco.** Dos tareas pueden
+  llamarse igual: en la parrilla de octubre hay dos bloques repetidos. Se
+  marcaba una y la otra se creaba de nuevo. Se devuelven todas las
+  coincidencias y se reparten una a una.
+- **Se vuelve a preguntar antes de escribir**, salvo que se acabe de
+  preguntar hace menos de cinco minutos. Quien llega por el enlace
+  compartido no ha pasado por el procesado, y es justo quien más riesgo
+  tiene de duplicar.
+
+El paso 4 lo dice en dos líneas —cuántas ya están y cuántas faltan— y el
+botón solo ofrece crear las que faltan. Lo que no se dice es cuáles
+"fallaron pero sí habían llegado": si llegaron, llegaron, y de dónde
+venga el dato no le importa a nadie.
+
+### El nombre sí se reescribe. Lo demás no
+
+Una tarea que ya está en Asana no se reescribe: si cambia su fecha, su
+producto o su descripción, se avisa y lo corrige una persona.
+
+**El nombre es la excepción**, y por una razón concreta: antes, cambiar
+el nombre en el Excel creaba una tarea nueva y dejaba la vieja huérfana
+con el nombre antiguo. Eso no es "no reescribir", es ensuciar.
+
+Así que si el Excel cambia el nombre de algo que ya existe, se renombra.
+Solo el nombre, nunca otro campo. Y si alguien lo había renombrado en
+Asana, se pisa: manda el Excel (decisión de Carlos, 1-oct-2026).
+
+Para poder hacerlo hay que recordar tres cosas de cada tarea cargada —el
+enlace, el identificador y el nombre con el que quedó— y arrastrarlas de
+una propuesta a la siguiente. Arrastrar solo el enlace, como se hacía,
+dejaba la tarea reconocida pero intocable: sin identificador no se puede
+renombrar, y sin el nombre anterior no se sabe siquiera que ha cambiado.
+
+Donde esto no llega: un banner renombrado en una propuesta nueva, sin
+memoria. El nombre viejo no lo tenemos y el nuevo no existe en Asana, así
+que se crea una nueva y la vieja queda suelta. No tiene arreglo sin un
+identificador estable en Asana, porque la celda del Excel no existe allí.
+
+### El buscador de Asana va con retraso
+
+Vaciar el sandbox y volver a cargar inmediatamente creó 13 tareas de 42:
+el buscador seguía devolviendo las 29 que acababan de borrarse, así que
+la comprobación creyó que existían.
+
+En uso normal da igual —nadie borra el proyecto— pero conviene saberlo:
+si alguien borra una tarea en Asana, la herramienta tardará un rato en
+volver a crearla. Si algún día molesta, se arregla comprobando cada
+coincidencia con una lectura directa en vez de fiarse del buscador; son
+más llamadas y hoy no compensa.
+
+## Las secciones se reconocen por el nombre, y eso es frágil
+
+El catálogo de secciones se lee de Asana, pero las tablas de `data.js`
+usan identificadores propios (`futbol`, `conectividad`). El puente entre
+unos y otros es **el nombre**: no puede ser el identificador de Asana,
+porque el sandbox y producción tienen uno distinto para la misma
+sección.
+
+Y eso significa que **renombrar una sección la desconecta**. Si el
+nombre no casa, la sección no se reconoce, `sectionGid` sale vacío y las
+tareas se crean sin sección. No falla nada: simplemente aparecen sueltas
+arriba del proyecto.
+
+Pasó el 1-oct-2026, al poner aquí "Conectividad y equipamiento" antes de
+renombrarla en Asana: ocho campañas se quedaron sin sección y solo se vio
+porque la pasada completa se miró tarea a tarea.
+
+Por eso cada sección puede declarar `otrosNombres`: todos los nombres que
+ha tenido o va a tener. Con los dos puestos da igual el orden en que se
+hagan las cosas, y renombrar en Asana deja de ser una operación que haya
+que coordinar con un despliegue.
+
 ## El Worker es la única parte que necesita servidor
 
 El token de Asana no puede estar en el navegador, y Asana no acepta

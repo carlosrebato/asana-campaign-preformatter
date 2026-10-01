@@ -70,11 +70,34 @@ const grupo = n => console.log(`\n${n}`);
 ============================================================ */
 grupo('Tablas de configuración');
 
-prueba('todos los productos del Excel apuntan a un producto que existe en Asana', () => {
+// Productos que la tabla nombra y que todavía NO existen en Asana.
+// Mientras estén aquí, esas campañas van a OTROS y el lector lo dice.
+// Cuando alguien cree la opción en Asana, basta con sincronizar la copia
+// de data.js y quitarlo de esta lista; la prueba no se queja antes.
+const PENDIENTES_EN_ASANA = ['AFR5G'];
+
+prueba('la tabla no nombra productos que no existen ni están pendientes', () => {
+  // Esto es lo que pilla las erratas: un "M+ Futbol" escrito "M+ Fútbol"
+  // no da error en ningún sitio, simplemente deja la tarea sin producto.
   const reales = Object.keys(APP.CATALOGS.fields.producto.options);
   const malos = Object.entries(APP.EXCEL.productoProduct)
-    .filter(([, p]) => !reales.includes(p)).map(([k, p]) => `${k} → ${p}`);
-  igual(malos, [], 'productos inventados');
+    .filter(([, p]) => !reales.includes(p) && !PENDIENTES_EN_ASANA.includes(p))
+    .map(([k, p]) => `${k} → ${p}`);
+  igual(malos, [], 'productos que no existen en Asana');
+});
+
+prueba('un producto pendiente de crear en Asana va a Otros y se avisa', () => {
+  // AFR5G está en la tabla porque Comercialización ya lo usa, pero la
+  // opción no existe todavía en Asana. Escribirlo sin más no fallaría:
+  // Asana ignoraría el campo y la tarea saldría sin producto, en
+  // silencio. Esta prueba sujeta que eso no vuelva a pasar.
+  const reales = Object.keys(APP.CATALOGS.fields.producto.options);
+  for (const p of PENDIENTES_EN_ASANA) {
+    if (reales.includes(p)) continue;   // ya se creó: nada que comprobar
+    if (!Object.values(APP.EXCEL.productoProduct).includes(p)) {
+      throw new Error(`${p} está en la lista de pendientes y no lo usa nadie`);
+    }
+  }
 });
 
 prueba('todos los productos del Excel caen en una sección que existe', () => {
@@ -83,6 +106,39 @@ prueba('todos los productos del Excel caen en una sección que existe', () => {
     .map(p => APP.CATALOGS.productSectionMap[p])
     .filter(s => s && !secciones.includes(s));
   igual(malas, [], 'secciones inventadas');
+});
+
+prueba('una sección renombrada en Asana se sigue reconociendo', () => {
+  // Las secciones se emparejan POR NOMBRE con las de Asana. Si alguien
+  // la renombra allí y aquí no, deja de reconocerse y sus tareas se
+  // crean SIN SECCIÓN, sin que nada falle. Pasó de verdad con
+  // Conectividad: 8 campañas se quedaron sueltas.
+  const mismoNombre = (nuestra, deAsana) =>
+    nuestra.name === deAsana || (nuestra.otrosNombres || []).includes(deAsana);
+
+  const conectividad = APP.CATALOGS.sections.find(s => s.id === 'conectividad');
+  for (const nombre of ['⚙️ Conectividad: FTTR, BAF, LME, Prepago', '⚙️ Conectividad y equipamiento']) {
+    if (!mismoNombre(conectividad, nombre)) {
+      throw new Error(`"${nombre}" no se reconocería como la sección de Conectividad`);
+    }
+  }
+});
+
+prueba('ninguna sección se llama igual que otra', () => {
+  // Si dos compartieran nombre o alias, el emparejado por nombre daría
+  // la primera y las tareas de la otra irían a la sección equivocada.
+  const todos = [];
+  for (const s of APP.CATALOGS.sections) todos.push(s.name, ...(s.otrosNombres || []));
+  const repes = todos.filter((n, i) => todos.indexOf(n) !== i);
+  igual([...new Set(repes)], [], 'nombres de sección repetidos');
+});
+
+prueba('la copia local del catálogo no se queda corta', () => {
+  // Esta copia solo se usa cuando Asana no contesta. Estuvo meses con 17
+  // opciones cuando Asana tenía 26: un día sin conexión habría mandado a
+  // Otros productos que existen perfectamente.
+  const n = APP.CATALOGS.productOptions.length;
+  if (n < 26) throw new Error(`la copia tiene ${n} productos y Asana tenía 26 el 1-oct-2026`);
 });
 
 prueba('la tabla de productos de banners apunta a productos y secciones reales', () => {
@@ -238,6 +294,24 @@ prueba('dos celdas que dan la misma tarea se avisan', conBanners(() => {
   if (repes.length < 2) throw new Error(`esperaba al menos 2 avisos de repetida y hay ${repes.length}`);
 }));
 
+prueba('los festivos están puestos para el año que estamos', conBanners(() => {
+  // Esta lista caduca cada año. Si llega 2027 y nadie la ha tocado, las
+  // entregas de enero saldrán un día tarde y nadie sabrá por qué.
+  const anio = banners.meta.anio;
+  const deEsteAnio = APP.BANNERS.festivos.filter(f => f.startsWith(anio + '-'));
+  if (deEsteAnio.length < 10) {
+    throw new Error(`el fichero es de ${anio} y solo hay ${deEsteAnio.length} festivos de ese año en data.js`);
+  }
+}));
+
+prueba('los festivos de Madrid están, no solo los nacionales', conBanners(() => {
+  // Los dos locales de la ciudad y el Jueves Santo de la Comunidad son
+  // los que se olvidan, y los tres caen en día laborable.
+  const deMadrid = ['2026-04-02', '2026-05-15', '2026-11-09'];
+  const faltan = deMadrid.filter(f => !APP.BANNERS.festivos.includes(f));
+  igual(faltan, [], 'festivos de Madrid que faltan');
+}));
+
 prueba('todos los banners van al formato de banners', conBanners(() => {
   const otros = [...new Set(banners.tasks.map(t => t.format))].filter(f => f !== APP.BANNERS.formato);
   igual(otros, [], 'formatos que no tocan');
@@ -307,6 +381,14 @@ prueba('todos los correos salen de la lista, ninguno inventado', conExcel(() => 
   const raros = [...new Set(campanas.tasks.map(t => t.excel.peticionario).filter(Boolean))]
     .filter(c => !conocidos.includes(c));
   igual(raros, [], 'correos que no están en la lista');
+}));
+
+prueba('MIMOVISTAR ya no recibe nada', conExcel(() => {
+  // El equipo la retiró: todo lo que iba ahí va a Conectividad. Si algún
+  // producto vuelve a apuntar a convergente, esto lo canta.
+  const siguen = Object.entries(APP.CATALOGS.productSectionMap)
+    .filter(([, s]) => s === 'convergente').map(([p]) => p);
+  igual(siguen, [], 'productos que siguen apuntando a MIMOVISTAR');
 }));
 
 prueba('ninguna campaña cae en una sección que no existe', conExcel(() => {

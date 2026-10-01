@@ -48,6 +48,33 @@ lecturas estratégicas: fuera. Por buenos que sean.
 **El criterio no es de calidad.** No juzgas si algo está bien escrito ni si
 la estrategia es acertada. Solo a quién le habla.
 
+## El test se aplica a cada frase, no al documento
+
+Un documento puede ser **casi todo** conversación entre colegas —cuotas,
+mercado, prioridades— y aun así traer material de mensaje escondido entre
+medias. Eso es lo normal en los documentos de equipo de producto.
+
+No descartes un documento por lo que parece de lejos. **Entra y busca.**
+
+Octubre de 2026 lo enseñó: el documento de Dispositivos se descartó
+entero por estar lleno de cuotas de mercado, y dentro tenía esto:
+
+- "Swap sostiene el valor: familia Apple y premium Android para
+  incrementar el precio medio" → razón de peso para el cliente.
+- "Android Valor: equipos premium a través de Google IA, Xiaomi Redmi 17
+  y OPPO Reno 16" → qué productos empujar, con nombre.
+- "Construir expectativa sin anticipar las promociones más agresivas de
+  Black Friday" → un mandatorio de los que más valen.
+- "El nuevo iPhone abre la ventana de conversión" → un *por qué ahora*.
+
+Cuatro campañas se quedaron sin contexto por eso. Si un territorio se
+nombra con sus productos y con un argumento de por qué ahora, **hay
+brief**, aunque alrededor solo haya números de mercado.
+
+Lo que sigue fuera es el número por el número: "57% del mercado",
+"PRIORIDAD 60% smartphone", "-7,7% interanual". Un dato de mercado entra
+solo si viene convertido en argumento para el cliente.
+
 ## Qué es un brief
 
 Agrupa el material por **territorio**: el tema del que va. Fútbol

@@ -359,8 +359,16 @@ const API = {
       // secciones con identificadores nuevos. Emparejar por GID dejaba
       // todas las tareas apuntando a secciones inexistentes y la
       // revisión salía vacía.
+      // Las secciones de Asana se reconocen por el nombre: su
+      // identificador no sirve, porque el sandbox y producción tienen
+      // uno distinto para la misma sección. Si una se renombra en Asana
+      // y aquí no, deja de reconocerse y sus tareas se crean SIN
+      // SECCIÓN, sin que nada falle. Por eso cada sección puede declarar
+      // los otros nombres que ha tenido.
+      const mismoNombre = (nuestra, deAsana) =>
+        nuestra.name === deAsana || (nuestra.otrosNombres || []).includes(deAsana);
       CATALOGS.sections = c.sections.map(s => ({
-        id: CATALOGS.sections.find(x => x.name === s.name)?.id || s.gid,
+        id: CATALOGS.sections.find(x => mismoNombre(x, s.name))?.id || s.gid,
         gid: s.gid, name: s.name
       }));
       for (const [clave, nombre] of Object.entries(CATALOGS.fieldNames)) {
@@ -523,27 +531,66 @@ const API = {
      Esta es la idempotencia real: la clave de negocio es el PAC.
   ---------------------------------------------------------- */
   async comprobarDuplicados(tasks, onProgress) {
-    const pacs = [...new Set(tasks.map(t => t.pac).filter(Boolean))];
-    if (!pacs.length) return [];
+    // Una tarea se busca por su PAC si lo tiene; si no —los banners no
+    // lo tienen— por su nombre, que también es único. Buscar solo por
+    // PAC dejaba 42 de 111 tareas sin comprobar, justo las que más se
+    // repiten de un mes al siguiente.
+    const vistos = new Set();
+    const busquedas = [];
+    for (const t of tasks) {
+      const texto = t.pac || t.name;
+      if (!texto || vistos.has(texto)) continue;
+      vistos.add(texto);
+      busquedas.push({ id: t.id, pac: t.pac || '', texto });
+    }
+    if (!busquedas.length) return [];
+
     const encontrados = [];
     // Por lotes: un Worker no puede hacer más de 50 llamadas salientes
-    // por invocación, y cada PAC es una búsqueda.
+    // por invocación, y cada búsqueda es una.
     let mirados = 0;
-    for (const lote of enLotes(pacs, 40)) {
+    for (const lote of enLotes(busquedas, 40)) {
       try {
         const r = await fetch('/api/duplicados', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pacs: lote })
+          body: JSON.stringify({ busquedas: lote })
         });
         if (r.ok) encontrados.push(...((await r.json()).duplicados || []));
       } catch {
         /* sin backend no se puede comprobar: no se bloquea la carga */
       }
       mirados += lote.length;
-      onProgress?.({ hechas: mirados, total: pacs.length, cuenta: `${mirados} de ${pacs.length}` });
+      onProgress?.({ hechas: mirados, total: busquedas.length, cuenta: `${mirados} de ${busquedas.length}` });
     }
     return encontrados;
+  },
+
+  /* ----------------------------------------------------------
+     3bis · RENOMBRAR LO QUE YA ESTÁ
+     ----------------------------------------------------------
+     Si el Excel cambia el nombre de una campaña, la tarea de Asana
+     es la misma: se renombra, no se crea otra. Solo el nombre.
+  ---------------------------------------------------------- */
+  async renombrarEnAsana(tasks) {
+    const tareas = tasks
+      .filter(t => t.asanaGid && t.name && t.asanaName !== t.name)
+      .map(t => ({ id: t.id, gid: t.asanaGid, name: t.name }));
+    if (!tareas.length) return { renamed: [], failed: [] };
+    try {
+      const r = await fetch('/api/renombrar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tareas })
+      });
+      if (!r.ok) {
+        const { error } = await r.json().catch(() => ({}));
+        return { renamed: [], failed: tareas.map(t => ({ ...t, error: error || 'El Worker no respondió' })) };
+      }
+      return await r.json();
+    } catch (e) {
+      return { renamed: [], failed: tareas.map(t => ({ ...t, error: e.message })) };
+    }
   },
 
   /* ----------------------------------------------------------

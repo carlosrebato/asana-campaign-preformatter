@@ -26,11 +26,11 @@
 <div id="app"></div>
 
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="data.js?v=c085235c70"></script>
-<script src="excel.js?v=41864373b0"></script>
+<script src="data.js?v=9703a3f750"></script>
+<script src="excel.js?v=c3685e933f"></script>
 <script src="banners.js?v=c3f4afc339"></script>
 <script src="estrategia.js?v=e4035e3db2"></script>
-<script src="api.js?v=70f0475612"></script>
+<script src="api.js?v=cfd7db3722"></script>
 <script>
 /* ============================================================
    Campaign Loader · App
@@ -55,6 +55,9 @@ const S = {
   loadProgress: [0, 0],
   result: null,
   dupes: [],
+  dupesCuando: 0,          // cuándo se preguntó a Asana por última vez
+  comprobando: false,
+  renombradas: null,       // resultado del renombrado de la última carga
   filtro: 'todas',        // todas | revisar | sin | pendientes
   propuestaId: '',        // identificador del enlace compartido
   propuestaVer: 0,        // versión que tenemos de la propuesta
@@ -373,6 +376,12 @@ function viewRevision() {
   };
   const cambios = resumenCambios(S.tasks);
   const cambiosN = cambios.nuevas + cambios.cambiadas + cambios.idas;
+  // Cuántas se quedaron sin que el modelo llegara a mirarlas. Solo se
+  // dice en voz alta cuando fallaron TODAS, que es cuando significa algo
+  // —no hubo modelo en esta pasada— y hay que explicarlo. Si falla una
+  // suelta después de tres intentos, se marca en su fila y ya: un cartel
+  // arriba por una de setenta era complicarle la vida a quien revisa
+  // para contarle un caso que no entiende ni le toca arreglar.
   const fallosN = S.tasks.filter(t => t.sinRespuesta).length;
   const revisarN = S.tasks.filter(t => t.linkConfidence === 'low').length;
   // "Sin contexto" sirve para encontrar lo que se ha quedado a medias.
@@ -449,12 +458,6 @@ function viewRevision() {
         Las ${total} tareas salen del Excel enteras, pero <strong>sin contexto</strong>.
         Cuando se resuelva, vuelve a procesar el mismo Excel: solo se buscará
         el contexto que falta, no se repite nada de lo hecho.
-      </div>` : fallosN ? `
-      <div class="aviso-fallo">
-        <strong>${fallosN} campaña${fallosN > 1 ? 's' : ''} sin emparejar.</strong>
-        El modelo no llegó a responder sobre ${fallosN > 1 ? 'ellas' : 'ella'}: no es que no
-        tuvieran brief, es que no se comprobó. La tarea se crea igual, sin contexto.
-        <button class="btn-link-section" data-filtro="fallo">Verlas</button>
       </div>` : ''}
 
 
@@ -528,7 +531,6 @@ function compartenContexto(t) {
 // que se piensa: qué pide esta campaña, y qué mensaje le toca.
 function avisosDe(t) {
   const av = [];
-  if (t.sinRespuesta) av.push(`<strong>No se pudo emparejar</strong> · El modelo no llegó a responder sobre esta campaña, así que no sabemos si le tocaba algo. La tarea se crea igual.`);
   if (t.cambio === 'cambiada' && t.cambios?.length) av.push(`<strong>Ha cambiado</strong> · ${esc(t.cambios.join(', '))}. Vuelve a aprobarla si te cuadra.`);
   if (t.linkConfidence === 'low' && t.linkNote) av.push(`<strong>Revisar el mensaje</strong> · ${esc(t.linkNote)}`);
   const asana = t.asanaUrl
@@ -575,7 +577,7 @@ function rowHTML(t) {
            draggable="true" data-drag="${t.id}">
     <button class="row-body" data-toggle="${t.id}" title="Abrir">
       <span class="chev">${ICONS.chev}</span>
-      <span class="row-name">${bolaHTML(t)}<span class="row-nombre">${esc(t.name) || '<em>Sin nombre</em>'}</span>${marcaCambio(t)}${t.sinRespuesta ? '<span class="marca fallo" title="El modelo no llegó a responder sobre esta campaña. La tarea se crea igual, pero sin contexto.">No se pudo emparejar</span>' : ''}${t.asanaUrl ? '<span class="marca asana">En Asana</span>' : ''}</span>
+      <span class="row-name">${bolaHTML(t)}<span class="row-nombre">${esc(t.name) || '<em>Sin nombre</em>'}</span>${marcaCambio(t)}${t.sinRespuesta ? '<span class="marca fallo" title="Falló la llamada al buscar su contexto. Vuelve a procesar el Excel y se mira otra vez.">Sin mirar</span>' : ''}${t.asanaUrl ? '<span class="marca asana">En Asana</span>' : ''}</span>
       <span class="row-val">${esc(t.product)}</span>
       <span class="row-val">${esc(t.format)}</span>
       <span class="row-val">${fechaCorta(t.dueDate)}</span>
@@ -741,11 +743,29 @@ function cardHTML(t) {
 function viewConfirmar() {
   const app = S.tasks.filter(t => t.approved);
   const pend = S.tasks.length - app.length;
+  // Lo que ya está en Asana no se vuelve a crear. Antes se mandaba todo
+  // lo aprobado, mirase o no si existía: abrir el enlace después de una
+  // carga y volver a pulsar duplicaba el mes entero.
+  // Tres grupos: las que ya están y no se tocan, las que ya están pero
+  // el Excel les ha cambiado el nombre, y las que no están.
+  const renombran = app.filter(t => t.asanaGid && t.asanaName && t.asanaName !== t.name);
+  const yaEstan   = app.filter(t => t.asanaUrl && !renombran.includes(t));
+  const faltan    = app.filter(t => !t.asanaUrl);
 
   const porSec = D.seccionesOrdenadas.map(s => ({
     name: s.name,
-    n: app.filter(t => t.sectionId === s.id).length
+    n: faltan.filter(t => t.sectionId === s.id).length
   })).filter(x => x.n);
+
+  if (S.comprobando) {
+    return `
+    <main class="main-narrow">
+      <h1 class="page">Mirando qué hay ya en Asana…</h1>
+      <p style="font-size:14px;color:#605E5C;margin-top:8px">
+        Para no crear dos veces lo que ya se creó.
+      </p>
+    </main>`;
+  }
 
   if (S.loading) {
     const [i, tot] = S.loadProgress;
@@ -762,14 +782,35 @@ function viewConfirmar() {
   return `
   <main class="main-narrow">
     <button class="btn-ghost" id="btn-back" style="margin:0 0 18px -12px">← Volver a la revisión</button>
-    <h1 class="page">Vas a crear ${app.length} tareas en Asana</h1>
+    <h1 class="page">${faltan.length
+      ? `Vas a crear ${faltan.length} tarea${faltan.length > 1 ? 's' : ''} en Asana`
+      : renombran.length
+        ? `Vas a renombrar ${renombran.length} tarea${renombran.length > 1 ? 's' : ''} en Asana`
+        : 'No hay nada que crear'}</h1>
     <p style="font-size:14px;color:#605E5C;margin:8px 0 24px">
       Proyecto de destino: <strong style="color:#262423">${esc(D.asanaProject?.name || '')}</strong>
     </p>
 
-    <div class="panel" style="margin-bottom:16px">
+    ${yaEstan.length || renombran.length ? `
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-row">
+          <span><strong>${yaEstan.length}</strong> ya están en Asana</span>
+          <span style="color:#605E5C">no se tocan</span>
+        </div>
+        ${renombran.length ? `
+        <div class="panel-row">
+          <span><strong>${renombran.length}</strong> cambiaron de nombre</span>
+          <span style="color:#605E5C">se renombran</span>
+        </div>` : ''}
+        <div class="panel-row">
+          <span><strong>${faltan.length}</strong> falta${faltan.length === 1 ? '' : 'n'}</span>
+          <span style="color:#605E5C">${faltan.length ? 'se crean ahora' : '—'}</span>
+        </div>
+      </div>` : ''}
+
+    ${faltan.length ? `<div class="panel" style="margin-bottom:16px">` : '<div style="display:none">'}
       ${porSec.map(x => `
-        <div class="panel-row"><span>${esc(x.name)}</span><strong>${x.n} tareas</strong></div>
+        <div class="panel-row"><span>${esc(x.name)}</span><strong>${x.n} tarea${x.n > 1 ? 's' : ''}</strong></div>
       `).join('')}
       <div class="panel-row" style="border-top:1px solid #DFDBD6">
         <span style="font-weight:700">Estado inicial</span>
@@ -781,7 +822,15 @@ function viewConfirmar() {
       <span><strong>${pend} tarea${pend > 1 ? 's' : ''} sin aprobar</strong> no se cargará${pend > 1 ? 'n' : ''}.
       Puedes volver atrás para aprobarlas o cargarlas en otro momento.</span></div>` : ''}
 
-    <button class="btn-primary" id="btn-cargar">Crear ${app.length} tareas en Asana ${ICONS.arrow}</button>
+    <button class="btn-primary" id="btn-cargar" ${faltan.length || renombran.length ? '' : 'disabled'}>
+      ${faltan.length && renombran.length
+        ? `Crear ${faltan.length} y renombrar ${renombran.length} ${ICONS.arrow}`
+        : faltan.length
+          ? `Crear ${faltan.length} tarea${faltan.length > 1 ? 's' : ''} en Asana ${ICONS.arrow}`
+          : renombran.length
+            ? `Renombrar ${renombran.length} tarea${renombran.length > 1 ? 's' : ''} ${ICONS.arrow}`
+            : 'Todo lo aprobado ya está en Asana'}
+    </button>
   </main>`;
 }
 
@@ -822,20 +871,40 @@ function motivoClaro(txt) {
 
 function viewResultado() {
   const r = S.result;
+  // Una pasada puede crear, renombrar, o las dos cosas. El titular dice
+  // lo que de verdad ha pasado: si solo se renombró, "0 tareas creadas"
+  // era falso de toda falsedad.
+  const ren = S.renombradas?.renamed?.length || 0;
+  const titular = [
+    r.created.length ? `${r.created.length} tarea${r.created.length > 1 ? 's' : ''} creada${r.created.length > 1 ? 's' : ''}` : '',
+    ren ? `${ren} renombrada${ren > 1 ? 's' : ''}` : ''
+  ].filter(Boolean).join(' y ') || 'Nada que hacer';
+
   return `
   <main class="main-narrow">
     <div style="display:flex;align-items:center;gap:11px;margin-bottom:6px">
       <span style="width:34px;height:34px;border-radius:50%;background:#CEF7BF;display:flex;align-items:center;justify-content:center">${ICONS.ok}</span>
-      <h1 class="page">${r.created.length} tareas creadas</h1>
+      <h1 class="page">${titular}</h1>
     </div>
     <p style="font-size:14px;color:#605E5C;margin:0 0 24px">En <strong style="color:#262423">${esc(D.asanaProject?.name || '')}</strong></p>
 
-    <div class="panel" style="margin-bottom:16px">
+    ${r.created.length ? `<div class="panel" style="margin-bottom:16px">
       ${r.created.map(c => `
         <div class="result-item">${ICONS.ok}<span>${esc(c.name)}</span>
           <a href="${esc(c.url)}" target="_blank">Ver en Asana ↗</a></div>
       `).join('')}
-    </div>
+    </div>` : ''}
+
+    ${ren ? `<div class="panel" style="margin-bottom:16px">
+      ${S.renombradas.renamed.map(x => `
+        <div class="result-item">${ICONS.ok}<span>Renombrada: ${esc(x.name)}</span></div>
+      `).join('')}
+    </div>` : ''}
+
+    ${S.renombradas?.failed?.length ? `
+      <div class="warn" style="margin-bottom:12px">${ICONS.warn}
+        <span><strong>${S.renombradas.failed.length} no se pudo renombrar.</strong>
+        Siguen en Asana con el nombre anterior.</span></div>` : ''}
 
     ${r.failed.length ? `
       <div class="warn" style="margin-bottom:12px">${ICONS.warn}
@@ -953,6 +1022,8 @@ async function procesar() {
       Object.assign(S.proc, info, { paso: 4 });
       render();
     });
+    anotarLoQueYaEsta(S.dupes);
+    S.dupesCuando = Date.now();
     // El enlace se conserva si ya existía: es el que ha circulado.
     const doc = S.propuestaId
       ? await API.guardarPropuesta(S.propuestaId, ficherosDeLaPropuesta(), S.tasks, leido.briefs, leido.entradas)
@@ -987,11 +1058,31 @@ function mismosDocumentos(antes, ahora) {
 
 async function cargar() {
   S.loading = true; render();
-  const app = S.tasks.filter(t => t.approved);
+  // Solo lo aprobado que NO esté ya en Asana. Antes iba todo lo
+  // aprobado: pulsar dos veces, o abrir el enlace y pulsar, creaba otra
+  // vez lo que ya existía.
+  // Primero los renombrados: son tareas que ya existen y solo hay que
+  // corregirles el nombre. Si se hiciera después, la pantalla de
+  // resultado ya estaría pintada y no se vería.
+  const renombrar = S.tasks.filter(t => t.approved && t.asanaGid && t.asanaName && t.asanaName !== t.name);
+  if (renombrar.length) {
+    const r = await API.renombrarEnAsana(renombrar);
+    for (const hecha of r.renamed || []) {
+      const t = S.tasks.find(x => x.id === hecha.id);
+      if (t) { t.asanaName = hecha.name; guardar(t.id, { asanaName: hecha.name }); }
+    }
+    S.renombradas = r;
+  }
+
+  const app = S.tasks.filter(t => t.approved && !t.asanaUrl);
+  if (!app.length && !renombrar.length) { S.loading = false; render(); return; }
+  if (!app.length) { S.loading = false; S.screen = 'resultado'; S.result = { created: [], failed: [] }; render(); return; }
   S.result = await API.cargarEnAsana(app, {
     onCreada: creadas => creadas.forEach(c => {
       const t = S.tasks.find(x => x.id === c.id);
-      if (t) { t.asanaUrl = c.url; guardar(t.id, { asanaUrl: c.url }); }
+      if (!t) return;
+      Object.assign(t, { asanaUrl: c.url, asanaGid: c.gid, asanaName: c.name });
+      guardar(t.id, { asanaUrl: c.url, asanaGid: c.gid, asanaName: c.name });
     }),
     onProgress: (i, tot) => { S.loadProgress = [i, tot]; render(); }
   });
@@ -1057,9 +1148,14 @@ function fusionarConPropuesta(previas, nuevas) {
     const fusion = { ...n, ...contexto };
 
     const cambios = compararTarea(p, fusion);
-    // Lo que ya está en Asana no se reescribe: se arrastra su enlace y
-    // se avisa si el Excel dice ahora otra cosa.
-    const enAsana = p.asanaUrl ? { asanaUrl: p.asanaUrl } : {};
+    // Lo que ya está en Asana se arrastra entero: el enlace, el
+    // identificador y el nombre con el que quedó. Arrastrar solo el
+    // enlace dejaba la tarea reconocida pero intocable: sin el
+    // identificador no se puede renombrar, y sin el nombre no se sabe
+    // siquiera que el Excel lo ha cambiado.
+    const enAsana = p.asanaUrl
+      ? { asanaUrl: p.asanaUrl, asanaGid: p.asanaGid, asanaName: p.asanaName }
+      : {};
     if (!cambios.length) {
       return { ...fusion, ...enAsana, approved: p.approved, cambio: 'igual' };
     }
@@ -1077,6 +1173,57 @@ function fusionarConPropuesta(previas, nuevas) {
 function resumenCambios(tareas) {
   const cuenta = t => tareas.filter(x => x.cambio === t).length;
   return { nuevas: cuenta('nueva'), cambiadas: cuenta('cambiada'), idas: cuenta('desaparecida') };
+}
+
+/* ---------------- QUÉ HAY YA EN ASANA ----------------
+   Un registro de lo que pasó la vez anterior puede mentir: si Asana
+   crea la tarea y se pierde la respuesta, nosotros apuntamos "falló" y
+   al reintentar duplicamos. La única fuente fiable es Asana.
+
+   La búsqueda ya se hacía —es el paso de duplicados— pero su resultado
+   se tiraba. Ahora marca las tareas que ya existen, y esas no se vuelven
+   a crear. Da igual si las creamos nosotros o alguien a mano: si están,
+   están.
+---------------------------------------------------------- */
+function anotarLoQueYaEsta(encontrados) {
+  for (const d of encontrados || []) {
+    // Una búsqueda vale para todas las tareas que se llaman igual, y
+    // Asana puede devolver varias con ese nombre. Se reparten una a una:
+    // si hay dos tareas repetidas y en Asana ya existen las dos, se
+    // marcan las dos. Si solo existe una, la otra sigue pendiente y se
+    // creará, que es lo correcto.
+    const mismas = S.tasks.filter(t => (t.pac || t.name) === d.texto && !t.asanaUrl);
+    const libres = (d.encontradas || []).slice();
+    for (const t of mismas) {
+      const sitio = libres.shift();
+      if (!sitio) break;
+      // El gid permite renombrarla después; el nombre, saber si el Excel
+      // lo ha cambiado desde entonces.
+      Object.assign(t, { asanaUrl: sitio.url, asanaGid: sitio.gid, asanaName: sitio.name });
+      guardar(t.id, { asanaUrl: sitio.url, asanaGid: sitio.gid, asanaName: sitio.name });
+    }
+  }
+}
+
+// Antes de escribir se vuelve a preguntar, salvo que se acabe de
+// preguntar. Quien llega por el enlace compartido no ha pasado por el
+// paso 2, y es justo quien más riesgo tiene de duplicar.
+const FRESCURA = 5 * 60 * 1000;
+async function refrescarLoQueYaEsta() {
+  if (S.dupesCuando && Date.now() - S.dupesCuando < FRESCURA) return;
+  const candidatas = S.tasks.filter(t => t.approved && !t.asanaUrl);
+  if (!candidatas.length) { S.dupesCuando = Date.now(); return; }
+  S.comprobando = true; render();
+  try {
+    anotarLoQueYaEsta(await API.comprobarDuplicados(candidatas));
+    S.dupesCuando = Date.now();
+  } catch (e) {
+    // No poder comprobar no bloquea: se avisa en la propia pantalla.
+    console.error(e);
+    S.dupesCuando = 0;
+  } finally {
+    S.comprobando = false; render();
+  }
 }
 
 /* ---------------- PROPUESTA COMPARTIDA ---------------- */
@@ -1256,7 +1403,10 @@ document.addEventListener('click', async e => {
     abrirSelector(key);
   }
   else if (el.id === 'btn-procesar') procesar();
-  else if (el.id === 'btn-confirmar') { S.screen = 'confirmar'; render(); }
+  else if (el.id === 'btn-confirmar') {
+    S.screen = 'confirmar'; render();
+    await refrescarLoQueYaEsta();
+  }
   else if (el.id === 'btn-back') { S.screen = 'revision'; render(); }
   else if (el.id === 'btn-cargar') { el.disabled = true; cargar(); }
   else if (el.id === 'btn-retry') {

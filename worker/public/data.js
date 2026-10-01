@@ -48,7 +48,18 @@ const CATALOGS = {
   sections: [
     { id: 'entradas',     gid: '1204962417752693', name: '➡️ENTRADAS' },
     { id: 'priorizadas',  gid: '1209498548935703', name: '🔴 Campañas priorizadas y Creatividades' },
-    { id: 'conectividad', gid: '1204996811344449', name: '⚙️ Conectividad: FTTR, BAF, LME, Prepago' },
+    // `otrosNombres` es la lista de nombres que esta sección ha tenido o
+    // va a tener. Las secciones se emparejan POR NOMBRE con las que
+    // devuelve Asana —los identificadores no sirven, porque el sandbox y
+    // producción tienen los suyos— así que un nombre que no case deja la
+    // sección sin reconocer y las tareas se crean sin sección, en
+    // silencio. Pasó: al poner aquí el nombre nuevo antes de renombrarla
+    // en Asana, ocho campañas de Conectividad se quedaron sueltas.
+    //
+    // Con los dos nombres, da igual el orden en que se hagan las cosas.
+    { id: 'conectividad', gid: '1204996811344449',
+      name: '⚙️ Conectividad: FTTR, BAF, LME, Prepago',
+      otrosNombres: ['⚙️ Conectividad y equipamiento', 'Conectividad y equipamiento'] },
     { id: 'convergente',  gid: '1205311722361417', name: '📺📡📱 MIMOVISTAR (Convergente)' },
     { id: 'plus',         gid: '1204915090620356', name: '📺 Movistar Plus+' },
     { id: 'ficcion',      gid: '1204925632923532', name: '🎬 Ficción' },
@@ -77,17 +88,27 @@ const CATALOGS = {
   },
 
   fields: {
+    // Las 26 opciones tal y como están en Asana (1-oct-2026). Esta copia
+    // solo se usa cuando Asana no contesta; el catálogo bueno se lee del
+    // proyecto. Llevaba meses con 17 y faltaban nueve, así que un mes sin
+    // conexión habría mandado a Otros productos que sí existen.
     producto: {
       gid: '1204870126999103', tipo: 'multi_enum',
       options: {
         'MiMovistar': '1204870126999104', 'Fibra Adicional': '1204870126999145',
         'Segunda Fibra ON': '1207075465845739', 'FTTR': '1209013973166418',
-        'Dispositivos': '1204870126999105', 'Movistar Plus+': '1204870126999107',
+        'Dispositivos': '1204870126999105',
+        'Servicios Añadidos (Cloud, Conex. Segura,..)': '1204870126999106',
+        'Movistar Plus+': '1204870126999107',
         'M+ Deporte': '1204870126999108', 'M+ Futbol': '1204870126999109',
         'M+ Ficción': '1204870126999110', 'M+ Originales': '1204870126999111',
         'Prepago': '1204870126999112', 'Líneas Móviles Extra': '1204870126999113',
         'Solar360': '1204870126999114', 'Movistar Prosegur Alarmas': '1204870126999115',
-        'Gaming': '1204870126999118', 'Conexión Segura': '1204878941839146',
+        'Ms. Salud': '1204870126999116', 'Ms. Car': '1204870126999117',
+        'Gaming': '1204870126999118', 'Seguro Hogar': '1204870126999119',
+        'Ms Money': '1204870126999120', 'Ms. Nextory': '1204870126999129',
+        '5G/5G+': '1204878941839145', 'Conexión Segura': '1204878941839146',
+        'Ms Cloud': '1204878941839147', 'ISR': '1207037193025204',
         'Otros': '1204878941839148'
       }
     },
@@ -189,8 +210,12 @@ const CATALOGS = {
   },
 
   // Producto → Sección. Determinista. Punto único de configuración.
+  // MiMovistar y Conexión Segura apuntaban a la sección MIMOVISTAR
+  // (Convergente). El equipo la retiró el 1-oct-2026 y Carlos decidió
+  // que todo lo que iba ahí pasa a Conectividad. La sección sigue
+  // existiendo en Asana, pero ya no le llega nada desde aquí.
   productSectionMap: {
-    'MiMovistar': 'convergente', 'Conexión Segura': 'convergente',
+    'MiMovistar': 'conectividad', 'Conexión Segura': 'conectividad',
     'Fibra Adicional': 'conectividad', 'Segunda Fibra ON': 'conectividad',
     'FTTR': 'conectividad', 'Prepago': 'conectividad',
     'Líneas Móviles Extra': 'conectividad',
@@ -374,9 +399,14 @@ const EXCEL = {
     'FTTR':                       'FTTR',
     'Alta BAF':                   'Fibra Adicional',
     'Prepago':                    'Prepago',
-    // AFR5G es acceso fijo por radio. No existe como producto en Asana:
-    // va a Otros hasta que se cree la opción. Su sección sí es correcta.
-    'AFR5G':                      'Otros',
+    // AFR5G es acceso fijo por radio, y es su propio producto: no es
+    // "5G/5G+", que es móvil. Carlos pidió añadirlo el 1-oct-2026.
+    //
+    // Se pone ya aunque la opción todavía no exista en Asana: el lector
+    // comprueba contra el catálogo de verdad y, mientras no esté, manda
+    // la campaña a Otros y lo dice. El día que alguien cree la opción
+    // en Asana, esto empieza a funcionar sin tocar una línea.
+    'AFR5G':                      'AFR5G',
     'Migración Tecnológica':      'Otros',
 
     // miMovistar
@@ -457,8 +487,18 @@ const EXCEL = {
 
   // "Info" es cajón de sastre: producto y sección se reconocen por el
   // nombre. Primer patrón que casa, gana.
+  // Se mira SIEMPRE, no solo cuando el producto es "Info". El Excel
+  // trae a veces un producto que no es el de la campaña: "Encendido red
+  // 5G" viene como R2R —que es renovación de dispositivos— y acababa en
+  // Dispositivos hablando de encender la red. Carlos lo confirmó el
+  // 1-oct-2026: no es dispositivos.
+  //
+  // Esto es una puerta de atrás, y las puertas de atrás se usan poco y
+  // con patrones estrechos: el primero que casa gana y se come lo que
+  // diga la tabla de productos.
   productoPorNombre: [
-    { pattern: /RED_SEGURA|RED SEGURA/i,      product: 'Conexión Segura', section: 'convergente' },
+    { pattern: /RED_SEGURA|RED SEGURA/i,      product: 'Conexión Segura', section: 'conectividad' },
+    { pattern: /ENCENDIDO\s+RED\s*5G/i,       product: '5G/5G+',          section: 'conectividad' },
     { pattern: /SORTEO|CAMISETA|MUNDIAL/i,    product: 'M+ Futbol',       section: 'futbol' },
     { pattern: /APP_MIMOVISTAR.*CONTENIDOS/i, product: 'Movistar Plus+',  section: 'plus' }
   ],
@@ -550,16 +590,31 @@ const BANNERS = {
   // Días laborables de antelación con los que se entrega al Plus.
   entregaLaborables: 3,
 
-  // Festivos nacionales de España 2026. Un "día laborable" no es un día
-  // entre semana: si cae festivo, la entrega se adelanta.
+  // Festivos de 2026 en Madrid capital, que es donde se entrega. Un
+  // "día laborable" no es un día entre semana: si cae festivo, la
+  // entrega se adelanta.
   //
-  // OJO, esto está incompleto a propósito: son los NACIONALES. Los
-  // autonómicos y locales de Madrid no están porque nadie los ha
-  // confirmado todavía. En octubre de 2026 no hay ninguno, así que el
-  // mes sale bien; para otros meses hay que cerrarlo con Bárbara.
+  // Son los catorce: los nacionales, los dos de la Comunidad (Decreto
+  // 75/2025, BOCM de 25-sep-2025) y los dos locales de la ciudad de
+  // Madrid. Dos van trasladados porque caían en domingo.
+  //
+  // Esto caduca cada año. En diciembre hay que poner los de 2027, y si
+  // no se ponen, las entregas de enero saldrán un día tarde.
   festivos: [
-    '2026-01-01', '2026-01-06', '2026-04-03', '2026-05-01',
-    '2026-08-15', '2026-10-12', '2026-12-08', '2026-12-25'
+    '2026-01-01',   // Año Nuevo
+    '2026-01-06',   // Reyes
+    '2026-04-02',   // Jueves Santo · Comunidad de Madrid
+    '2026-04-03',   // Viernes Santo
+    '2026-05-01',   // Fiesta del Trabajo
+    '2026-05-02',   // Día de la Comunidad de Madrid (cae sábado)
+    '2026-05-15',   // San Isidro · ciudad de Madrid
+    '2026-08-15',   // Asunción (cae sábado)
+    '2026-10-12',   // Fiesta Nacional
+    '2026-11-02',   // Todos los Santos, trasladado del domingo 1
+    '2026-11-09',   // La Almudena · ciudad de Madrid
+    '2026-12-07',   // Constitución, trasladado del domingo 6
+    '2026-12-08',   // Inmaculada
+    '2026-12-25'    // Navidad
   ],
 
   // Todos los banners son banners.
