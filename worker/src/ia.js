@@ -31,6 +31,13 @@ import PROMPT_UNIFICAR from './prompts/unificar.md';
 import PROMPT_INDICE from './prompts/indice.md';
 import PROMPT_VINCULACION from './prompts/vinculacion.md';
 import PROMPT_PRODUCTO from './prompts/producto.md';
+import GLOSARIO from './prompts/glosario.md';
+
+// El vocabulario de la casa va detrás del prompt, no dentro: el prompt
+// dice cómo trabajar y el glosario qué significan las palabras. Separados
+// se mantienen por caminos distintos —uno lo toca quien afina el modelo,
+// el otro quien conoce el negocio— y el segundo crece solo.
+const con = prompt => `${prompt}\n\n---\n\n${GLOSARIO}`;
 
 const API = 'https://api.anthropic.com/v1/messages';
 const MODELO = 'claude-sonnet-5';
@@ -101,7 +108,7 @@ function comoArray(texto) {
 export async function leerDocumento(env, { nombre, texto }) {
   if (!texto || texto.length < 200) return { briefs: [], uso: null };
   const contenido = `DOCUMENTO: ${nombre}\n\n${texto.slice(0, 180000)}`;
-  const { texto: salida, uso } = await preguntar(env, PROMPT_LECTURA, contenido, 16000, true);
+  const { texto: salida, uso } = await preguntar(env, con(PROMPT_LECTURA), contenido, 16000, true);
   const briefs = comoArray(salida).map(b => ({
     titulo: b.titulo || '',
     // Los apartados del brief, tal y como los escribió Comercialización.
@@ -187,7 +194,7 @@ export async function unificar(env, { briefs }) {
 export async function indexar(env, { briefs }) {
   if (!briefs?.length) return { entradas: [], uso: null };
   const contenido = 'BRIEFS DEL MES:\n\n' + conLineas(briefs);
-  const { texto, uso } = await preguntar(env, PROMPT_INDICE, contenido, 16000);
+  const { texto, uso } = await preguntar(env, con(PROMPT_INDICE), contenido, 16000);
   const titulos = new Map(briefs.map(b => [b.titulo.trim().toLowerCase(), b]));
   const entradas = comoArray(texto).map(e => {
     const b = titulos.get(String(e.brief || '').trim().toLowerCase());
@@ -274,7 +281,7 @@ export async function vincular(env, { campanas, entradas }) {
   ];
   // La respuesta es una entrada por campaña, y ahora va de una en una:
   // con 2.000 sobra y se corta antes cualquier divagación.
-  const { texto, uso } = await preguntar(env, PROMPT_VINCULACION, contenido,
+  const { texto, uso } = await preguntar(env, con(PROMPT_VINCULACION), contenido,
     Math.min(16000, 600 + campanas.length * 200));
   // La entrada viaja como "E7": aquí se traduce a su posición, que es lo
   // que el cliente necesita para recuperar el texto de sus líneas.
