@@ -486,6 +486,50 @@ const API = {
      y metadatos del documento. Sirve para dar feedback inmediato
      al soltar el archivo, ANTES de gastar una llamada al LLM.
   ---------------------------------------------------------- */
+  /* ----------------------------------------------------------
+     ¿QUÉ EXCEL ES ESTE?
+     ----------------------------------------------------------
+     El mes llega en dos Excel y pedirle a nadie que acierte con
+     la caja es pedir un error. Se miran por dentro y se decide.
+
+     No se mira el nombre del fichero: cada mes se llama de una
+     manera y alguien acabaría renombrándolo mal.
+
+     · El de campañas tiene una hoja con las cabeceras de siempre
+       (NOMBRE DESCRIPTIVO, PALANCA, PRODUCTO…).
+     · El de banners tiene una parrilla con las semanas en la
+       cabecera: S40, S41, S42…
+
+     Si no es ninguno de los dos, se dice y no se carga: cargarlo
+     por el camino equivocado da cien avisos que no significan
+     nada y esconde el único que importa.
+  ---------------------------------------------------------- */
+  queExcelEs(buf) {
+    let wb;
+    try { wb = XLSX.read(buf, { type: 'array', sheetRows: 8 }); }
+    catch { return ''; }
+
+    const normalizar = v => String(v == null ? '' : v)
+      .replace(/\s+/g, ' ').trim().toLowerCase();
+
+    for (const nombre of wb.SheetNames) {
+      const ws = wb.Sheets[nombre];
+      if (!ws || !ws['!ref']) continue;
+      const filas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+
+      // Campañas: las cabeceras que el lector necesita, en la fila 1.
+      const cabecera = (filas[0] || []).map(normalizar);
+      const imprescindibles = ['nombre', 'palanca', 'producto']
+        .map(k => normalizar(EXCEL.columns[k]));
+      if (imprescindibles.every(h => h && cabecera.includes(h))) return 'excel';
+
+      // Banners: la cabecera de semanas de la parrilla.
+      const semanas = filas.flat().filter(v => BANNERS.semanaPatron.test(String(v || '').trim()));
+      if (semanas.length >= 2) return 'banners';
+    }
+    return '';
+  },
+
   async inspeccionarFichero(file, tipo) {
     // Excel real: se lee entero en el navegador (excel.js, determinista).
     // El resultado viaja con el fichero y lo usa interpretarDocumentos.
