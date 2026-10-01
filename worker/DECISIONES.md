@@ -464,34 +464,40 @@ Cuando dos celdas dan la misma tarea —en octubre pasa dos veces, porque
 la hoja tiene bloques repetidos— salen las dos y se avisa. Decidir cuál
 sobra es de Comercialización, no del lector.
 
-## El peticionario es un correo, no un nombre
+## El peticionario es un correo, y los correos se miran, no se deducen
 
-El Excel trae `INES MOLINERO MARTIN`, en mayúsculas. Durante meses eso
-es lo que se escribía en el campo Peticionario de Asana. Pero las tareas
-que ya existen en el proyecto de producción no guardan un nombre:
-guardan `ines.molineromartin@telefonica.com`.
+El Excel trae `INES MOLINERO MARTIN`, en mayúsculas. Las tareas que ya
+existen en el Asana de producción no guardan un nombre: guardan
+`ines.molineromartin@telefonica.com`.
 
-La regla —nombre(s) pegados, punto, apellidos pegados, sin acentos ni
-eñes, `@telefonica.com`— **no se ha deducido, se ha comprobado**
-leyendo producción. De las siete personas que firman las campañas de
-octubre, cinco tienen tareas anteriores con el campo relleno, y el
-correo calculado coincide con el real en las cinco. Las otras dos no
-tienen con qué comparar.
+Hubo una versión de esto que montaba el correo a partir del nombre
+—nombres pegados, punto, apellidos pegados, sin acentos— contando dos
+apellidos desde el final y pegando las partículas al apellido que
+acompañan, para que `MARTA MARIN DE LAS HERAS` diera
+`marta.marindelasheras`. Acertaba nueve de cada diez.
 
-Lo único que tiene miga es saber dónde acaba el nombre y empiezan los
-apellidos, porque hay nombres compuestos y apellidos con partículas. Se
-cuentan dos apellidos desde el final, y las partículas van pegadas al
-apellido que acompañan: en `MARTA MARIN DE LAS HERAS`, `DE LAS HERAS`
-es un apellido, no tres, y sale `marta.marindelasheras`.
+La décima era María Carla Sanz Esteban, que firma `carla.sanzesteban` y
+no `mariacarla.sanzesteban`. No es una convención de Telefónica que se
+nos escapara: es cómo se llama ella, y no hay regla que saque eso.
 
-No hace falta ningún diccionario de correos, que era lo que parecía al
-principio. Pero la regla puede fallar —alguien con un solo apellido, o
-dos personas a las que Telefónica tuvo que desempatar con un número— así
-que el correo se enseña en la revisión, donde alguien lo puede ver, y un
-nombre que no tenga nombre y dos apellidos sale con aviso.
+Una de cada diez equivocada son tareas que le llegan a quien no es. Así
+que la regla se borró entera y en su sitio hay una lista, en
+`data.js → correosConocidos`, con los correos que Carlos comprobó en el
+directorio el 1-oct-2026. Es la misma decisión que con los productos:
+**se cierra en origen, no se adivina.**
 
-Si no se puede calcular, se escribe el nombre tal cual. Es peor, pero es
-un dato; dejar el campo vacío no ayuda a nadie.
+Quien no esté en la lista sale **sin peticionario** y con un aviso que
+dice su nombre. Dos cosas que se descartaron a propósito:
+
+- Escribir el nombre en el campo. Dejaría un campo de correos lleno de
+  cosas que no son correos, y al mirar la tarea nadie sabría si eso es
+  un dato o un resto.
+- Calcularlo igualmente y marcarlo como dudoso. Nadie mira los avisos de
+  una tarea que ya tiene el campo relleno.
+
+Octubre lo estrenó: **Arancha Ortiz Torres** firma `PAC37421` y no está
+en la lista. Su tarea sale sin peticionario y el lector la nombra al
+subir el fichero. Cuando se confirme su correo, se añade una línea.
 
 ## El Worker es la única parte que necesita servidor
 

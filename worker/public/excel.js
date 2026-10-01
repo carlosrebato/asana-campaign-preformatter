@@ -49,50 +49,38 @@ const EXCEL_PARSER = (() => {
   const pad = n => String(n).padStart(2, '0');
 
   /* ----------------------------------------------------------
-     NOMBRE DEL RESPONSABLE → CORREO CORPORATIVO
+     NOMBRE DEL RESPONSABLE → CORREO DEL PETICIONARIO
      ----------------------------------------------------------
      El Excel dice "INES MOLINERO MARTIN"; Asana guarda
-     "ines.molineromartin@telefonica.com". La regla y las pruebas
-     están en data.js → "El peticionario es un correo, no un nombre".
+     "ines.molineromartin@telefonica.com". La lista de quién es
+     quién está en data.js → correosConocidos, y la dio Carlos
+     mirando el directorio.
 
-     Devuelve { correo, aviso }. Nunca inventa: si el nombre no
-     tiene la forma de siempre, devuelve el correo igual pero
-     diciendo que hay que mirarlo.
+     Aquí NO se deduce nada. Hubo una regla que montaba el correo
+     a partir del nombre y acertaba nueve de cada diez: la décima
+     era María Carla Sanz Esteban, que firma `carla.sanzesteban` y
+     no `mariacarla.sanzesteban`. Una de cada diez equivocada son
+     tareas que le llegan a quien no es, y eso es peor que no
+     poner nada. Lo mismo que con los productos: se cierra en
+     origen, no se adivina.
+
+     Si alguien no está en la lista, el campo se queda vacío y se
+     dice en voz alta, con su nombre, para que se añada.
   ---------------------------------------------------------- */
-  const sinTildes = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const sinTildes = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
                           .replace(/ñ/g, 'n').replace(/Ñ/g, 'N');
 
   function correoDe(nombre) {
-    const partes = clean(nombre).toLowerCase().split(/\s+/).filter(Boolean);
-    if (!partes.length) return { correo: '', aviso: '' };
-
-    const particula = p => CATALOGS.correoParticulas.includes(sinTildes(p));
-
-    // Los apellidos se cuentan desde el final. Un apellido es una
-    // palabra más las partículas que la preceden: en "MARIN DE LAS
-    // HERAS", "DE LAS HERAS" es UN apellido, no tres.
-    let i = partes.length;
-    let contados = 0;
-    while (i > 0 && contados < CATALOGS.correoApellidos) {
-      i--;                                   // la palabra del apellido
-      while (i > 0 && particula(partes[i - 1])) i--;   // y sus partículas
-      contados++;
-    }
-
-    const nombres = partes.slice(0, i);
-    const apellidos = partes.slice(i);
-    const pegar = xs => sinTildes(xs.join('')).replace(/[^a-z0-9]/g, '');
-
-    // Con menos de tres palabras no hay dos apellidos que contar: se
-    // hace lo que se puede y se avisa, porque el correo puede no ser ese.
-    if (!nombres.length || contados < CATALOGS.correoApellidos) {
-      const todo = pegar(partes);
-      return {
-        correo: todo ? todo + CATALOGS.correoDominio : '',
-        aviso: `"${clean(nombre)}" no tiene nombre y dos apellidos; el correo puede no ser correcto`
-      };
-    }
-    return { correo: pegar(nombres) + '.' + pegar(apellidos) + CATALOGS.correoDominio, aviso: '' };
+    const limpio = clean(nombre).replace(/\s+/g, ' ');
+    if (!limpio) return { correo: '', aviso: '' };
+    const clave = sinTildes(limpio).toUpperCase();
+    const correo = CATALOGS.correosConocidos[clave];
+    if (correo) return { correo, aviso: '' };
+    return {
+      correo: '',
+      aviso: `"${limpio}" no está en la lista de interlocutores: la tarea saldrá sin ` +
+             `peticionario. Añade su correo en data.js → correosConocidos.`
+    };
   }
 
   // Localiza cada columna por su cabecera, tolerando espacios y saltos.

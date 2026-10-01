@@ -669,11 +669,12 @@ function aPayloadAsana(t) {
 
   poner('objetivo', CATALOGS.palancaObjetivo[t.palanca]);
   poner('estado', t.estado || CATALOGS.estadoInicial);
-  // Asana guarda el peticionario como correo corporativo, no como el
-  // nombre en mayúsculas del Excel: así está en todas las tareas que ya
-  // existen. Si el correo no se ha podido calcular queda el nombre, que
-  // es peor pero es dato; vaciar el campo no ayuda a nadie.
-  poner('peticionario', t.excel?.peticionario || t.excel?.responsable);
+  // Asana guarda el peticionario como correo, no como el nombre en
+  // mayúsculas del Excel: así está en todas las tareas que ya existen.
+  // Si esa persona no está en la lista, el campo se queda vacío. Meter
+  // ahí su nombre dejaría un campo de correos con cosas que no son
+  // correos, y el aviso del lector ya dice de quién falta.
+  poner('peticionario', t.excel?.peticionario);
 
   return {
     id: t.id,

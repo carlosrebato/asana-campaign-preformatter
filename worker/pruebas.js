@@ -126,18 +126,27 @@ prueba('toda sección de Asana tiene un sitio en el orden', () => {
 
 /* ============================================================
    2 · EL CORREO DEL PETICIONARIO
-   Los cinco pares están comprobados leyendo las tareas que ya
-   existen en el Asana de producción. Si esto se rompe, se está
-   escribiendo el peticionario equivocado en todas las tareas.
+   Los diez interlocutores de Comercialización, confirmados por
+   Carlos el 1-oct-2026. Si esto se rompe, se está escribiendo el
+   peticionario equivocado en todas las tareas.
+
+   Ojo con MARIA CARLA SANZ ESTEBAN: firma `carla.sanzesteban` y
+   no `mariacarla.sanzesteban`. Es la razón de que aquí haya una
+   lista y no una regla.
 ============================================================ */
 grupo('Peticionario: del nombre del Excel al correo corporativo');
 
 const CORREOS = {
-  'MONTSERRAT BRUÑA IGLESIAS':    'montserrat.brunaiglesias@telefonica.com',
-  'SUSANA APARICIO GRACIA':       'susana.apariciogracia@telefonica.com',
   'ANA MARIA ARIZPELETA IRIARTE': 'anamaria.arizpeletairiarte@telefonica.com',
   'INES MOLINERO MARTIN':         'ines.molineromartin@telefonica.com',
-  'MARTA MARIN DE LAS HERAS':     'marta.marindelasheras@telefonica.com'
+  'MARIA BLANCA CABEZON NORES':   'mariablanca.cabezonnores@telefonica.com',
+  'MARIA CARLA SANZ ESTEBAN':     'carla.sanzesteban@telefonica.com',
+  'MARTA MARIN DE LAS HERAS':     'marta.marindelasheras@telefonica.com',
+  'MONTSERRAT BRUÑA IGLESIAS':    'montserrat.brunaiglesias@telefonica.com',
+  'SARA SÁNCHEZ RUBIO':           'sara.sanchezrubio@telefonica.com',
+  'SONIA VILLAR PASCUAL':         'sonia.villarpascual@telefonica.com',
+  'SUSANA APARICIO GRACIA':       'susana.apariciogracia@telefonica.com',
+  'YOLANDA MORENO PIMENTEL':      'yolanda.morenopimentel@telefonica.com'
 };
 
 for (const [nombre, correo] of Object.entries(CORREOS)) {
@@ -146,9 +155,21 @@ for (const [nombre, correo] of Object.entries(CORREOS)) {
   });
 }
 
-prueba('un nombre sin dos apellidos sale con aviso, no en silencio', () => {
-  const r = APP.EXCEL_PARSER.correo('MADONNA');
-  if (!r.aviso) throw new Error('no ha avisado de que ese nombre no tiene la forma de siempre');
+prueba('quien no está en la lista no se inventa: vacío y avisando con su nombre', () => {
+  const r = APP.EXCEL_PARSER.correo('LAURA GOMEZ PEREZ');
+  igual(r.correo, '', 'correo de alguien desconocido');
+  if (!r.aviso) throw new Error('se lo ha callado');
+  if (!/LAURA GOMEZ PEREZ/.test(r.aviso)) throw new Error('el aviso no dice de quién habla');
+});
+
+prueba('el nombre se reconoce venga como venga del Excel', () => {
+  // En el Excel van en mayúsculas y sin acentos; la lista los tiene con
+  // ellos. Da igual cómo llegue: es la misma persona.
+  const esperado = 'montserrat.brunaiglesias@telefonica.com';
+  for (const forma of ['MONTSERRAT BRUÑA IGLESIAS', 'Montserrat Bruña Iglesias',
+                       'MONTSERRAT BRUNA IGLESIAS', '  MONTSERRAT   BRUÑA  IGLESIAS ']) {
+    igual(APP.EXCEL_PARSER.correo(forma).correo, esperado, `correo de "${forma}"`);
+  }
 });
 
 prueba('sin responsable no se inventa un correo', () => {
@@ -267,16 +288,25 @@ prueba('toda campaña sale con fecha', conExcel(() => {
   igual(campanas.tasks.filter(t => !t.dueDate).map(t => t.pac), [], 'campañas sin fecha');
 }));
 
-prueba('toda campaña con responsable sale con su correo', conExcel(() => {
-  const sinCorreo = campanas.tasks
-    .filter(t => t.excel.responsable && !t.excel.peticionario).map(t => t.pac);
-  igual(sinCorreo, [], 'campañas con responsable y sin correo');
+prueba('quien firma campañas y no está en la lista se dice por su nombre', conExcel(() => {
+  // En octubre falta ARANCHA ORTIZ TORRES, que firma PAC37421 y no está
+  // en la lista de interlocutores. No se le inventa el correo: la tarea
+  // sale sin peticionario y el aviso la nombra. El día que Carlos
+  // confirme su correo, se añade a data.js y esta prueba se queda sin
+  // nada que contar, que es el final bueno.
+  const fuera = [...new Set(campanas.tasks
+    .filter(t => t.excel.responsable && !t.excel.peticionario)
+    .map(t => t.excel.responsable))];
+  const mudos = fuera.filter(n =>
+    !campanas.warnings.some(w => w.tipo === 'peticionario' && w.msg.includes(n)));
+  igual(mudos, [], 'responsables que faltan y encima no se avisan');
 }));
 
-prueba('todos los correos del mes son correos de Telefónica', conExcel(() => {
+prueba('todos los correos salen de la lista, ninguno inventado', conExcel(() => {
+  const conocidos = Object.values(APP.CATALOGS.correosConocidos);
   const raros = [...new Set(campanas.tasks.map(t => t.excel.peticionario).filter(Boolean))]
-    .filter(c => !/^[a-z0-9]+\.[a-z0-9]+@telefonica\.com$/.test(c));
-  igual(raros, [], 'correos con una forma rara');
+    .filter(c => !conocidos.includes(c));
+  igual(raros, [], 'correos que no están en la lista');
 }));
 
 prueba('ninguna campaña cae en una sección que no existe', conExcel(() => {

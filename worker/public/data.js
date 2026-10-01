@@ -245,32 +245,36 @@ const CATALOGS = {
      EL PETICIONARIO ES UN CORREO, NO UN NOMBRE
      ----------------------------------------------------------
      El Excel trae "INES MOLINERO MARTIN" en mayúsculas. Asana
-     guarda "ines.molineromartin@telefonica.com". No es una
-     convención inventada: se ha comprobado contra las tareas que
-     ya existen en el proyecto de producción.
+     guarda "ines.molineromartin@telefonica.com": así está en
+     todas las tareas que ya existen en producción.
 
-     La regla: nombre(s) pegados, punto, apellidos pegados, todo
-     en minúscula, sin acentos ni eñes, @telefonica.com.
+     Hubo una regla que lo deducía del nombre y acertaba nueve de
+     cada diez. La décima era María Carla Sanz Esteban, que firma
+     `carla.sanzesteban` y no `mariacarla.sanzesteban`. No es una
+     convención de Telefónica, es cómo se llama ella, y eso no hay
+     regla que lo saque.
 
-     Lo único que tiene miga es saber dónde acaba el nombre y
-     empiezan los apellidos. Se cuentan DOS apellidos desde el
-     final, y las partículas van pegadas al apellido que
-     acompañan. Lo demás, por largo que sea, es nombre:
+     Así que no se deduce: se mira. Estos son los interlocutores
+     de Comercialización con el correo que usan de verdad, que los
+     comprobó Carlos en el directorio el 1-oct-2026.
 
-       INES MOLINERO MARTIN         → ines.molineromartin
-       ANA MARIA ARIZPELETA IRIARTE → anamaria.arizpeletairiarte
-       MARTA MARIN DE LAS HERAS     → marta.marindelasheras
-       MONTSERRAT BRUÑA IGLESIAS    → montserrat.brunaiglesias
-
-     Las cuatro están verificadas contra producción. Si alguien
-     tiene un solo apellido, o dos personas comparten correo y
-     Telefónica les puso un número, esto fallará: por eso el
-     correo se enseña en la revisión y se puede corregir, y por
-     eso un nombre con menos de tres palabras sale con aviso.
+     Quien no esté aquí sale sin peticionario y con un aviso que
+     dice su nombre. Es la misma decisión que con los productos:
+     se cierra en origen, no se adivina. Añadir a alguien es una
+     línea y no hay que tocar código.
   ---------------------------------------------------------- */
-  correoDominio: '@telefonica.com',
-  correoParticulas: ['de', 'del', 'la', 'las', 'los', 'y', 'da', 'do', 'dos', 'van', 'von'],
-  correoApellidos: 2
+  correosConocidos: {
+    'ANA MARIA ARIZPELETA IRIARTE': 'anamaria.arizpeletairiarte@telefonica.com',
+    'INES MOLINERO MARTIN':         'ines.molineromartin@telefonica.com',
+    'MARIA BLANCA CABEZON NORES':   'mariablanca.cabezonnores@telefonica.com',
+    'MARIA CARLA SANZ ESTEBAN':     'carla.sanzesteban@telefonica.com',
+    'MARTA MARIN DE LAS HERAS':     'marta.marindelasheras@telefonica.com',
+    'MONTSERRAT BRUNA IGLESIAS':    'montserrat.brunaiglesias@telefonica.com',
+    'SARA SANCHEZ RUBIO':           'sara.sanchezrubio@telefonica.com',
+    'SONIA VILLAR PASCUAL':         'sonia.villarpascual@telefonica.com',
+    'SUSANA APARICIO GRACIA':       'susana.apariciogracia@telefonica.com',
+    'YOLANDA MORENO PIMENTEL':      'yolanda.morenopimentel@telefonica.com'
+  }
 };
 
 /* ------------------------------------------------------------
