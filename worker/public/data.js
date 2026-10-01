@@ -191,7 +191,19 @@ const CATALOGS = {
   // Palancas del Excel. Se enseñan en la revisión y se escriben en el
   // campo "Objetivo de la campaña" de Asana, que tiene las mismas
   // categorías con otro nombre.
-  palancaOptions: ['Desarrollo', 'Captación No Cliente', 'Fidelización/Dinamización', 'Legal'],
+  //
+  // Las cuatro primeras son la lista cerrada de Comercialización (Lista
+  // de Productos Palancas Medios v3, Eduardo). `Prevención` faltaba
+  // aquí aunque sí estaba en las dos tablas de abajo: una campaña de
+  // prevención se revisaba con el cartel de "no existe en Asana, elige
+  // otro" encima, que es justo lo contrario de lo que pasa.
+  //
+  // `Legal` no viene en la lista de Eduardo y se deja a propósito: lo
+  // dijo Carlos (30-sep-2026). Ojo con una incoherencia que sigue viva:
+  // las filas con palanca Legal no se importan (`palancasOmitidas`), así
+  // que Legal solo puede llegar a una tarea si alguien la elige a mano
+  // en la revisión. Está por decidir si eso es lo que se quiere.
+  palancaOptions: ['Captación No Cliente', 'Desarrollo', 'Fidelización/Dinamización', 'Prevención', 'Legal'],
   palancaObjetivo: {
     'Desarrollo':                'Desarrollo',
     'Captación No Cliente':      'Captación',
