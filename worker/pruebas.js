@@ -108,6 +108,31 @@ prueba('todos los productos del Excel caen en una sección que existe', () => {
   igual(malas, [], 'secciones inventadas');
 });
 
+prueba('una sección renombrada en Asana se sigue reconociendo', () => {
+  // Las secciones se emparejan POR NOMBRE con las de Asana. Si alguien
+  // la renombra allí y aquí no, deja de reconocerse y sus tareas se
+  // crean SIN SECCIÓN, sin que nada falle. Pasó de verdad con
+  // Conectividad: 8 campañas se quedaron sueltas.
+  const mismoNombre = (nuestra, deAsana) =>
+    nuestra.name === deAsana || (nuestra.otrosNombres || []).includes(deAsana);
+
+  const conectividad = APP.CATALOGS.sections.find(s => s.id === 'conectividad');
+  for (const nombre of ['⚙️ Conectividad: FTTR, BAF, LME, Prepago', '⚙️ Conectividad y equipamiento']) {
+    if (!mismoNombre(conectividad, nombre)) {
+      throw new Error(`"${nombre}" no se reconocería como la sección de Conectividad`);
+    }
+  }
+});
+
+prueba('ninguna sección se llama igual que otra', () => {
+  // Si dos compartieran nombre o alias, el emparejado por nombre daría
+  // la primera y las tareas de la otra irían a la sección equivocada.
+  const todos = [];
+  for (const s of APP.CATALOGS.sections) todos.push(s.name, ...(s.otrosNombres || []));
+  const repes = todos.filter((n, i) => todos.indexOf(n) !== i);
+  igual([...new Set(repes)], [], 'nombres de sección repetidos');
+});
+
 prueba('la copia local del catálogo no se queda corta', () => {
   // Esta copia solo se usa cuando Asana no contesta. Estuvo meses con 17
   // opciones cuando Asana tenía 26: un día sin conexión habría mandado a

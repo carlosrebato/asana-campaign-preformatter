@@ -48,10 +48,18 @@ const CATALOGS = {
   sections: [
     { id: 'entradas',     gid: '1204962417752693', name: '➡️ENTRADAS' },
     { id: 'priorizadas',  gid: '1209498548935703', name: '🔴 Campañas priorizadas y Creatividades' },
-    // Renombrada el 1-oct-2026: ahora recoge también lo que iba a
-    // MIMOVISTAR. El nombre de verdad lo pone Asana; esto es la copia que
-    // se usa cuando Asana no contesta, y tiene que decir lo mismo.
-    { id: 'conectividad', gid: '1204996811344449', name: '⚙️ Conectividad y equipamiento' },
+    // `otrosNombres` es la lista de nombres que esta sección ha tenido o
+    // va a tener. Las secciones se emparejan POR NOMBRE con las que
+    // devuelve Asana —los identificadores no sirven, porque el sandbox y
+    // producción tienen los suyos— así que un nombre que no case deja la
+    // sección sin reconocer y las tareas se crean sin sección, en
+    // silencio. Pasó: al poner aquí el nombre nuevo antes de renombrarla
+    // en Asana, ocho campañas de Conectividad se quedaron sueltas.
+    //
+    // Con los dos nombres, da igual el orden en que se hagan las cosas.
+    { id: 'conectividad', gid: '1204996811344449',
+      name: '⚙️ Conectividad: FTTR, BAF, LME, Prepago',
+      otrosNombres: ['⚙️ Conectividad y equipamiento', 'Conectividad y equipamiento'] },
     { id: 'convergente',  gid: '1205311722361417', name: '📺📡📱 MIMOVISTAR (Convergente)' },
     { id: 'plus',         gid: '1204915090620356', name: '📺 Movistar Plus+' },
     { id: 'ficcion',      gid: '1204925632923532', name: '🎬 Ficción' },

@@ -359,8 +359,16 @@ const API = {
       // secciones con identificadores nuevos. Emparejar por GID dejaba
       // todas las tareas apuntando a secciones inexistentes y la
       // revisión salía vacía.
+      // Las secciones de Asana se reconocen por el nombre: su
+      // identificador no sirve, porque el sandbox y producción tienen
+      // uno distinto para la misma sección. Si una se renombra en Asana
+      // y aquí no, deja de reconocerse y sus tareas se crean SIN
+      // SECCIÓN, sin que nada falle. Por eso cada sección puede declarar
+      // los otros nombres que ha tenido.
+      const mismoNombre = (nuestra, deAsana) =>
+        nuestra.name === deAsana || (nuestra.otrosNombres || []).includes(deAsana);
       CATALOGS.sections = c.sections.map(s => ({
-        id: CATALOGS.sections.find(x => x.name === s.name)?.id || s.gid,
+        id: CATALOGS.sections.find(x => mismoNombre(x, s.name))?.id || s.gid,
         gid: s.gid, name: s.name
       }));
       for (const [clave, nombre] of Object.entries(CATALOGS.fieldNames)) {

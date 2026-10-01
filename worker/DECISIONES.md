@@ -572,6 +572,28 @@ volver a crearla. Si algún día molesta, se arregla comprobando cada
 coincidencia con una lectura directa en vez de fiarse del buscador; son
 más llamadas y hoy no compensa.
 
+## Las secciones se reconocen por el nombre, y eso es frágil
+
+El catálogo de secciones se lee de Asana, pero las tablas de `data.js`
+usan identificadores propios (`futbol`, `conectividad`). El puente entre
+unos y otros es **el nombre**: no puede ser el identificador de Asana,
+porque el sandbox y producción tienen uno distinto para la misma
+sección.
+
+Y eso significa que **renombrar una sección la desconecta**. Si el
+nombre no casa, la sección no se reconoce, `sectionGid` sale vacío y las
+tareas se crean sin sección. No falla nada: simplemente aparecen sueltas
+arriba del proyecto.
+
+Pasó el 1-oct-2026, al poner aquí "Conectividad y equipamiento" antes de
+renombrarla en Asana: ocho campañas se quedaron sin sección y solo se vio
+porque la pasada completa se miró tarea a tarea.
+
+Por eso cada sección puede declarar `otrosNombres`: todos los nombres que
+ha tenido o va a tener. Con los dos puestos da igual el orden en que se
+hagan las cosas, y renombrar en Asana deja de ser una operación que haya
+que coordinar con un despliegue.
+
 ## El Worker es la única parte que necesita servidor
 
 El token de Asana no puede estar en el navegador, y Asana no acepta
