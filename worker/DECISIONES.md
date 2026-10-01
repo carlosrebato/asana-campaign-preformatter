@@ -464,6 +464,35 @@ Cuando dos celdas dan la misma tarea —en octubre pasa dos veces, porque
 la hoja tiene bloques repetidos— salen las dos y se avisa. Decidir cuál
 sobra es de Comercialización, no del lector.
 
+## El peticionario es un correo, no un nombre
+
+El Excel trae `INES MOLINERO MARTIN`, en mayúsculas. Durante meses eso
+es lo que se escribía en el campo Peticionario de Asana. Pero las tareas
+que ya existen en el proyecto de producción no guardan un nombre:
+guardan `ines.molineromartin@telefonica.com`.
+
+La regla —nombre(s) pegados, punto, apellidos pegados, sin acentos ni
+eñes, `@telefonica.com`— **no se ha deducido, se ha comprobado**
+leyendo producción. De las siete personas que firman las campañas de
+octubre, cinco tienen tareas anteriores con el campo relleno, y el
+correo calculado coincide con el real en las cinco. Las otras dos no
+tienen con qué comparar.
+
+Lo único que tiene miga es saber dónde acaba el nombre y empiezan los
+apellidos, porque hay nombres compuestos y apellidos con partículas. Se
+cuentan dos apellidos desde el final, y las partículas van pegadas al
+apellido que acompañan: en `MARTA MARIN DE LAS HERAS`, `DE LAS HERAS`
+es un apellido, no tres, y sale `marta.marindelasheras`.
+
+No hace falta ningún diccionario de correos, que era lo que parecía al
+principio. Pero la regla puede fallar —alguien con un solo apellido, o
+dos personas a las que Telefónica tuvo que desempatar con un número— así
+que el correo se enseña en la revisión, donde alguien lo puede ver, y un
+nombre que no tenga nombre y dos apellidos sale con aviso.
+
+Si no se puede calcular, se escribe el nombre tal cual. Es peor, pero es
+un dato; dejar el campo vacío no ayuda a nadie.
+
 ## El Worker es la única parte que necesita servidor
 
 El token de Asana no puede estar en el navegador, y Asana no acepta

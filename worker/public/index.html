@@ -686,7 +686,11 @@ function cardHTML(t) {
           <div class="bloque">
             <span class="bloque-lbl">Objetivo de la campaña</span>
             <p class="bloque-txt">${esc(t.excel.objetivo)}</p>
-            <span class="bloque-pie">Del Excel de planificación</span>
+            <span class="bloque-pie">
+              <span class="pie-fuente">Del Excel de planificación</span>
+              ${t.excel.peticionario ? `
+                <span class="pie-linea">Peticionario: ${esc(t.excel.peticionario)}</span>` : ''}
+            </span>
           </div>` : ''}
 
         ${t.description || t.descEdit ? `

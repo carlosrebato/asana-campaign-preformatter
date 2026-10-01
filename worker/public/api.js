@@ -669,7 +669,11 @@ function aPayloadAsana(t) {
 
   poner('objetivo', CATALOGS.palancaObjetivo[t.palanca]);
   poner('estado', t.estado || CATALOGS.estadoInicial);
-  poner('peticionario', t.excel?.responsable);
+  // Asana guarda el peticionario como correo corporativo, no como el
+  // nombre en mayúsculas del Excel: así está en todas las tareas que ya
+  // existen. Si el correo no se ha podido calcular queda el nombre, que
+  // es peor pero es dato; vaciar el campo no ayuda a nadie.
+  poner('peticionario', t.excel?.peticionario || t.excel?.responsable);
 
   return {
     id: t.id,

@@ -225,7 +225,38 @@ const CATALOGS = {
   // Ojo: el catálogo lista 26 estados pero los Tipos de tarea del
   // proyecto solo dejan escribir 12. El valor de aquí tiene que ser uno
   // de los que Asana acepta de verdad, y eso solo se sabe escribiendo.
-  estadoInicial: 'Pdte Maquetación y envío - Movistar'
+  estadoInicial: 'Pdte Maquetación y envío - Movistar',
+
+  /* ----------------------------------------------------------
+     EL PETICIONARIO ES UN CORREO, NO UN NOMBRE
+     ----------------------------------------------------------
+     El Excel trae "INES MOLINERO MARTIN" en mayúsculas. Asana
+     guarda "ines.molineromartin@telefonica.com". No es una
+     convención inventada: se ha comprobado contra las tareas que
+     ya existen en el proyecto de producción.
+
+     La regla: nombre(s) pegados, punto, apellidos pegados, todo
+     en minúscula, sin acentos ni eñes, @telefonica.com.
+
+     Lo único que tiene miga es saber dónde acaba el nombre y
+     empiezan los apellidos. Se cuentan DOS apellidos desde el
+     final, y las partículas van pegadas al apellido que
+     acompañan. Lo demás, por largo que sea, es nombre:
+
+       INES MOLINERO MARTIN         → ines.molineromartin
+       ANA MARIA ARIZPELETA IRIARTE → anamaria.arizpeletairiarte
+       MARTA MARIN DE LAS HERAS     → marta.marindelasheras
+       MONTSERRAT BRUÑA IGLESIAS    → montserrat.brunaiglesias
+
+     Las cuatro están verificadas contra producción. Si alguien
+     tiene un solo apellido, o dos personas comparten correo y
+     Telefónica les puso un número, esto fallará: por eso el
+     correo se enseña en la revisión y se puede corregir, y por
+     eso un nombre con menos de tres palabras sale con aviso.
+  ---------------------------------------------------------- */
+  correoDominio: '@telefonica.com',
+  correoParticulas: ['de', 'del', 'la', 'las', 'los', 'y', 'da', 'do', 'dos', 'van', 'von'],
+  correoApellidos: 2
 };
 
 /* ------------------------------------------------------------
