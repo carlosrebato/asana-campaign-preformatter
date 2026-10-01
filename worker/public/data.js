@@ -149,19 +149,33 @@ const CATALOGS = {
      Las dos Enews bajan aunque sumen 12: son newsletters recurrentes,
      casi idénticas cada semana, y son las que menos revisión piden.
 
-     El orden no es solo volumen. Lo fijó Carlos el 30-sep-2026: Fútbol y
-     Dispositivos primero; luego Ficción y Deportes; después Conectividad
-     y Plus+; y Horecas y Nuevos Negocios detrás, que mueven menos aunque
-     tengan nueve y ocho campañas.
+     El orden no es solo volumen. Lo fijó Carlos el 30-sep-2026 y lo
+     aprobó el equipo el 1-oct-2026: Fútbol y Dispositivos primero; luego
+     Ficción y Deportes; después Conectividad y Plus+; y Horecas y
+     Nuevos Negocios detrás, que mueven menos aunque tengan nueve y ocho
+     campañas. Las dos Enews cierran el bloque aprobado.
+
+     MIMOVISTAR estaba en esa lista y el equipo lo sacó: "ya no es
+     necesario". Sale del bloque aprobado, pero NO se borra de aquí.
+     La sección sigue existiendo en Asana y hay nueve productos de la
+     lista de Comercialización que siguen apuntando ahí (Alta móvil,
+     Alta miMovistar, Protección Digital…). En octubre no le toca
+     ninguna campaña, pero el mes que caiga una tiene que ir a algún
+     sitio, y que ese sitio sea el final de la lista es mejor que un
+     silencio. Si MIMOVISTAR se retira de verdad, lo que hay que decidir
+     es a qué sección van esos nueve productos, y eso lo dice
+     Comercialización, no este fichero.
 
      Esto es una decisión de negocio, no técnica. Se cambia aquí, y una
      sección que no esté en la lista va al final sin romper nada.
   ---------------------------------------------------------- */
   ordenSecciones: [
+    // Lo aprobado por el equipo, en su orden.
     'futbol', 'dispositivos',
     'ficcion', 'deportes', 'conectividad', 'plus', 'horecas', 'nuevos',
-    'convergente', 'gaming', 'beneficios',
-    'enewsM', 'marca', 'priorizadas', 'entradas', 'otros'
+    'enewsM', 'marca',
+    // Lo que no entró en la lista: va detrás, por orden de cuánto se mira.
+    'convergente', 'gaming', 'beneficios', 'priorizadas', 'entradas', 'otros'
   ],
 
   // Las secciones tal y como se revisan. El catálogo llega de Asana con
@@ -191,7 +205,19 @@ const CATALOGS = {
   // Palancas del Excel. Se enseñan en la revisión y se escriben en el
   // campo "Objetivo de la campaña" de Asana, que tiene las mismas
   // categorías con otro nombre.
-  palancaOptions: ['Desarrollo', 'Captación No Cliente', 'Fidelización/Dinamización', 'Legal'],
+  //
+  // Las cuatro primeras son la lista cerrada de Comercialización (Lista
+  // de Productos Palancas Medios v3, Eduardo). `Prevención` faltaba
+  // aquí aunque sí estaba en las dos tablas de abajo: una campaña de
+  // prevención se revisaba con el cartel de "no existe en Asana, elige
+  // otro" encima, que es justo lo contrario de lo que pasa.
+  //
+  // `Legal` no viene en la lista de Eduardo y se deja a propósito: lo
+  // dijo Carlos (30-sep-2026). Ojo con una incoherencia que sigue viva:
+  // las filas con palanca Legal no se importan (`palancasOmitidas`), así
+  // que Legal solo puede llegar a una tarea si alguien la elige a mano
+  // en la revisión. Está por decidir si eso es lo que se quiere.
+  palancaOptions: ['Captación No Cliente', 'Desarrollo', 'Fidelización/Dinamización', 'Prevención', 'Legal'],
   palancaObjetivo: {
     'Desarrollo':                'Desarrollo',
     'Captación No Cliente':      'Captación',
@@ -213,7 +239,42 @@ const CATALOGS = {
   // Ojo: el catálogo lista 26 estados pero los Tipos de tarea del
   // proyecto solo dejan escribir 12. El valor de aquí tiene que ser uno
   // de los que Asana acepta de verdad, y eso solo se sabe escribiendo.
-  estadoInicial: 'Pdte Maquetación y envío - Movistar'
+  estadoInicial: 'Pdte Maquetación y envío - Movistar',
+
+  /* ----------------------------------------------------------
+     EL PETICIONARIO ES UN CORREO, NO UN NOMBRE
+     ----------------------------------------------------------
+     El Excel trae "INES MOLINERO MARTIN" en mayúsculas. Asana
+     guarda "ines.molineromartin@telefonica.com": así está en
+     todas las tareas que ya existen en producción.
+
+     Hubo una regla que lo deducía del nombre y acertaba nueve de
+     cada diez. La décima era María Carla Sanz Esteban, que firma
+     `carla.sanzesteban` y no `mariacarla.sanzesteban`. No es una
+     convención de Telefónica, es cómo se llama ella, y eso no hay
+     regla que lo saque.
+
+     Así que no se deduce: se mira. Estos son los interlocutores
+     de Comercialización con el correo que usan de verdad, que los
+     comprobó Carlos en el directorio el 1-oct-2026.
+
+     Quien no esté aquí sale sin peticionario y con un aviso que
+     dice su nombre. Es la misma decisión que con los productos:
+     se cierra en origen, no se adivina. Añadir a alguien es una
+     línea y no hay que tocar código.
+  ---------------------------------------------------------- */
+  correosConocidos: {
+    'ANA MARIA ARIZPELETA IRIARTE': 'anamaria.arizpeletairiarte@telefonica.com',
+    'INES MOLINERO MARTIN':         'ines.molineromartin@telefonica.com',
+    'MARIA BLANCA CABEZON NORES':   'mariablanca.cabezonnores@telefonica.com',
+    'MARIA CARLA SANZ ESTEBAN':     'carla.sanzesteban@telefonica.com',
+    'MARTA MARIN DE LAS HERAS':     'marta.marindelasheras@telefonica.com',
+    'MONTSERRAT BRUNA IGLESIAS':    'montserrat.brunaiglesias@telefonica.com',
+    'SARA SANCHEZ RUBIO':           'sara.sanchezrubio@telefonica.com',
+    'SONIA VILLAR PASCUAL':         'sonia.villarpascual@telefonica.com',
+    'SUSANA APARICIO GRACIA':       'susana.apariciogracia@telefonica.com',
+    'YOLANDA MORENO PIMENTEL':      'yolanda.morenopimentel@telefonica.com'
+  }
 };
 
 /* ------------------------------------------------------------
@@ -431,6 +492,105 @@ const EXCEL = {
   productoFormatOverride: {
     'Enews contenidos': 'Enews de contenidos TV'
   }
+};
+
+/* ------------------------------------------------------------
+   EXCEL DE BANNERS DE MOVISTAR PLUS+ → ASANA
+   ------------------------------------------------------------
+   Otro fichero, otra lógica. El de Comercialización es una tabla:
+   1 fila = 1 campaña. Este es una parrilla: las filas son
+   posiciones del menú y las columnas semanas, y lo que dice si
+   hay tarea o no es EL COLOR DE LA CELDA.
+
+   Reglas, tal y como las dieron Bárbara y Eduardo (30-sep-2026):
+
+   - Verde = creatividad nueva, hay que producirla → tarea.
+   - Blanco = creatividad reutilizada → no hay tarea.
+   - CORPO = campaña corporativa, no es nuestra → no hay tarea.
+   - Cuatro posiciones: 4, 6, dispositivos 4 y dispositivos 6.
+   - La entrega es cuando se entrega al Plus: n-3 laborables
+     antes de que el banner se publique.
+
+   El verde NO es un verde. En el fichero de octubre hay tres tonos
+   distintos, porque cada quien pinta con el suyo. Comparar contra una
+   lista de colores concretos es lo que hacía que faltaran tareas; se
+   pregunta por el tono (¿es un verde?), no por el color exacto.
+------------------------------------------------------------ */
+const BANNERS = {
+  // La hoja buena es la visible. Las otras son material de trabajo
+  // (V1, dispositivos seleccionados) y están ocultas a propósito.
+  hojaPatron: /banner/i,
+
+  // Columnas de la parrilla. Se localizan por contenido, no por letra:
+  // las semanas por la cabecera 'S40', y el resto por su rótulo.
+  semanaPatron: /^S\s*(\d{1,2})$/i,
+  rotulos: {
+    origen:   /origen\s*cliente/i,
+    producto: /objetivo\s*\/?\s*producto/i
+  },
+  // La franja horaria del banner vive en su propia columna, sin rótulo.
+  franjaPatron: /^\s*([LJ])\s*-\s*([XD])\s*$/i,
+
+  // Qué día se publica cada franja, contando desde el lunes de su semana.
+  franjas: {
+    'L-X': { dia: 0, texto: 'lunes a miércoles' },
+    'J-D': { dia: 3, texto: 'jueves a domingo' }
+  },
+
+  // Cabecera de posición en la primera columna. 'DISPOSITIVOS' no dice
+  // si es la 4 o la 6: eso lo dice el 'Menutelef 4A' / 'menutelef6' de
+  // las columnas de origen y producto.
+  posicionPatron: /^\s*POSICI[OÓ]N\s*(\d+)/i,
+  dispositivosPatron: /^\s*DISPOSITIVOS\s*$/i,
+  menutelefPatron: /menutelef\s*(\d+)/i,
+
+  // Texto que anula la celda aunque esté pintada.
+  ignorar: /^\s*CORPO\s*$/i,
+
+  // Días laborables de antelación con los que se entrega al Plus.
+  entregaLaborables: 3,
+
+  // Festivos nacionales de España 2026. Un "día laborable" no es un día
+  // entre semana: si cae festivo, la entrega se adelanta.
+  //
+  // OJO, esto está incompleto a propósito: son los NACIONALES. Los
+  // autonómicos y locales de Madrid no están porque nadie los ha
+  // confirmado todavía. En octubre de 2026 no hay ninguno, así que el
+  // mes sale bien; para otros meses hay que cerrarlo con Bárbara.
+  festivos: [
+    '2026-01-01', '2026-01-06', '2026-04-03', '2026-05-01',
+    '2026-08-15', '2026-10-12', '2026-12-08', '2026-12-25'
+  ],
+
+  // Todos los banners son banners.
+  formato: 'Banners TV',
+
+  // Qué producto de Asana es cada banner. Se mira PRIMERO el texto de
+  // la propia celda —que dice de qué va la creatividad— y solo si ahí
+  // no hay nada, la columna de producto del bloque. Primer patrón que
+  // casa, gana, así que el orden importa: lo específico arriba.
+  //
+  // `section` solo se pone cuando la sección NO se deduce del producto.
+  // Es el mismo caso que EXCEL.productoPorNombre: eSIM Flag se escribe
+  // en Asana como "Otros" pero se revisa en Nuevos Negocios, y si no se
+  // dice aquí acabaría en la sección de cajón de sastre.
+  productoPorTexto: [
+    { pattern: /CL[AÁ]SICO|LALIGA|LA LIGA|CHAMPIONS|F[UÚ]TBOL|FUTBOL/i, product: 'M+ Futbol' },
+    { pattern: /FICCI[OÓ]N|NETFLIX|DISNEY|ESTRENO|SERIE/i,              product: 'M+ Ficción' },
+    { pattern: /BALONCESTO|NBA|MOTOR|F1|GP |TENIS|MASTERS|GOLF|DEPORTE/i, product: 'M+ Deporte' },
+    { pattern: /IPHONE|ANDROID|BODEGON|BODEG[OÓ]N|DISPOSITIVO|SWAP|GOOGLE/i, product: 'Dispositivos' },
+    { pattern: /FTTR/i,                                                 product: 'FTTR' },
+    { pattern: /FIBRA ADICIONAL/i,                                      product: 'Fibra Adicional' },
+    { pattern: /SEGUNDA FIBRA/i,                                        product: 'Segunda Fibra ON' },
+    { pattern: /RED SEGURA|CONEXI[OÓ]N SEGURA/i,                        product: 'Conexión Segura' },
+    { pattern: /ESIM/i,                                product: 'Otros', section: 'nuevos' },
+    { pattern: /MPA|PROSEGUR|ALARMA/i,                                  product: 'Movistar Prosegur Alarmas' },
+    { pattern: /SOLAR/i,                                                product: 'Solar360' },
+    { pattern: /PREPAGO/i,                                              product: 'Prepago' },
+    { pattern: /L[IÍ]NEAS? M[OÓ]VIL/i,                                  product: 'Líneas Móviles Extra' },
+    { pattern: /MOVISTAR PLUS|M\+|ORIGINALES/i,                         product: 'Movistar Plus+' },
+    { pattern: /MIMOVISTAR|R2R|RENOVE/i,                                product: 'MiMovistar' }
+  ]
 };
 
 /* ------------------------------------------------------------

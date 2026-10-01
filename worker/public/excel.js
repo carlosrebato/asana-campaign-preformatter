@@ -48,6 +48,41 @@ const EXCEL_PARSER = (() => {
   }
   const pad = n => String(n).padStart(2, '0');
 
+  /* ----------------------------------------------------------
+     NOMBRE DEL RESPONSABLE → CORREO DEL PETICIONARIO
+     ----------------------------------------------------------
+     El Excel dice "INES MOLINERO MARTIN"; Asana guarda
+     "ines.molineromartin@telefonica.com". La lista de quién es
+     quién está en data.js → correosConocidos, y la dio Carlos
+     mirando el directorio.
+
+     Aquí NO se deduce nada. Hubo una regla que montaba el correo
+     a partir del nombre y acertaba nueve de cada diez: la décima
+     era María Carla Sanz Esteban, que firma `carla.sanzesteban` y
+     no `mariacarla.sanzesteban`. Una de cada diez equivocada son
+     tareas que le llegan a quien no es, y eso es peor que no
+     poner nada. Lo mismo que con los productos: se cierra en
+     origen, no se adivina.
+
+     Si alguien no está en la lista, el campo se queda vacío y se
+     dice en voz alta, con su nombre, para que se añada.
+  ---------------------------------------------------------- */
+  const sinTildes = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                          .replace(/ñ/g, 'n').replace(/Ñ/g, 'N');
+
+  function correoDe(nombre) {
+    const limpio = clean(nombre).replace(/\s+/g, ' ');
+    if (!limpio) return { correo: '', aviso: '' };
+    const clave = sinTildes(limpio).toUpperCase();
+    const correo = CATALOGS.correosConocidos[clave];
+    if (correo) return { correo, aviso: '' };
+    return {
+      correo: '',
+      aviso: `"${limpio}" no está en la lista de interlocutores: la tarea saldrá sin ` +
+             `peticionario. Añade su correo en data.js → correosConocidos.`
+    };
+  }
+
   // Localiza cada columna por su cabecera, tolerando espacios y saltos.
   // Todos los formatos de Asana que aparecen en una celda de MEDIO,
   // sin repetir y en el orden en que se reconocen.
@@ -123,7 +158,16 @@ const EXCEL_PARSER = (() => {
       const porNombre = producto === 'Info'
         && EXCEL.productoPorNombre.find(x => x.pattern.test(nombre));
       const product = porNombre ? porNombre.product : EXCEL.productoProduct[producto];
-      if (!product) warn('producto', fila, `Producto sin mapear: "${producto}"`);
+      // Dos cosas distintas que acababan en el mismo aviso. Una celda
+      // vacía es un hueco del Excel y lo arregla Comercialización en el
+      // fichero; un valor que no conocemos lo arreglamos nosotros en la
+      // tabla. Decir "Producto sin mapear: """ no servía para ninguna
+      // de las dos, porque no decía ni de qué campaña hablaba.
+      if (!product) {
+        warn('producto', fila, producto
+          ? `Producto sin mapear: "${producto}" (${pac || nombre.slice(0, 30)}). Va a OTROS.`
+          : `${pac || nombre.slice(0, 30)} no trae producto en el Excel. Va a OTROS; hay que rellenarlo en origen.`);
+      }
       const sectionId = (porNombre && porNombre.section)
         || EXCEL.productoSection[producto]
         || CATALOGS.productSectionMap[product || 'Otros']
@@ -150,6 +194,11 @@ const EXCEL_PARSER = (() => {
 
       if (/PDTE/i.test(tsk)) warn('tsk', fila, `${pac || nombre.slice(0, 20)} sin TSK asignado`);
 
+      // El peticionario que Asana guarda es el correo, no el nombre.
+      const responsable = clean(col(r, 'responsable'));
+      const { correo, aviso } = correoDe(responsable);
+      if (aviso) warn('peticionario', fila, aviso);
+
       tasks.push({
         id: pac || `fila${fila}`,
         pac,
@@ -170,7 +219,8 @@ const EXCEL_PARSER = (() => {
           subpalanca,
           objetivo: libre(col(r, 'objetivo')),
           nombreTarea: libre(col(r, 'nombreTarea')),
-          responsable: clean(col(r, 'responsable')),
+          responsable,
+          peticionario: correo,
           po: clean(col(r, 'po')),            // unidad sin confirmar; solo texto
           mes: col(r, 'mes'),
           semana: col(r, 'semana')
@@ -190,5 +240,8 @@ const EXCEL_PARSER = (() => {
     };
   }
 
-  return { parse, parseFecha };
+  // correoDe se expone para poder probarlo: es la regla que decide qué
+  // peticionario lleva cada tarea, y se comprueba contra los correos
+  // reales de Asana en pruebas.js.
+  return { parse, parseFecha, correo: correoDe };
 })();

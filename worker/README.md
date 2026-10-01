@@ -37,6 +37,17 @@ npx wrangler deploy
 
 Sin build step, sin dependencias. Todo es HTML/CSS/JS estático.
 
+## Comandos
+
+```
+npm test       # 35 pruebas contra los ficheros reales. 2 segundos, 0 €.
+npm run dev    # levanta el Worker en local (wrangler dev --remote)
+npm run deploy # prueba, sella y despliega. Si algo falla, no despliega.
+```
+
+`npm run sellar` reescribe los `?v=` de index.html con un resumen del
+contenido de cada fichero. Lo hace `deploy` solo; no hay que acordarse.
+
 ## Probar en local
 
 ```bash
@@ -54,9 +65,11 @@ prompts/
   interpretacion.md        ← El prompt maestro del LLM. Se edita aquí, no en código.
 fixtures/
   ASANA_FICHERO_CARGA_*.xlsx  Excel real de Comercialización, para probar el parser
+  banners-oct-2026.xlsx       Parrilla real de banners de Movistar Plus+
 public/
   index.html               App completa (vistas + eventos + estado)
   excel.js                 Lector del Excel de Comercialización → Tarea[] + avisos
+  banners.js               Lector de la parrilla de banners de M+ → Tarea[] + avisos
   estrategia.js            Lector de los documentos de estrategia → briefs de mensaje
   vendor/                  SheetJS (.xlsx) y pdf.js (.pdf)
   app.css                  Estilos sobre el design system Movistar
