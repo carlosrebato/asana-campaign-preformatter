@@ -57,6 +57,7 @@ const S = {
   dupes: [],
   dupesCuando: 0,          // cuándo se preguntó a Asana por última vez
   comprobando: false,
+  reproduciendo: false,    // ?demo= · se reproduce una pasada grabada
   avisoExcel: '',          // un .xlsx que no es ninguno de los dos del mes
   renombradas: null,       // resultado del renombrado de la última carga
   filtro: 'todas',        // todas | revisar | sin | pendientes
@@ -945,7 +946,53 @@ function patch(id, campos) {
   render();
 }
 
+/* ---------------- REPRODUCIR UNA PASADA GRABADA ----------------
+   Solo con ?demo=<propuesta> en la dirección. Sin eso, este camino
+   no existe: el fichero ni siquiera se descarga.
+
+   Es para enseñar la herramienta a una sala. La pasada de verdad
+   tarda nueve minutos porque se lee 350 páginas, y nadie mira una
+   barra nueve minutos —en la vida real tampoco: se procesa un día
+   y se revisa otro—. Lo que se reproduce son los pasos reales de
+   una pasada concreta, acelerados, y al terminar se abre la
+   propuesta de verdad: lo que se revisa y lo que se carga en Asana
+   no tiene nada de grabado.
+---------------------------------------------------------------- */
+async function reproducirGrabacion(id) {
+  if (!window.DEMO) {
+    await new Promise((ok, mal) => {
+      const s = document.createElement('script');
+      s.src = 'demo.js'; s.onload = ok; s.onerror = mal;
+      document.head.appendChild(s);
+    });
+  }
+  S.screen = 'procesando';
+  S.proc = { paso: 0, detalle: '', cuenta: '', hechas: 0, total: 0, inicio: Date.now(), seg: 0 };
+  S.reproduciendo = true;
+  render();
+
+  await DEMO.reproducir(p => {
+    Object.assign(S.proc, p);
+    // El reloj que se ve es el de la pasada real. Enseñar siete
+    // segundos mientras dice "documento 3 de 3" cantaría solo.
+    S.proc.seg = p.segGrabados;
+    render();
+    const el = document.getElementById('proc-seg');
+    if (el) el.textContent = reloj(p.segGrabados);
+  });
+
+  S.reproduciendo = false;
+  // Y a partir de aquí, la propuesta de verdad: el mismo camino que
+  // sigue cualquiera que abra el enlace compartido.
+  location.hash = id;
+  if (!await abrirDesdeEnlace()) { S.screen = 'entrada'; render(); }
+}
+
 async function procesar() {
+  // Con ?demo= no se llama al modelo: se reproduce lo grabado.
+  const demo = new URLSearchParams(location.search).get('demo');
+  if (demo) return reproducirGrabacion(demo);
+
   S.screen = 'procesando';
   S.proc = { paso: 0, detalle: '', cuenta: '', hechas: 0, total: 0, inicio: Date.now(), seg: 0 };
   render();
