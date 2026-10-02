@@ -253,10 +253,6 @@ function viewEntrada() {
     ${S.avisoExcel ? `<div class="warn" style="margin-top:16px">${ICONS.warn}
       <span>${esc(S.avisoExcel)}</span></div>` : ''}
 
-    ${f.excel && !f.strategy.length ? `<div class="warn" style="margin-top:16px">${ICONS.warn}
-      <span><strong>Sin documentos de estrategia, las campañas saldrán sin contexto.</strong>
-      Las tareas se crean igual, con sus fechas y sus productos, pero nadie
-      sabrá qué contar en ellas. Los banners no lo necesitan.</span></div>` : ''}
 
     ${S.catalogos && !S.catalogos.ok ? `
       <p class="aviso-catalogos">
