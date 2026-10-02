@@ -275,6 +275,29 @@ prueba('cada banner tiene un identificador propio', conBanners(() => {
   igual(new Set(banners.tasks.map(t => t.id)).size, banners.tasks.length, 'identificadores únicos');
 }));
 
+prueba('cada aviso del fichero viaja pegado a su tarea', conBanners(() => {
+  // Antes los avisos solo existían en la pantalla de entrada, en una
+  // lista roja encima de la caja. Era el peor sitio: acabas de arrastrar
+  // el fichero y todavía no hay nada que decidir. Y al salir de esa
+  // pantalla desaparecían para siempre.
+  const conAviso = banners.tasks.filter(t => t.avisos?.length);
+  igual(conAviso.map(t => t.banner.celda).sort(), ['I22', 'I37', 'I45', 'I48'],
+    'los banners que llevan aviso propio');
+}));
+
+prueba('un aviso no se le cuelga al banner equivocado', conBanners(() => {
+  // "M6" se encontraba dentro de "BANCOM6A" y le colgaba a ese banner un
+  // aviso que era de otra celda. La coincidencia tiene que ser la celda
+  // entera.
+  for (const t of banners.tasks) {
+    for (const a of t.avisos || []) {
+      if (!new RegExp(`\\b${t.banner.celda}\\b`).test(a)) {
+        throw new Error(`${t.banner.celda} lleva un aviso que no la nombra: ${a.slice(0, 50)}`);
+      }
+    }
+  }
+}));
+
 prueba('una celda escrita que no es ni verde ni blanca se avisa', conBanners(() => {
   // I12 trae "DEPORTES EUROLIGA" y no está pintada. No es tarea, pero
   // tampoco se tira en silencio.

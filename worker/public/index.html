@@ -27,8 +27,8 @@
 
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="data.js?v=f72b0a1042"></script>
-<script src="excel.js?v=c3685e933f"></script>
-<script src="banners.js?v=c3f4afc339"></script>
+<script src="excel.js?v=c2e42ae3b2"></script>
+<script src="banners.js?v=f04673ef75"></script>
 <script src="estrategia.js?v=e4035e3db2"></script>
 <script src="api.js?v=4b8dba6868"></script>
 <script>
@@ -127,15 +127,19 @@ function renderStepper() {
 /* ---------------- 1 · ENTRADA ---------------- */
 // Qué ha entendido el lector del Excel. Los avisos de TSK pendiente son
 // normales (la mitad del fichero); se cuentan pero no se listan.
+// Al soltar un fichero solo hace falta saber una cosa: si lo ha leído y
+// cuánto hay dentro. Aquí había además una lista roja de avisos, y era
+// el peor sitio posible: acabas de arrastrar, todavía no hay nada que
+// decidir, y lo que ves es una pared de rojo. Ahora cada aviso viaja
+// pegado a su tarea y se ve en la revisión, que es donde se arregla.
 function resumenExcel(p) {
-  const avisos = p.warnings.filter(w => w.tipo !== 'tsk');
-  const sinTsk = p.warnings.length - avisos.length;
+  const avisos = p.warnings.filter(w => w.tipo !== 'tsk').length;
+  const sinTsk = p.warnings.length - avisos;
   return `
     <div class="drop-hint">${p.meta.filas} campañas${sinTsk ? ` · ${sinTsk} sin TSK` : ''}</div>
     ${Object.entries(p.meta.omitidas).map(([k, n]) =>
       `<div class="drop-hint">${n} de ${esc(k)} no se importan</div>`).join('')}
-    ${avisos.length ? `<ul class="drop-avisos">${avisos.slice(0, 6).map(w =>
-      `<li>Fila ${w.fila}: ${esc(w.msg)}</li>`).join('')}${avisos.length > 6 ? `<li>… y ${avisos.length - 6} más</li>` : ''}</ul>` : ''}`;
+    ${avisos ? `<div class="drop-hint">${avisos} ${avisos > 1 ? 'cosas' : 'cosa'} que mirar · ${avisos > 1 ? 'salen' : 'sale'} en la revisión</div>` : ''}`;
 }
 
 // Lo mismo para el fichero de banners. Aquí interesa decir dos números
@@ -147,8 +151,7 @@ function resumenBanners(p) {
   return `
     <div class="drop-hint">${m.filas} banners nuevos${m.reutilizadas ? ` · ${m.reutilizadas} reutilizados` : ''}</div>
     ${m.posiciones?.length ? `<div class="drop-hint">${m.posiciones.length} posiciones · ${esc((m.semanas || []).join(' '))}</div>` : ''}
-    ${p.warnings.length ? `<ul class="drop-avisos">${p.warnings.slice(0, 6).map(w =>
-      `<li>${esc(w.msg)}</li>`).join('')}${p.warnings.length > 6 ? `<li>… y ${p.warnings.length - 6} más</li>` : ''}</ul>` : ''}`;
+    ${p.warnings.length ? `<div class="drop-hint">${p.warnings.length} ${p.warnings.length > 1 ? 'cosas' : 'cosa'} que mirar · ${p.warnings.length > 1 ? 'salen' : 'sale'} en la revisión</div>` : ''}`;
 }
 
 // Cuántos briefs de mensaje se han encontrado. Si no hay ninguno, no se
@@ -304,6 +307,11 @@ function viewProcesando() {
         const hecho = i < P.paso, activo = i === P.paso;
         const barra = activo && P.total > 1
           ? `<div class="proc-barra"><span style="width:${Math.round(100 * P.hechas / P.total)}%"></span></div>` : '';
+        // El contador de la derecha solo se enseña si cuenta lo mismo que
+        // la barra. Al leer documentos no coincidían: el contador iba por
+        // documentos ("3 de 3") y la barra por trozos de texto, así que
+        // ponía 3 de 3 con la barra a media asta. Qué documento se está
+        // leyendo ya lo dice la línea de debajo.
         return `
         <div class="proc-step ${hecho ? 'done' : activo ? 'active' : ''}">
           <span class="proc-dot">${hecho ? ICONS.check : ''}</span>
@@ -311,7 +319,8 @@ function viewProcesando() {
             <div class="proc-titulo">${esc(p.titulo)}</div>
             ${activo ? `<div class="proc-sub">${esc(P.detalle || p.sub)}</div>${barra}` : ''}
           </div>
-          ${activo && P.cuenta ? `<span class="proc-cuenta">${esc(P.cuenta)}</span>` : ''}
+          ${activo && P.cuenta && (!barra || P.cuenta === `${P.hechas} de ${P.total}`)
+            ? `<span class="proc-cuenta">${esc(P.cuenta)}</span>` : ''}
         </div>`;
       }).join('')}
     </div>
@@ -364,7 +373,7 @@ function viewRevision() {
   const pend = total - appN;
 
   const pasaFiltro = t => {
-    if (S.filtro === 'revisar') return t.linkConfidence === 'low';
+    if (S.filtro === 'revisar') return t.linkConfidence === 'low' || !!t.avisos?.length;
     if (S.filtro === 'sin') return !t.description && !t.banner;
     if (S.filtro === 'pendientes') return !t.approved;
     if (S.filtro === 'enasana') return !!t.asanaUrl;
@@ -385,7 +394,9 @@ function viewRevision() {
   // fila, y entre ciento once filas dos marcas no se ven.
   const enAsanaN = S.tasks.filter(t => t.asanaUrl).length;
   const fallosN = S.tasks.filter(t => t.sinRespuesta).length;
-  const revisarN = S.tasks.filter(t => t.linkConfidence === 'low').length;
+  // "A revisar" son las dos cosas que piden ojo humano: un emparejamiento
+  // dudoso, y lo que el lector vio raro en el fichero.
+  const revisarN = S.tasks.filter(t => t.linkConfidence === 'low' || t.avisos?.length).length;
   // "Sin contexto" sirve para encontrar lo que se ha quedado a medias.
   // Los banners no se quedan a medias: su contexto es la parrilla. Si
   // se contasen aquí, el filtro de los agujeros estaría lleno de cosas
@@ -537,6 +548,9 @@ function avisosDe(t) {
   const av = [];
   if (t.cambio === 'cambiada' && t.cambios?.length) av.push(`<strong>Ha cambiado</strong> · ${esc(t.cambios.join(', '))}. Vuelve a aprobarla si te cuadra.`);
   if (t.linkConfidence === 'low' && t.linkNote) av.push(`<strong>Revisar el mensaje</strong> · ${esc(t.linkNote)}`);
+  // Lo que el lector vio raro en el fichero: viene pegado a la tarea
+  // desde que se leyó, así que se ve aquí, donde se puede arreglar.
+  for (const a of t.avisos || []) av.push(`<strong>En el fichero</strong> · ${esc(a)}`);
   const asana = t.asanaUrl
     ? `<p class="nota-asana">Ya está en Asana. Si el Excel dice ahora otra cosa, corrígelo allí: esta herramienta no reescribe lo cargado. <a href="${esc(t.asanaUrl)}" target="_blank" rel="noopener">Abrir la tarea</a></p>` : '';
   return av.map(x => `<p class="nota-revisar">${x}</p>`).join('') + asana;
