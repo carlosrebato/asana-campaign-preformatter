@@ -245,6 +245,26 @@ const EXCEL_PARSER = (() => {
       });
     });
 
+    // Cada aviso viaja pegado a su campaña. Antes solo se veían al
+    // soltar el fichero, en una lista roja encima de la caja: justo
+    // cuando acabas de arrastrar y lo único que quieres saber es si lo
+    // ha leído. Y si cerrabas esa pantalla, desaparecían para siempre.
+    //
+    // Pegados a la tarea se ven donde se arreglan, y sobreviven a
+    // recargar y al enlace compartido.
+    //
+    // Los de TSK no: son hasta cuarenta y ocho en un mes, el dato no
+    // viaja a Asana y no hay nada que decidir. Esos se cuentan y ya.
+    const porFila = {};
+    for (const w of warnings) {
+      if (w.tipo === 'tsk') continue;
+      (porFila[w.fila] = porFila[w.fila] || []).push(w.msg);
+    }
+    for (const t of tasks) {
+      const suyos = porFila[t.excel.fila];
+      if (suyos) t.avisos = suyos;
+    }
+
     return {
       tasks,
       warnings,

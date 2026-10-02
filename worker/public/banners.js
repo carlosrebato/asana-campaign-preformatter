@@ -416,6 +416,17 @@ const BANNERS_PARSER = (() => {
       }
     }
 
+    // Igual que en las campañas: cada aviso se pega a su banner, para
+    // que se vea donde se arregla y no solo al soltar el fichero. Aquí
+    // el enganche es la celda, que es lo que nombran los mensajes.
+    for (const t of tasks) {
+      // La celda entera, no un trozo: buscar "M6" suelto lo encontraba
+      // dentro de "BANCOM6A" y le colgaba a ese banner un aviso de otro.
+      const suya = new RegExp(`\\b${t.banner.celda}\\b`);
+      const suyos = avisos.filter(a => suya.test(a.msg));
+      if (suyos.length) t.avisos = suyos.map(a => a.msg);
+    }
+
     return {
       tasks,
       warnings: avisos,
