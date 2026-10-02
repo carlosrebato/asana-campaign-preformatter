@@ -269,6 +269,8 @@ h2.section-title { font-size: 21px; font-weight: 800; letter-spacing: -.015em; }
 .stats-n { font-size: 14px; font-weight: 800; }
 .stats-lbl { font-size: 11.5px; color: #807D7B; }
 .dot { width: 7px; height: 7px; border-radius: 50%; }
+/* El punto del contador de lo que ya está creado en Asana. */
+.dot.asana { background: #0066FF; }
 .dot.green { background: #A9DD92; }
 .dot.amber { background: #FFD84D; }
 

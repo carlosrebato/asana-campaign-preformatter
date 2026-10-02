@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Campaign Loader · Movistar</title>
-<link rel="stylesheet" href="app.css?v=cae0e96a69">
+<link rel="stylesheet" href="app.css?v=c7ba073cfd">
 <link rel="icon" href="movistar-m-square.png">
 </head>
 <body>
@@ -367,6 +367,7 @@ function viewRevision() {
     if (S.filtro === 'revisar') return t.linkConfidence === 'low';
     if (S.filtro === 'sin') return !t.description && !t.banner;
     if (S.filtro === 'pendientes') return !t.approved;
+    if (S.filtro === 'enasana') return !!t.asanaUrl;
     if (S.filtro === 'cambios') return t.cambio && t.cambio !== 'igual';
     if (S.filtro === 'fallo') return !!t.sinRespuesta;
     return true;
@@ -379,6 +380,10 @@ function viewRevision() {
   // suelta después de tres intentos, se marca en su fila y ya: un cartel
   // arriba por una de setenta era complicarle la vida a quien revisa
   // para contarle un caso que no entiende ni le toca arreglar.
+  // Cuántas están ya creadas. Volver de la carga y no ver en ninguna
+  // parte cuántas se crearon era desconcertante: la marca va en cada
+  // fila, y entre ciento once filas dos marcas no se ven.
+  const enAsanaN = S.tasks.filter(t => t.asanaUrl).length;
   const fallosN = S.tasks.filter(t => t.sinRespuesta).length;
   const revisarN = S.tasks.filter(t => t.linkConfidence === 'low').length;
   // "Sin contexto" sirve para encontrar lo que se ha quedado a medias.
@@ -429,6 +434,7 @@ function viewRevision() {
         <div class="stats-cell"><span class="dot amber"></span><span class="stats-n">${revN}</span><span class="stats-lbl">vinculación probable</span></div>
         ${banN ? `<div class="stats-cell"><span class="stats-n">${banN}</span><span class="stats-lbl">banners</span></div>` : ''}
         <div class="stats-cell"><span class="stats-n">${pend}/${total}</span><span class="stats-lbl">pendientes</span></div>
+        ${enAsanaN ? `<div class="stats-cell"><span class="dot asana"></span><span class="stats-n">${enAsanaN}</span><span class="stats-lbl">en Asana</span></div>` : ''}
       </div>
       <button class="btn-primary" id="btn-confirmar" ${appN ? '' : 'disabled'}>
         Cargar en Asana ${ICONS.arrow}
@@ -479,6 +485,7 @@ function viewRevision() {
              ['sin', `Sin contexto · ${sinN}`],
              ['pendientes', `Sin aprobar · ${pend}`]]
             .concat(cambiosN ? [['cambios', `Cambios · ${cambiosN}`]] : [])
+            .concat(enAsanaN ? [['enasana', `En Asana · ${enAsanaN}`]] : [])
             .map(([id, txt]) =>
               `<button class="filtro ${S.filtro === id ? 'on' : ''}" data-filtro="${id}">${txt}</button>`).join('')}
         </div>
@@ -916,7 +923,9 @@ function viewResultado() {
       <button class="btn-primary" id="btn-retry">Reintentar ${r.failed.length} fallidas</button>
     ` : ''}
 
-    <button class="btn-ghost" id="btn-reset" style="margin-top:14px;margin-left:-12px">Cargar otro mes</button>
+    <button class="btn-primary" data-paso="revision" style="margin-top:18px">
+      Volver a la revisión ${ICONS.arrow}
+    </button>
   </main>`;
 }
 
@@ -1358,7 +1367,7 @@ async function abrirDesdeEnlace() {
 
 /* ---------------- EVENTOS ---------------- */
 document.addEventListener('click', async e => {
-  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-quitar-doc],[data-descedit],[data-paso],[data-filtro],[data-compartir],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-reset,#btn-retry');
+  const el = e.target.closest('[data-approve],[data-del],[data-desc],[data-add],[data-toggle],[data-quitar-doc],[data-descedit],[data-paso],[data-filtro],[data-compartir],[data-approve-sec],[data-clear],[data-drop],#btn-procesar,#btn-confirmar,#btn-back,#btn-cargar,#btn-retry');
   if (!el) return;
 
   if (el.dataset.compartir) {
@@ -1457,14 +1466,6 @@ document.addEventListener('click', async e => {
     const ids = S.result.failed.map(f => f.id);
     S.tasks.forEach(t => t.approved = ids.includes(t.id));
     S.screen = 'confirmar'; render();
-  }
-  else if (el.id === 'btn-reset') {
-    Object.assign(S, {
-      screen: 'entrada',
-      files: { excel: null, banners: null, strategy: [] },  // lista vacía, no null: la entrada la recorre
-      tasks: [], dupes: [], result: null, procStep: -1, procPasos: []
-    });
-    render();
   }
 });
 
