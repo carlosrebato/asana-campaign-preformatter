@@ -594,6 +594,35 @@ ha tenido o va a tener. Con los dos puestos da igual el orden en que se
 hagan las cosas, y renombrar en Asana deja de ser una operación que haya
 que coordinar con un despliegue.
 
+## El paso 2 puede reproducir una pasada grabada
+
+La pasada de verdad tarda nueve minutos porque se lee 350 páginas. En la
+vida real no la mira nadie —se procesa un día y se revisa otro— pero para
+enseñar la herramienta a una sala hay que ver los cuatro pasos seguidos.
+
+Con `?demo=<propuesta>` en la dirección, el paso 2 **reproduce una pasada
+grabada**: los pasos, los textos y las cuentas reales del 2-oct-2026,
+acelerados. No simula nada ni se inventa números. Si alguien pregunta si
+es real, la respuesta honesta es "es la pasada de esa mañana, rápida", y
+así se presenta.
+
+Tres cosas que lo sujetan para que no se vuelva una mentira:
+
+- **Solo con la marca en la dirección.** Sin ella `demo.js` ni se
+  descarga: el camino no existe.
+- **El reloj que se ve es el de la pasada real.** Marca 3:03 cuando dice
+  "documento 3 de 3". Enseñar 7 segundos ahí cantaría solo.
+- **Las cuentas cuadran con la pantalla siguiente**, porque salen de la
+  misma pasada. Inventarlas habría dejado un 57 que no encaja con nada.
+
+Y lo que no se toca: al terminar abre la propuesta de verdad, por el
+mismo camino que sigue cualquiera con el enlace compartido. Lo que se
+revisa y lo que se carga en Asana no tiene nada de grabado.
+
+Para regrabar: se anotan los pasos reales de una pasada y se sustituye
+`GRABACION` en `demo.js`. Los segundos son los que duró; la velocidad se
+decide al reproducir.
+
 ## El Worker es la única parte que necesita servidor
 
 El token de Asana no puede estar en el navegador, y Asana no acepta
